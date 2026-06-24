@@ -4,6 +4,8 @@ import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
 import { sortEntities } from '../../../Utils/SortEntities'; 
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
+// import DatePickerCalendar from '../../UI/Buttons/DatePickerCalendar/DatePickerCalendar';
+// import { useRef } from 'react';
 import styles from './AttendanceTable.module.css';
 import { useAttendance } from '../../Hooks/useAttendance';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -67,7 +69,7 @@ const AttendanceTable = ({
   onSectionSelect,
   availableSections = [],
   loading: parentLoading = false,
-  selectedDate = null,
+  selectedDate: controlledSelectedDate = null,
   statusFilter: externalStatusFilter = 'all',
   onStatsUpdate
 }) => {
@@ -84,6 +86,8 @@ const AttendanceTable = ({
   const { success, error: toastError } = useToast();
   
   // Edit state
+  // Use only the selectedDate prop for filtering
+  const selectedDate = controlledSelectedDate;
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({
     time_in: '',
@@ -498,6 +502,8 @@ const AttendanceTable = ({
     fetchAttendanceForDate(selectedDate, currentClass);
   }, [selectedDate, currentClass, fetchAttendanceForDate]);
 
+  // ...existing code...
+
   const renderTimePicker = useCallback((fieldName) => (
     <TimePicker
       name={fieldName}
@@ -798,34 +804,36 @@ const AttendanceTable = ({
   }
 
   return (
-    <Table
-      columns={tableColumns}
-      rows={sortedAttendances}
-      getRowId={(row) => row.id}
-      loading={false}
-      error=""
-      emptyMessage={getTableInfoMessage()}
-      containerRef={tableRef}
-      gradeTabs={{
-        options: grades,
-        currentValue: currentClass,
-        onChange: handleClassChange,
-        showAll: true,
-        allLabel: 'All',
-        renderLabel: (grade) => `Grade ${grade}`
-      }}
-      infoText={getTableInfoMessage()}
-      tableLabel="Attendance"
-      onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
-      rowClassName={getVisibleRowClassName}
-      expandedRowId={expandedRow}
-      renderExpandedRow={({ row }) => renderExpandedContent(row)}
-      persistExpandedRows={true}
-      hideMainRowWhenExpanded={true}
-      getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
-      className={styles.attendanceTableContainer}
-      wrapperClassName={styles.tableWrapper}
-    />
+    <div className={styles.attendanceTableContainer}>
+      <Table
+        columns={tableColumns}
+        rows={sortedAttendances}
+        getRowId={(row) => row.id}
+        loading={false}
+        error=""
+        emptyMessage={getTableInfoMessage()}
+        containerRef={tableRef}
+        gradeTabs={{
+          options: grades,
+          currentValue: currentClass,
+          onChange: handleClassChange,
+          showAll: true,
+          allLabel: 'All',
+          renderLabel: (grade) => `Grade ${grade}`
+        }}
+        infoText={getTableInfoMessage()}
+        tableLabel="Attendance"
+        onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
+        rowClassName={getVisibleRowClassName}
+        expandedRowId={expandedRow}
+        renderExpandedRow={({ row }) => renderExpandedContent(row)}
+        persistExpandedRows={true}
+        hideMainRowWhenExpanded={true}
+        getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
+        className={styles.attendanceTableContainer}
+        wrapperClassName={styles.tableWrapper}
+      />
+    </div>
   );
 };
 

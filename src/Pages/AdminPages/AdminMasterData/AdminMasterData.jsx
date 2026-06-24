@@ -259,6 +259,19 @@ function AdminMasterData() {
     }
   };
 
+  const getNewEntityButtonLabel = () => {
+    switch (activeTab) {
+      case 'gradeSections':
+        return '+ New Sections';
+      case 'subjects':
+        return '+ New Subject';
+      case 'schedules':
+        return '+ New Schedules';
+      default:
+        return '+ New Entity';
+    }
+  };
+
   const getSelectedCount = () => {
     switch (activeTab) {
       case 'gradeSections':
@@ -377,8 +390,8 @@ function AdminMasterData() {
           />
           <Button
             height="sm" 
-            width="md"
-            label="+ New Entity"
+            width="lg"
+            label={getNewEntityButtonLabel()}
             color="ocean"
             onClick={handleOpenUploadModal}
           />
@@ -390,7 +403,7 @@ function AdminMasterData() {
         <div className={styles.tabsContainer}>
           <div className={styles.tabs}>
             <Button
-              label="Grade and Section"
+              label="Grade & Section"
               line={true}
               height="xs"
               width="auto"
@@ -406,7 +419,7 @@ function AdminMasterData() {
               onClick={() => setActiveTab('subjects')}
             />
             <Button
-              label="Grade and Schedules"
+              label="Grade & Schedules"
               line={true}
               height="xs"
               width="auto"

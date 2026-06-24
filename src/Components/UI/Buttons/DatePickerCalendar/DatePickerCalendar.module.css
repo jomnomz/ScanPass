@@ -1,0 +1,164 @@
+.card {
+  background: #2a2a2a;
+  border-radius: 16px;
+  padding: 20px;
+  display: inline-block;
+  min-width: 280px;
+  font-family: system-ui, sans-serif;
+  color: #fff;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.navBtn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.navBtn.disabled,
+.disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.navBtn.active,
+.active {
+  opacity: 1;
+  cursor: pointer;
+}
+.monthLabel {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dayLabel {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  padding: 4px 0 8px;
+}
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cell:hover .dayNum {
+  background: rgba(255,255,255,0.08);
+}
+.cellFuture {
+  opacity: 0.3;
+  cursor: default !important;
+  pointer-events: none;
+}
+
+/* ── Day number circle ── */
+.dayNum {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-radius: 50%;        /* always circular */
+  color: rgba(255,255,255,0.85);
+}
+/* Today + selected */
+.dayNumTodaySel {
+  background: #1D9E75 !important;
+  color: #fff !important;
+  border-radius: 50% !important;
+}
+/* Selected but not today — white filled circle */
+.dayNumSel {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-radius: 50% !important;
+}
+/* Today but not selected — green text */
+.dayNumToday {
+  color: #1D9E75 !important;
+  font-weight: 500;
+}
+/* Future date — very dim */
+.dayNumFuture {
+  color: rgba(255,255,255,0.2) !important;
+}
+
+/* ── Indicator dots ── */
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+}
+.dotToday {
+  background: #1D9E75 !important;
+}
+.dotHasData {
+  background: #F59E0B !important;
+}
+
+/* ── Info bar ── */
+.infoBar {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 0.5px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+}
+.todayText {
+  color: #fff;
+  font-weight: 600;
+}
+.selectedText {
+  color: #fff;
+  font-weight: 600;
+}
+.infoDate {
+  color: rgba(255,255,255,0.5);
+  margin-left: 2px;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+}
+.legendDotToday {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1D9E75;
+  flex-shrink: 0;
+}
+.legendDotHasData {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #F59E0B;
+  flex-shrink: 0;
+}

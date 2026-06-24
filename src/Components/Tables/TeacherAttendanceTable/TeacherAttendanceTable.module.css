@@ -1,3 +1,91 @@
+.pendingRow {
+  background: #fffbe6 !important;
+}
+.pendingEdit {
+  color: #b8860b;
+  font-weight: bold;
+  font-size: 1rem;
+}
+.editBtn {
+  background: #f4f8fc;
+  border: 1px solid #dde5ef;
+  color: #1f2f45;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.editBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.saveBtn {
+  background: #0f6b58;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-weight: 600;
+  margin-right: 8px;
+  cursor: pointer;
+}
+.cancelBtn {
+  background: #e0e7ef;
+  color: #1f2f45;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.expandedEditSection {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  background: #fff;
+  border: 1px solid #f7e7b7;
+  border-radius: 8px;
+  margin: 0 12px 12px 12px;
+  padding: 18px 18px 12px 18px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.08);
+  animation: expandFadeIn 0.25s ease;
+}
+@keyframes expandFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+.expandedLeft, .expandedRight {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.expandedLabel {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.expandedTextarea {
+  min-height: 60px;
+  border-radius: 6px;
+  border: 1px solid #dde5ef;
+  padding: 8px;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 6px;
+}
+.expandedFileInput {
+  margin-bottom: 6px;
+}
+.fileName {
+  font-size: 0.95rem;
+  color: #1f2f45;
+  margin-top: 2px;
+}
+.expandedError {
+  color: #b3261e;
+  font-size: 0.95rem;
+  margin-top: 2px;
+}
 .attendanceTableContainer {
   height: 100%;
   display: flex;

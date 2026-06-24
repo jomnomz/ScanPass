@@ -100,7 +100,7 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
             <img className={styles.schoolLogo} src={minimalist_stonino} alt="" />
           </div>
           <div className={styles.schoolName}>
-            <span className={styles.schoolTitle}>Stoñino</span>
+            <span className={styles.schoolTitle}>Sto Niño</span>
             <span className={styles.schoolSubtitle}>High School</span>
           </div>
         </div>
