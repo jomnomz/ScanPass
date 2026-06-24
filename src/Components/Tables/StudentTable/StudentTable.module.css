@@ -306,6 +306,8 @@
   cursor: pointer;
 }
 
+
+
 /* Responsive adjustments */
 @media (max-width: 1400px) {
   .details {

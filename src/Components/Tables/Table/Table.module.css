@@ -227,6 +227,8 @@
 	margin-top: 12px;
 }
 
+
+
 @media (max-width: 768px) {
 	.topBar {
 		align-items: stretch;

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react' 
-import styles from './AdminStudents.module.css'
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import styles from './AdminStudents.module.css';
 import PageLabel from "../../../Components/UI/Labels/PageLabel/PageLabel.jsx";
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
 import FileUploadModal from "../../../Components/Modals/FileUploadModal/FileUploadModal.jsx";
@@ -8,7 +8,8 @@ import StudentTable from '../../../Components/Tables/StudentTable/StudentTable.j
 import Input from '../../../Components/UI/Input/Input.jsx';
 import DeleteEntityModal from '../../../Components/Modals/DeleteEntityModal/DeleteEntityModal.jsx';
 import DownloadQRModal from '../../../Components/Modals/DownloadQRModal/DownloadQRModal.jsx';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUsers, faTrash, faQrcode } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
 import { StudentService } from '../../../Utils/EntityService.js';
@@ -36,6 +37,10 @@ function AdminStudents() {
   const [gradesData, setGradesData] = useState([]);
   const [sectionsData, setSectionsData] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 20;
 
   const studentService = new StudentService();
 
@@ -132,6 +137,19 @@ function AdminStudents() {
     
     fetchInitialData();
   }, [fetchGrades, fetchSections, fetchAllStudents]);
+
+  // Reset to page 1 whenever search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSection, currentGrade]);
+
+  // Compute paginated students - slice the data before passing to StudentTable
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    return allStudents.slice(start, start + ROWS_PER_PAGE);
+  }, [allStudents, currentPage]);
+
+  const totalPages = Math.ceil(allStudents.length / ROWS_PER_PAGE);
 
   const refreshStudents = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
@@ -358,12 +376,21 @@ function AdminStudents() {
             refreshAllStudents={fetchAllStudents}
             onSectionSelect={handleSectionSelect}
             availableSections={availableSections}
-            // Pass the students data directly from parent
-            students={allStudents}
+            // Pass the paginated students data from parent
+            students={paginatedStudents}
             gradesData={gradesData}
             sectionsData={sectionsData}
             loading={loadingData}
           />
+          
+          {/* PAGINATION COMPONENT */}
+          {allStudents.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </>
       )}
       
