@@ -26,7 +26,6 @@ function AdminAttendance() {
     return phTime.toISOString().split('T')[0];
   }, []);
 
-  // Fallback: batch fetch in case RPC fails
   const fetchAvailableDatesFallback = useCallback(async () => {
     try {
       let allDates = [];
@@ -44,7 +43,7 @@ function AdminAttendance() {
         if (!data || data.length === 0) break;
 
         allDates = allDates.concat(data.map(r => r.date).filter(Boolean));
-        if (data.length < BATCH) break; // last page
+        if (data.length < BATCH) break;
         from += BATCH;
       }
 
@@ -77,7 +76,6 @@ function AdminAttendance() {
 
       const normalize = (val) => {
         if (!val) return null;
-        // Supabase returns DATE columns as 'YYYY-MM-DD' strings already
         if (typeof val === 'string') {
           const m = val.match(/^\d{4}-\d{2}-\d{2}/);
           return m ? m[0] : null;
@@ -111,18 +109,15 @@ function AdminAttendance() {
     fetchAvailableDates();
   }, [fetchAvailableDates, fetchAvailableDatesFallback]);
 
-  // Subscribe to attendance table changes so calendar picks up newly-created dates
   useEffect(() => {
     const channel = supabase
       .channel('public:attendance')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => {
-        // Re-fetch available dates when attendance rows change
         fetchAvailableDates();
       })
       .subscribe();
 
     return () => {
-      // Clean up subscription
       try {
         supabase.removeChannel(channel);
       } catch (e) {
@@ -131,7 +126,6 @@ function AdminAttendance() {
     };
   }, [fetchAvailableDates]);
 
-  // Close popover on outside click
   useEffect(() => {
     if (!calendarOpen) return;
     function handleClick(e) {
@@ -143,7 +137,6 @@ function AdminAttendance() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [calendarOpen]);
 
-  // Trigger button label — derived purely from selectedDate string
   const getDateLabel = () => {
     if (!selectedDate) return 'Select date';
     const [y, m, d] = selectedDate.split('-').map(Number);
@@ -151,10 +144,9 @@ function AdminAttendance() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const isToday = sel.getTime() === todayStart.getTime();
-    const daysAgo = Math.round((todayStart - sel) / 86400000);
     const monthStr = sel.toLocaleString('default', { month: 'short' });
     if (isToday) return `Today · ${monthStr} ${d}, ${y}`;
-    return `${monthStr} ${d}, ${y} · ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago`;
+    return `${monthStr} ${d}, ${y}`;
   };
 
   const handleSearchChange = (e) => setSearchTerm(e.target.value);
@@ -179,16 +171,23 @@ function AdminAttendance() {
 
           <div className={styles.filtersContainer}>
             <div ref={calendarBtnRef} style={{ position: 'relative', display: 'inline-block' }}>
-              {/* Trigger button */}
               <Button
                 color="nav"
                 height="sm"
+                width="auto"
                 onClick={() => setCalendarOpen((v) => !v)}
-                label={getDateLabel()}
-              >
-              </Button>
+                icon={
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.6 }}>calendar_today</span>
+                    <span style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 400 }}>{getDateLabel()}</span>
+                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.5 }}>
+                      {calendarOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                    </span>
+                  </span>
+                }
+              />
 
-              {/* Popover — anchored to right edge of button */}
               {calendarOpen && (
                 <div style={{
                   position: 'absolute',
@@ -201,7 +200,7 @@ function AdminAttendance() {
                     selectedDateKey={selectedDate}
                     hasDataDates={availableDates}
                     onSelect={({ key }) => {
-                      setSelectedDate(key); // key is already "YYYY-MM-DD"
+                      setSelectedDate(key);
                       setCalendarOpen(false);
                     }}
                   />
