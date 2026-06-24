@@ -144,8 +144,11 @@ function AdminAttendance() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const isToday = sel.getTime() === todayStart.getTime();
+    const isPast = sel.getTime() < todayStart.getTime();
     const monthStr = sel.toLocaleString('default', { month: 'short' });
+    
     if (isToday) return `Today · ${monthStr} ${d}, ${y}`;
+    if (isPast) return `Past Date · ${monthStr} ${d}, ${y}`;
     return `${monthStr} ${d}, ${y}`;
   };
 
