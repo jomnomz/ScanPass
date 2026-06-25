@@ -18,12 +18,12 @@ function Table({
 	getRowId = (row) => row?.id,
 	loading = false,
 	error = '',
-	// emptyMessage is rendered only for empty states; use infoText for dynamic counts/status text.
 	emptyMessage = 'No data found',
 	containerRef = null,
 	gradeTabs = null,
 	infoText = '',
 	selectedInfoText = '',
+	paginationContent = null,
 	headerContent = null,
 	footerContent = null,
 	renderTopContent = null,
@@ -44,7 +44,10 @@ function Table({
 	wrapperClassName = '',
 	headClassName = '',
 	bodyClassName = '',
-	rowKeyPrefix = 'table-row'
+	rowKeyPrefix = 'table-row',
+	isAllPagesSelected = false,
+	visibleSelectedCount = 0,
+	totalRowsOnPage = 0
 }) {
 	const warnedIndexFallbackRef = useRef(false);
 	const warnedEmptyMessageUsageRef = useRef(false);
@@ -247,20 +250,47 @@ function Table({
 		});
 	};
 
+	const getPaginationMargin = () => {
+		// 1. All pages selected (all students across all pages)
+		if (isAllPagesSelected) {
+			return '204px';
+		}
+		// 2. Some rows selected (not all on page, not all pages)
+		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {
+			return '302px';
+		}
+		// 3. All on current page selected (but not all pages)
+		if (visibleSelectedCount === totalRowsOnPage && totalRowsOnPage > 0 && !isAllPagesSelected) {
+			return '56px';
+		}
+		// 4. Nothing selected
+		return '470px';
+	};
+
+	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;
+
 	return (
 		<div className={joinClassNames(styles.container, className)} ref={containerRef}>
-			{(renderTopContent || gradeTabs || infoText || selectedInfoText || headerContent) && (
+			{(renderTopContent || gradeTabs || hasRightContent) && (
 				<div className={styles.topBar}>
 					<div className={styles.topBarLeft}>
 						{renderTopContent}
 						{renderGradeTabs()}
 					</div>
 
-					{(infoText || selectedInfoText || headerContent) && (
+					{hasRightContent && (
 						<div className={styles.topBarRight}>
 							{infoText && <div className={styles.infoText}>{infoText}</div>}
 							{selectedInfoText && <div className={styles.selectedInfoText}>{selectedInfoText}</div>}
 							{headerContent}
+							{paginationContent && (
+								<div 
+									className={styles.paginationWrapper}
+									style={{ marginLeft: getPaginationMargin() }}
+								>
+									{paginationContent}
+								</div>
+							)}
 						</div>
 					)}
 				</div>

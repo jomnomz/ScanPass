@@ -354,7 +354,7 @@ function AdminMasterData() {
             width="auto"
             icon={<DownloadIcon/>}
             label="Export"
-            color="coolGray"
+            color="teaGreen"
             onClick={handleExportMasterData}
             disabled={!hasAnyMasterData()}
           />
@@ -363,7 +363,7 @@ function AdminMasterData() {
             width="auto"
             icon={<UploadIcon/>}
             label="Import"
-            color="coolGray"
+            color="teaGreen"
             onClick={handleOpenUploadModal}
           />
           

@@ -1,35 +1,36 @@
 import styles from "./Pagination.module.css";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 
 function getLayout(current, total) {
   if (total <= 3) {
-    // If total pages is 3 or less, show all
-    return {
-      pages: Array.from({ length: total }, (_, i) => i + 1)
-    };
+    return { pages: Array.from({ length: total }, (_, i) => i + 1) };
   }
 
-  // Calculate which block of 3 we're in
-  // Pages 1-3: block 1, Pages 4-6: block 2, Pages 7-9: block 3, etc.
   const blockNumber = Math.floor((current - 1) / 3);
   const blockStart = blockNumber * 3 + 1;
   const blockEnd = Math.min(blockStart + 2, total);
-  
+  const totalBlocks = Math.ceil(total / 3);
+  const isFirstBlock = blockNumber === 0;
+  const isLastBlock = blockNumber === totalBlocks - 1;
+
   const pages = [];
-  
-  // Add the 3 pages from the current block
-  for (let i = blockStart; i <= blockEnd; i++) {
-    pages.push(i);
+
+  // Only last block gets "1 …" prefix
+  if (isLastBlock && !isFirstBlock) {
+    pages.push(1);
+    pages.push("ellipsis-start");
   }
-  
-  // If there are more pages after the block, add ellipsis and last page
-  if (blockEnd < total) {
-    pages.push("ellipsis");
+
+  for (let i = blockStart; i <= blockEnd; i++) pages.push(i);
+
+  // First and middle blocks get "… last" suffix
+  if (!isLastBlock) {
+    pages.push("ellipsis-end");
     pages.push(total);
   }
-  
-  return {
-    pages: pages
-  };
+
+  return { pages };
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
@@ -48,11 +49,11 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         disabled={currentPage === 1}
         aria-label="Previous page"
       >
-        &#8249;
+        <FontAwesomeIcon icon={faChevronLeft} />
       </button>
 
       {pages.map((page, index) => {
-        if (page === "ellipsis") {
+        if (page === "ellipsis-start" || page === "ellipsis-end" || page === "ellipsis") {
           return (
             <span key={`ellipsis-${index}`} className={styles.ellipsis} aria-hidden="true">
               &hellip;
@@ -78,7 +79,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         disabled={currentPage === totalPages}
         aria-label="Next page"
       >
-        &#8250;
+        <FontAwesomeIcon icon={faChevronRight} />
       </button>
     </nav>
   );

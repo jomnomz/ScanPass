@@ -406,7 +406,7 @@ function AdminTeachers() {
       <div className={styles.top}>
         <div className={styles.topLeft}>
           <Button 
-            color="coolGray" 
+            color="teaGreen" 
             height="sm"
             width="auto"
             label="Export" 
@@ -415,7 +415,7 @@ function AdminTeachers() {
             disabled={teachers.length === 0}
           />
           <Button 
-            color="coolGray" 
+            color="teaGreen" 
             height="sm"
             width="auto"
             label="Import" 

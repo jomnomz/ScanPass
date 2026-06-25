@@ -24,7 +24,7 @@ function AdminStudents() {
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [currentGrade, setCurrentGrade] = useState('7');
+  const [currentGrade, setCurrentGrade] = useState('all'); // Changed from '7' to 'all'
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalMode, setDeleteModalMode] = useState('single');
@@ -41,6 +41,9 @@ function AdminStudents() {
   // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 20;
+
+  // SELECT ALL STATE
+  const [isAllPagesSelected, setIsAllPagesSelected] = useState(false);
 
   const studentService = new StudentService();
 
@@ -141,15 +144,51 @@ function AdminStudents() {
   // Reset to page 1 whenever search/filter changes
   useEffect(() => {
     setCurrentPage(1);
+    setIsAllPagesSelected(false);
   }, [searchTerm, selectedSection, currentGrade]);
 
-  // Compute paginated students - slice the data before passing to StudentTable
+  // STEP 1: Filter students based on grade, section, and search
+  const filteredStudents = useMemo(() => {
+    let filtered = allStudents;
+
+    // Filter by grade
+    if (currentGrade !== 'all') {
+      filtered = filtered.filter(s => s.grade === currentGrade);
+    }
+
+    // Filter by section
+    if (selectedSection) {
+      filtered = filtered.filter(s => s.section === selectedSection);
+    }
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(s =>
+        s.lrn?.toLowerCase().includes(q) ||
+        s.first_name?.toLowerCase().includes(q) ||
+        s.last_name?.toLowerCase().includes(q) ||
+        s.grade?.toString().toLowerCase().includes(q) ||
+        s.section?.toString().toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q) ||
+        s.phone_number?.toLowerCase().includes(q) ||
+        s.guardian_first_name?.toLowerCase().includes(q) ||
+        s.guardian_last_name?.toLowerCase().includes(q) ||
+        s.guardian_phone_number?.toLowerCase().includes(q)
+      );
+    }
+
+    return filtered;
+  }, [allStudents, currentGrade, selectedSection, searchTerm]);
+
+  // STEP 2: Calculate total pages based on filtered count
+  const totalPages = Math.ceil(filteredStudents.length / ROWS_PER_PAGE);
+
+  // STEP 3: Paginate the filtered students
   const paginatedStudents = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
-    return allStudents.slice(start, start + ROWS_PER_PAGE);
-  }, [allStudents, currentPage]);
-
-  const totalPages = Math.ceil(allStudents.length / ROWS_PER_PAGE);
+    return filteredStudents.slice(start, start + ROWS_PER_PAGE);
+  }, [filteredStudents, currentPage]);
 
   const refreshStudents = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
@@ -181,6 +220,9 @@ function AdminStudents() {
 
   const handleSelectedStudentsUpdate = (selected) => {
     setSelectedStudents(selected);
+    if (selected.length === 0) {
+      setIsAllPagesSelected(false);
+    }
   };
 
   const handleStudentDataUpdate = () => {
@@ -223,6 +265,17 @@ function AdminStudents() {
     }
   };
 
+  const handleSelectAllPages = () => {
+    setIsAllPagesSelected(true);
+    const allFilteredIds = filteredStudents.map(s => s.id);
+    setSelectedStudents(allFilteredIds);
+  };
+
+  const handleClearAllPages = () => {
+    setIsAllPagesSelected(false);
+    setSelectedStudents([]);
+  };
+
   const deleteSingleStudentAPI = async (studentId) => {
     try {
       console.log('🔄 Deleting student ID:', studentId);
@@ -262,7 +315,6 @@ function AdminStudents() {
         success(`${studentIdOrIds.length} students deleted successfully`);
       }
       
-      // Refresh the data
       await fetchAllStudents();
       setRefreshTrigger(prev => prev + 1);
       
@@ -282,6 +334,14 @@ function AdminStudents() {
     }
   };
 
+  const paginationContent = filteredStudents.length > 0 ? (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={setCurrentPage}
+    />
+  ) : null;
+
   return (
     <main className={styles.main}>
       <SectionLabel label="Student Records"></SectionLabel>
@@ -289,7 +349,7 @@ function AdminStudents() {
       <div className={styles.top}>
         <div className={styles.topLeft}>
           <Button 
-            color="coolGray" 
+            color="teaGreen" 
             height="sm" 
             icon={<DownloadIcon/>}
             width="auto" 
@@ -298,7 +358,7 @@ function AdminStudents() {
             disabled={loadingData || allStudents.length === 0}
           />
           <Button 
-            color="coolGray" 
+            color="teaGreen" 
             height="sm" 
             width="auto" 
             icon={<UploadIcon/>}
@@ -376,21 +436,17 @@ function AdminStudents() {
             refreshAllStudents={fetchAllStudents}
             onSectionSelect={handleSectionSelect}
             availableSections={availableSections}
-            // Pass the paginated students data from parent
             students={paginatedStudents}
             gradesData={gradesData}
             sectionsData={sectionsData}
             loading={loadingData}
+            paginationContent={paginationContent}
+            totalStudentCount={filteredStudents.length}
+            isAllPagesSelected={isAllPagesSelected}
+            onSelectAllPages={handleSelectAllPages}
+            onClearAllPages={handleClearAllPages}
+            currentPage={currentPage}
           />
-          
-          {/* PAGINATION COMPONENT */}
-          {allStudents.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          )}
         </>
       )}
       

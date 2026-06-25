@@ -9,10 +9,10 @@
   min-width: 36px;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid #d1d5db;
+  border: none;
   border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
+  background: transparent;
+  color: #3F4F67;
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
@@ -25,7 +25,6 @@
 
 .btn:hover:not(:disabled) {
   background: #f3f4f6;
-  border-color: #9ca3af;
 }
 
 .btn:disabled {
@@ -34,9 +33,9 @@
 }
 
 .btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
+  background: #E8F4EF;
+  border: 1px solid #CCE7DF;
+  color: #3F4F67;
   font-weight: 600;
 }
 

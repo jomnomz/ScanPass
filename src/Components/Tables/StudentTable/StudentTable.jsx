@@ -60,7 +60,14 @@ const StudentTable = ({
   students: propStudents = [],
   gradesData = [],
   sectionsData = [],
-  loading: parentLoading = false
+  loading: parentLoading = false,
+  paginationContent = null,
+  totalStudentCount = 0,
+  isAllPagesSelected = false,
+  onSelectAllPages,
+  onClearAllPages,
+  currentPage = 1,
+  onFilteredCountChange // ADD THIS
 }) => {
     
   const [students, setStudents] = useState([]);
@@ -114,7 +121,7 @@ const StudentTable = ({
       
       const gradeIdToLevel = {};
       gradesData.forEach(grade => {
-        gradeIdToLevel[grade.id] = grade.grade_level; // Just "7", "8", etc.
+        gradeIdToLevel[grade.id] = grade.grade_level;
       });
       
       sectionsData.forEach(section => {
@@ -221,6 +228,13 @@ const StudentTable = ({
     const sorted = sortStudents(filteredStudents);
     return sorted;
   }, [filteredStudents]);
+
+  // ADD THIS EFFECT - Notify parent of filtered count
+  useEffect(() => {
+    if (onFilteredCountChange) {
+      onFilteredCountChange(sortedStudents.length);
+    }
+  }, [sortedStudents.length, onFilteredCountChange]);
 
   const visibleSelectedStudents = useMemo(() => {
     const visibleStudentIds = new Set(sortedStudents.map(student => student.id));
@@ -388,9 +402,8 @@ const StudentTable = ({
             updated_at: new Date().toISOString()
           };
           
-          // Use the found IDs
           updateData.grade_id = gradeId;
-          updateData.grade = editFormData.grade;  // Just "7", "8", etc.
+          updateData.grade = editFormData.grade;
           
           if (sectionId) {
             updateData.section_id = sectionId;
@@ -460,6 +473,7 @@ const StudentTable = ({
     
     if (allVisibleStudentIds.every(id => selectedStudents.includes(id))) {
       setSelectedStudents(prev => prev.filter(id => !allVisibleStudentIds.includes(id)));
+      if (onClearAllPages) onClearAllPages();
     } else {
       setSelectedStudents(prev => {
         const newSelection = new Set([...prev, ...allVisibleStudentIds]);
@@ -470,6 +484,41 @@ const StudentTable = ({
 
   const allVisibleSelected = sortedStudents.length > 0 && 
     sortedStudents.every(student => selectedStudents.includes(student.id));
+
+  // COMPUTED INFO TEXT - UPDATED to remove "Showing" message
+  const allOnPageSelected = sortedStudents.length > 0 &&
+    sortedStudents.every(student => selectedStudents.includes(student.id));
+
+  const computedInfoText = (() => {
+    if (isAllPagesSelected) return `All ${totalStudentCount} students selected`;
+    if (allOnPageSelected) return `Selected all ${sortedStudents.length} student/s • Page ${currentPage}`;
+    if (visibleSelectedStudents.length > 0) return `${visibleSelectedStudents.length} selected • Page ${currentPage}`;
+    return ''; // Empty = no pill shown
+  })();
+
+  const selectAllBanner = (() => {
+    if (isAllPagesSelected) {
+      return (
+        <button
+          onClick={onClearAllPages}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.85rem', fontWeight: 600, padding: '0', textDecoration: 'underline' }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (allOnPageSelected && totalStudentCount > sortedStudents.length) {
+      return (
+        <button
+          onClick={onSelectAllPages}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: '0.85rem', fontWeight: 600, padding: '0', textDecoration: 'underline' }}
+        >
+          Select all {totalStudentCount} students
+        </button>
+      );
+    }
+    return null;
+  })();
 
   const renderEditInput = (fieldName, type = 'text') => (
     <input
@@ -863,6 +912,7 @@ const StudentTable = ({
 
   return (
     <>
+
       <Table
         columns={tableColumns}
         rows={sortedStudents}
@@ -879,8 +929,10 @@ const StudentTable = ({
           allLabel: 'All',
           renderLabel: (grade) => `Grade ${grade}`
         }}
-        infoText={getTableInfoMessage()}
-        selectedInfoText={visibleSelectedStudents.length > 0 ? `${visibleSelectedStudents.length} selected` : ''}
+        infoText={computedInfoText}
+        selectedInfoText=""
+        headerContent={selectAllBanner}
+        paginationContent={paginationContent}
         tableLabel="Students"
         onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
         isRowSelected={({ row }) => selectedStudents.includes(row.id)}
@@ -892,6 +944,9 @@ const StudentTable = ({
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         className={styles.studentTableContainer}
         wrapperClassName={styles.tableWrapper}
+        isAllPagesSelected={isAllPagesSelected}
+        visibleSelectedCount={visibleSelectedStudents.length}
+        totalRowsOnPage={sortedStudents.length}
       />
 
       <QRCodeModal
