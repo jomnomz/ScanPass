@@ -4,8 +4,6 @@ import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
 import { sortEntities } from '../../../Utils/SortEntities'; 
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
-// import DatePickerCalendar from '../../UI/Buttons/DatePickerCalendar/DatePickerCalendar';
-// import { useRef } from 'react';
 import styles from './AttendanceTable.module.css';
 import { useAttendance } from '../../Hooks/useAttendance';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,6 +12,7 @@ import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -71,7 +70,10 @@ const AttendanceTable = ({
   loading: parentLoading = false,
   selectedDate: controlledSelectedDate = null,
   statusFilter: externalStatusFilter = 'all',
-  onStatsUpdate
+  onStatsUpdate,
+  currentPage = 1,
+  onPageChange = () => {},
+  rowsPerPage = 20
 }) => {
   const { 
     currentClass,
@@ -85,8 +87,6 @@ const AttendanceTable = ({
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
   const { success, error: toastError } = useToast();
   
-  // Edit state
-  // Use only the selectedDate prop for filtering
   const selectedDate = controlledSelectedDate;
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -101,7 +101,6 @@ const AttendanceTable = ({
     setStatusFilter(externalStatusFilter || 'all');
   }, [externalStatusFilter]);
 
-  // Format time functions
   const formatTimeDisplay = useCallback((timeString) => {
     if (!timeString) return 'N/A';
     try {
@@ -335,6 +334,7 @@ const AttendanceTable = ({
 
   const handleClassChange = useCallback((className) => {
     changeClass(className);
+    onPageChange(1); // Reset page on grade change
     toggleRow(null);
     cancelEdit();
     
@@ -347,13 +347,14 @@ const AttendanceTable = ({
     }
     
     fetchAttendanceForDate(selectedDate, className);
-  }, [changeClass, toggleRow, cancelEdit, selectedSection, onSectionSelect, onClearSectionFilter, selectedDate, fetchAttendanceForDate]);
+  }, [changeClass, onPageChange, toggleRow, cancelEdit, selectedSection, onSectionSelect, onClearSectionFilter, selectedDate, fetchAttendanceForDate]);
 
   const handleSectionFilter = useCallback((section) => {
     if (onSectionSelect) {
       onSectionSelect(section);
     }
-  }, [onSectionSelect]);
+    onPageChange(1); // Reset page on section change
+  }, [onSectionSelect, onPageChange]);
 
   const handleRowClick = useCallback((attendanceId, e) => {
     if (shouldHandleRowClick(editingId !== null, e.target)) {
@@ -433,6 +434,7 @@ const AttendanceTable = ({
     return currentGradeSections;
   }, [currentGradeSections]);
 
+  // STEP 1: Filter attendances
   const sortedAttendances = useMemo(() => {
     let filtered = attendances;
     
@@ -470,6 +472,23 @@ const AttendanceTable = ({
     return sortEntities(filtered, { type: 'student' });
   }, [attendances, selectedDate, statusFilter, currentClass, selectedSection, searchTerm]);
 
+  // STEP 2: Calculate total pages
+  const totalPages = Math.ceil(sortedAttendances.length / rowsPerPage);
+
+  // STEP 3: Paginate the sorted attendances
+  const paginatedAttendances = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return sortedAttendances.slice(start, start + rowsPerPage);
+  }, [sortedAttendances, currentPage, rowsPerPage]);
+
+  const paginationContent = sortedAttendances.length > 0 ? (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={onPageChange}
+    />
+  ) : null;
+
   useEffect(() => {
     if (selectedSection && currentClass !== 'all') {
       const isValidSection = currentGradeSections.includes(selectedSection);
@@ -501,8 +520,6 @@ const AttendanceTable = ({
   useEffect(() => {
     fetchAttendanceForDate(selectedDate, currentClass);
   }, [selectedDate, currentClass, fetchAttendanceForDate]);
-
-  // ...existing code...
 
   const renderTimePicker = useCallback((fieldName) => (
     <TimePicker
@@ -741,7 +758,10 @@ const AttendanceTable = ({
           <EntityDropdown
             options={STATUS_OPTIONS}
             selectedValue={statusFilter === 'all' ? '' : statusFilter}
-            onSelect={(value) => setStatusFilter(value || 'all')}
+            onSelect={(value) => {
+              setStatusFilter(value || 'all');
+              onPageChange(1); // Reset page on status filter change
+            }}
             allLabel="All"
             buttonTitle="Filter status"
             getOptionLabel={(option) => option.label}
@@ -771,10 +791,10 @@ const AttendanceTable = ({
     formatTimeDisplayShort,
     formatStatusWithStyle,
     statusFilter,
-    renderEditCell
+    renderEditCell,
+    onPageChange
   ]);
 
-  // Loading and error states
   if (parentLoading || attendanceLoading) {
     return (
       <div className={styles.attendanceTableContainer}>
@@ -807,7 +827,7 @@ const AttendanceTable = ({
     <div className={styles.attendanceTableContainer}>
       <Table
         columns={tableColumns}
-        rows={sortedAttendances}
+        rows={paginatedAttendances}
         getRowId={(row) => row.id}
         loading={false}
         error=""
@@ -821,7 +841,7 @@ const AttendanceTable = ({
           allLabel: 'All',
           renderLabel: (grade) => `Grade ${grade}`
         }}
-        infoText={getTableInfoMessage()}
+        infoText=""
         tableLabel="Attendance"
         onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
         rowClassName={getVisibleRowClassName}
@@ -832,6 +852,11 @@ const AttendanceTable = ({
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         className={styles.attendanceTableContainer}
         wrapperClassName={styles.tableWrapper}
+        paginationContent={paginationContent}
+        currentPage={currentPage}
+        totalRowsOnPage={paginatedAttendances.length}
+        visibleSelectedCount={0}
+        isAllPagesSelected={false}
       />
     </div>
   );

@@ -20,6 +20,10 @@ function AdminAttendance() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarBtnRef = useRef(null);
 
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 20;
+
   const getCurrentPhilippinesDate = useCallback(() => {
     const now = new Date();
     const phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
@@ -137,6 +141,11 @@ function AdminAttendance() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [calendarOpen]);
 
+  // Reset to page 1 whenever any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSection, currentGrade, selectedDate]);
+
   const getDateLabel = () => {
     if (!selectedDate) return 'Select date';
     const [y, m, d] = selectedDate.split('-').map(Number);
@@ -224,6 +233,9 @@ function AdminAttendance() {
         availableSections={availableSections}
         loading={loading}
         selectedDate={selectedDate}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        rowsPerPage={20}
       />
     </main>
   );
