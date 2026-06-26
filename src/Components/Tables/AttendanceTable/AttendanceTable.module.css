@@ -32,8 +32,8 @@
 }
 
 .attendanceCard {
-  background-color: #f7fafc;
-  border: 1px solid #dde5ef;
+  background-color: #edf7f3;  
+	border: 1px solid #cae6dd;  
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;

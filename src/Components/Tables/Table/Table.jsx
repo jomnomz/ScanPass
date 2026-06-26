@@ -232,6 +232,7 @@ function Table({
 				<tr
 					className={joinClassNames(
 						styles.expandedRow,
+						rowStripeClassName,  /* <-- ADD THIS - passes the original stripe class */
 						getValue(getExpandedRowClassName, { row, rowIndex, rowId, isExpanded })
 					)}
 				>
@@ -243,7 +244,46 @@ function Table({
 
 			return (
 				<Fragment key={`${rowKeyPrefix}-${rowId}`}>
-					{!(hideMainRowWhenExpanded && isExpanded) && mainRow}
+					<tr
+						{...extraRowProps}
+						className={joinClassNames(
+							styles.row,
+							rowStripeClassName,
+							isSelected && styles.rowSelected,
+							isExpanded && styles.rowExpanded,
+							onRowClick && styles.rowClickable,
+							computedRowClassName,
+							extraRowProps.className,
+							isExpanded && hideMainRowWhenExpanded && styles.rowHidden  /* <-- ADD THIS */
+						)}
+						onClick={onRowClick ? (event) => onRowClick({ row, rowIndex, rowId, event }) : extraRowProps.onClick}
+						aria-hidden={isExpanded && hideMainRowWhenExpanded ? 'true' : undefined}
+					>
+						{columns.map((column, columnIndex) => {
+							const isIconColumn = ICON_COLUMN_KEYS.has(column?.key);
+							const cellClassName = getValue(column.cellClassName, {
+								row,
+								rowIndex,
+								column,
+								columnIndex,
+								rowId,
+								isExpanded
+							});
+							const cellStyle = isIconColumn
+								? { ...column.cellStyle, width: '56px', minWidth: '56px', maxWidth: '56px' }
+								: column.cellStyle;
+
+							return (
+								<td
+									key={column.key || `${rowId}-cell-${columnIndex}`}
+									className={joinClassNames(styles.cell, isIconColumn && styles.iconColumnCell, cellClassName)}
+									style={cellStyle}
+								>
+									{renderCellContent(column, row, rowIndex)}
+								</td>
+							);
+						})}
+					</tr>
 					{expandedRow}
 				</Fragment>
 			);
@@ -258,7 +298,7 @@ function Table({
 		
 		// 1. All pages selected (all students across all pages)
 		if (isAllPagesSelected) {
-			return '150px';
+			return '140px';
 		}
 		// 2. Some rows selected (not all on page, not all pages)
 		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {

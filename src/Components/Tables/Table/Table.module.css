@@ -209,7 +209,7 @@
 }
 
 .expandedRow {
-	background: #ffffff;
+	background: #edf7f3; /* Changed from #ffffff to hover color */
 }
 
 .expandedCell {
@@ -225,6 +225,22 @@
 
 .footer {
 	margin-top: 12px;
+}
+
+.rowHidden {
+    height: 0 !important;
+    line-height: 0;
+    visibility: collapse;
+    overflow: hidden;
+	border: none !important;
+}
+
+.rowHidden .cell {
+    height: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: 0;
+    line-height: 0;
 }
 
 @media (max-width: 768px) {

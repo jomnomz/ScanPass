@@ -18,9 +18,8 @@
 }
 
 .guardianCard {
-  background-color: #f7fafc;
-  border: 1px solid #dde5ef;
-  border-radius: 12px;
+  background-color: #edf7f3;  
+	border: 1px solid #cae6dd;  
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;
   padding: 22px;

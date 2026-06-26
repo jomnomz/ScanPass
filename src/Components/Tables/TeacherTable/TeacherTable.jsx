@@ -314,11 +314,11 @@ const TeacherTable = ({
       return (
         <button
           onClick={onClearAllPages}
-          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
           style={{ 
-            background: '#2563eb', 
-            border: '1px solid #2563eb', 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
             borderRadius: '999px', 
             cursor: 'pointer', 
             color: 'white', 
@@ -337,11 +337,11 @@ const TeacherTable = ({
       return (
         <button
           onClick={onSelectAllPages}
-          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
           style={{ 
-            background: '#0EA5E9', 
-            border: '1px solid #0EA5E9', 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
             borderRadius: '999px', 
             cursor: 'pointer', 
             color: 'white', 
@@ -817,7 +817,7 @@ const TeacherTable = ({
 
     return (
       <div 
-        className={`${styles.studentCard} ${styles.expandableCard}`}
+        className={`${styles.teacherCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.studentHeader}>
