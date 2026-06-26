@@ -449,10 +449,20 @@ const StudentTable = ({
   const allOnPageSelected = sortedStudents.length > 0 &&
     sortedStudents.every(student => selectedStudents.includes(student.id));
 
+  // Calculate total pages to determine if we should show page info
+  const totalPages = paginationContent ? Math.ceil(totalStudentCount / 20) : 1;
+  const showPageInfo = totalPages > 1;
+
   const computedInfoText = (() => {
-    if (isAllPagesSelected) return `All ${totalStudentCount} students selected`;
-    if (allOnPageSelected) return `Selected all ${sortedStudents.length} student/s • Page ${currentPage}`;
-    if (visibleSelectedStudents.length > 0) return `${visibleSelectedStudents.length} selected • Page ${currentPage}`;
+    if (isAllPagesSelected) {
+      return showPageInfo ? `All ${totalStudentCount} students selected • Page ${currentPage}` : `All ${totalStudentCount} students selected`;
+    }
+    if (allOnPageSelected) {
+      return showPageInfo ? `Selected all ${sortedStudents.length} student/s • Page ${currentPage}` : `Selected all ${sortedStudents.length} student/s`;
+    }
+    if (visibleSelectedStudents.length > 0) {
+      return showPageInfo ? `${visibleSelectedStudents.length} selected • Page ${currentPage}` : `${visibleSelectedStudents.length} selected`;
+    }
     return '';
   })();
 

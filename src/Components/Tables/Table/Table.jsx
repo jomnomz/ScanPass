@@ -258,7 +258,7 @@ function Table({
 		
 		// 1. All pages selected (all students across all pages)
 		if (isAllPagesSelected) {
-			return '190px';
+			return '150px';
 		}
 		// 2. Some rows selected (not all on page, not all pages)
 		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {
