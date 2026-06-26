@@ -9,7 +9,7 @@ import QRCodeUpdateWarningModal from '../../Modals/QRCodeUpdateWarningModal/QRCo
 import styles from './StudentTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
-import { faQrcode, faPenToSquare, faTrashCan, faCircle as fasCircle } from "@fortawesome/free-solid-svg-icons";
+import { faQrcode, faPenToSquare, faTrashCan, faCircle as fasCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
@@ -501,7 +501,20 @@ const StudentTable = ({
       return (
         <button
           onClick={onClearAllPages}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.85rem', fontWeight: 600, padding: '0', textDecoration: 'underline' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          style={{ 
+            background: '#2563eb', 
+            border: '1px solid #2563eb', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
         >
           Clear all
         </button>
@@ -511,8 +524,22 @@ const StudentTable = ({
       return (
         <button
           onClick={onSelectAllPages}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: '0.85rem', fontWeight: 600, padding: '0', textDecoration: 'underline' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          style={{ 
+            background: '#0EA5E9', 
+            border: '1px solid #0EA5E9', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
         >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
           Select all {totalStudentCount} students
         </button>
       );

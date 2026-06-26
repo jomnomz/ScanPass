@@ -253,7 +253,7 @@ function Table({
 	const getPaginationMargin = () => {
 		// 1. All pages selected (all students across all pages)
 		if (isAllPagesSelected) {
-			return '204px';
+			return '179px';
 		}
 		// 2. Some rows selected (not all on page, not all pages)
 		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {
@@ -261,7 +261,7 @@ function Table({
 		}
 		// 3. All on current page selected (but not all pages)
 		if (visibleSelectedCount === totalRowsOnPage && totalRowsOnPage > 0 && !isAllPagesSelected) {
-			return '56px';
+			return '31px';
 		}
 		// 4. Nothing selected
 		return '470px';
