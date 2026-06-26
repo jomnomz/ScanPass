@@ -252,21 +252,33 @@ function AdminMasterData() {
     return sortedSchedules.slice(start, start + ROWS_PER_PAGE);
   }, [sortedSchedules, schedulePage]);
 
-  // ==================== SELECTION HANDLERS ====================
+  // ==================== SELECTION HANDLERS WITH GUARDS ====================
 
+  // FIX: Guard against overwriting when all pages are selected
   const handleGradeSectionsSelectedUpdate = (selected) => {
+    if (isAllGradeSectionsSelected) return; // ← Don't let the table clobber the full selection
     setSelectedGradeSections(selected);
-    if (selected.length === 0) setIsAllGradeSectionsSelected(false);
+    if (selected.length === 0) {
+      setIsAllGradeSectionsSelected(false);
+    }
   };
 
+  // FIX: Guard against overwriting when all pages are selected
   const handleSubjectsSelectedUpdate = (selected) => {
+    if (isAllSubjectsSelected) return; // ← Don't let the table clobber the full selection
     setSelectedSubjects(selected);
-    if (selected.length === 0) setIsAllSubjectsSelected(false);
+    if (selected.length === 0) {
+      setIsAllSubjectsSelected(false);
+    }
   };
 
+  // FIX: Guard against overwriting when all pages are selected
   const handleSchedulesSelectedUpdate = (selected) => {
+    if (isAllSchedulesSelected) return; // ← Don't let the table clobber the full selection
     setSelectedSchedules(selected);
-    if (selected.length === 0) setIsAllSchedulesSelected(false);
+    if (selected.length === 0) {
+      setIsAllSchedulesSelected(false);
+    }
   };
 
   // ==================== DELETE HANDLERS ====================

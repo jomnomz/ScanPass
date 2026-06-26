@@ -60,8 +60,13 @@ function AdminTeachers() {
     setSearchTerm(e.target.value);
   };
 
+  // FIX: Guard against overwriting when all pages are selected
   const handleSelectedTeachersUpdate = (selected) => {
+    if (isAllPagesSelected) return; // ← Don't let the table clobber the full selection
     setSelectedTeachers(selected);
+    if (selected.length === 0) {
+      setIsAllPagesSelected(false);
+    }
   };
 
   const handleTeacherDataUpdate = (teacherData) => {

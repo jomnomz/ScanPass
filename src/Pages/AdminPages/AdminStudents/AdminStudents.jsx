@@ -205,7 +205,9 @@ function AdminStudents() {
     setAvailableSections(sections);
   };
 
+  // FIX: Guard against overwriting when all pages are selected
   const handleSelectedStudentsUpdate = (selected) => {
+    if (isAllPagesSelected) return; // ← Don't let the table clobber the full selection
     setSelectedStudents(selected);
     if (selected.length === 0) {
       setIsAllPagesSelected(false);
@@ -317,6 +319,7 @@ function AdminStudents() {
       
       if (deleteModalMode === 'bulk') {
         setSelectedStudents([]);
+        setIsAllPagesSelected(false);
       }
     }
   };
