@@ -63,7 +63,7 @@ function QRCodeModal({ isOpen, onClose, student }) {
             label="Download"
             height="sm"
             width="sm"
-            color="success"
+            color="ocean"
             onClick={handleDownloadQR}
           />
           <Button 

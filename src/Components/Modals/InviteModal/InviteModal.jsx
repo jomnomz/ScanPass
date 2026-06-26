@@ -124,7 +124,7 @@ function InviteModal({
         <div className={styles.buttonGroup}>
           <Button
             label={loading ? "Sending..." : isBulkInvite ? `Send ${eligibleTeachers.length} Invitation${eligibleTeachers.length !== 1 ? 's' : ''}` : "Send Invitation"}
-            color="primary"
+            color="ocean"
             onClick={handleConfirm}
             width="auto"
             height="sm"

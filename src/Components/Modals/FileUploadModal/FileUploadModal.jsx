@@ -314,7 +314,7 @@ function FileUploadModal({
                             height="xs"
                             width="sm"
                             pill={true}
-                            color="primary"
+                            color="nav"
                             className={styles.browseBtn}
                             onClick={handleBrowseClick}
                         />
@@ -341,14 +341,14 @@ function FileUploadModal({
                         onClick={handleClose}
                         disabled={isUploading}
                         label="Cancel"
-                        color="secondary"
+                        color="ghost"
                     />
                     <Button 
                         className={styles.submitBtn}
                         onClick={handleUpload}
                         disabled={!file || isUploading}
                         label={isUploading ? 'Uploading...' : 'Submit'}
-                        color="success"
+                        color="ocean"
                     />
                 </div>
             </div>
