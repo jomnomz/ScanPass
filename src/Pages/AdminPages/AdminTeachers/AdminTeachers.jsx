@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import styles from './AdminTeachers.module.css';
 import TeacherTable from '../../../Components/Tables/TeacherTable/TeacherTable.jsx';
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
@@ -25,22 +25,36 @@ function AdminTeachers() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeachers, setSelectedTeachers] = useState([]);
-  
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [teacherToInvite, setTeacherToInvite] = useState(null);
   const [inviteModalMode, setInviteModalMode] = useState('single');
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalMode, setDeleteModalMode] = useState('single');
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 20;
+
+  // ALL-PAGES SELECTION STATE
+  const [isAllPagesSelected, setIsAllPagesSelected] = useState(false);
+  const [filteredTeachers, setFilteredTeachers] = useState([]);
+
   const teacherService = new TeacherService();
+
+  // Reset page + all-pages flag when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setIsAllPagesSelected(false);
+  }, [searchTerm]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -53,6 +67,21 @@ function AdminTeachers() {
   const handleTeacherDataUpdate = (teacherData) => {
     console.log('Teachers updated:', teacherData.length);
   };
+
+  // Receive full filtered list from TeacherTable (for "Select all pages")
+  const handleFilteredTeachersUpdate = useCallback((teachers) => {
+    setFilteredTeachers(teachers);
+  }, []);
+
+  const handleSelectAllPages = useCallback(() => {
+    setIsAllPagesSelected(true);
+    setSelectedTeachers(filteredTeachers.map(t => t.id));
+  }, [filteredTeachers]);
+
+  const handleClearAllPages = useCallback(() => {
+    setIsAllPagesSelected(false);
+    setSelectedTeachers([]);
+  }, []);
 
   const handleUploadSuccess = useCallback((newTeachers) => {
     console.log('🆕 Teachers uploaded:', newTeachers);
@@ -82,7 +111,7 @@ function AdminTeachers() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         if (data.emailTemplate) {
           const htmlContent = `
@@ -126,12 +155,12 @@ function AdminTeachers() {
                 function copyToClipboard() {
                   const html = document.getElementById('email-content').innerHTML;
                   const subject = "${data.emailTemplate.subject}";
-                  const text = "${data.emailTemplate.text.replace(/\n/g, '\\\\n')}";
-                  
+                  const text = "${data.emailTemplate.text.replace(/\n/g, '\\n')}";
+
                   navigator.clipboard.writeText(html)
                     .then(() => alert('✅ Email HTML copied to clipboard!'));
                 }
-                
+
                 function openEmailClient() {
                   const subject = encodeURIComponent("${data.emailTemplate.subject}");
                   const body = encodeURIComponent(\`${data.emailTemplate.text}\`);
@@ -141,12 +170,12 @@ function AdminTeachers() {
             </body>
             </html>
           `;
-          
+
           const win = window.open();
           win.document.write(htmlContent);
           win.document.close();
         }
-        
+
         alert(
           `✅ TEACHER ACCOUNT CREATED!\n\n` +
           `Teacher: ${data.teacherName}\n` +
@@ -156,7 +185,7 @@ function AdminTeachers() {
           `A new window opened with the email template.\n` +
           `Copy it and send to the teacher.`
         );
-        
+
         return { success: true, data };
       } else {
         return { success: false, error: data.error || 'Failed to create account' };
@@ -195,11 +224,11 @@ function AdminTeachers() {
 
   const handleConfirmInvite = async (teacherIdOrIds) => {
     setIsSendingInvite(true);
-    
+
     try {
       if (inviteModalMode === 'single') {
         const result = await sendInvitationAPI(teacherIdOrIds);
-        
+
         if (result.success) {
           success('Teacher invited successfully');
           await refreshTeachers();
@@ -209,12 +238,12 @@ function AdminTeachers() {
         }
       } else {
         const result = await sendBulkInvitationsAPI(teacherIdOrIds);
-        
+
         if (result.success) {
           success(`Sent ${result.count} invitation(s) successfully`);
           await refreshTeachers();
           setRefreshTrigger(prev => prev + 1);
-          
+
           if (result.data.results?.failed?.length > 0) {
             toastError(`${result.data.results.failed.length} invitation(s) failed`);
           }
@@ -228,10 +257,11 @@ function AdminTeachers() {
       setIsSendingInvite(false);
       setIsInviteModalOpen(false);
       setTeacherToInvite(null);
-      
+
       if (inviteModalMode === 'bulk') {
         requestAnimationFrame(() => {
           setSelectedTeachers([]);
+          setIsAllPagesSelected(false);
         });
       }
     }
@@ -318,7 +348,7 @@ function AdminTeachers() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         return { success: true };
       } else {
@@ -341,7 +371,7 @@ function AdminTeachers() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         return { 
           success: true,
@@ -357,11 +387,11 @@ function AdminTeachers() {
 
   const handleConfirmDelete = async (teacherIdOrIds) => {
     setIsDeleting(true);
-    
+
     try {
       if (deleteModalMode === 'single') {
         const result = await deleteSingleTeacherAPI(teacherIdOrIds);
-        
+
         if (result.success) {
           success('Teacher deleted successfully');
         } else {
@@ -369,10 +399,10 @@ function AdminTeachers() {
         }
       } else {
         const result = await deleteMultipleTeachersAPI(teacherIdOrIds);
-        
+
         if (result.success) {
           success(`${result.count} teacher(s) deleted successfully`);
-          
+
           if (result.data?.results?.failed?.length > 0) {
             toastError(`${result.data.results.failed.length} deletion(s) failed`);
           }
@@ -380,20 +410,21 @@ function AdminTeachers() {
           toastError(`Failed to delete: ${result.error}`);
         }
       }
-      
+
       await refreshTeachers();
       setRefreshTrigger(prev => prev + 1);
-      
+
     } catch (err) {
       toastError(`Error: ${err.message}`);
     } finally {
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
       setTeacherToDelete(null);
-      
+
       if (deleteModalMode === 'bulk') {
         requestAnimationFrame(() => {
           setSelectedTeachers([]);
+          setIsAllPagesSelected(false);
         });
       }
     }
@@ -402,7 +433,7 @@ function AdminTeachers() {
   return (
     <main className={styles.main}>
       <SectionLabel label="Teacher Records"></SectionLabel>
-      
+
       <div className={styles.top}>
         <div className={styles.topLeft}>
           <Button 
@@ -422,7 +453,7 @@ function AdminTeachers() {
             icon={<UploadIcon/>}
             onClick={() => setIsUploadModalOpen(true)}
           />
-          
+
           {selectedTeachers.length > 0 && (
             <div className={styles.bulkActions}>
               <Button
@@ -444,7 +475,7 @@ function AdminTeachers() {
             </div>
           )}
         </div>
-        
+
         <div className={styles.topRight}>
           <Input 
             placeholder="Search Teacher Record" 
@@ -461,14 +492,14 @@ function AdminTeachers() {
           />
         </div>
       </div>
-      
+
       <FileUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         entityType="teacher"
         onUploadSuccess={handleUploadSuccess}
       />
-      
+
       <TeacherTable 
         key={`teacher-table-${refreshTrigger}`}
         searchTerm={searchTerm}
@@ -477,8 +508,15 @@ function AdminTeachers() {
         onSingleDeleteClick={handleSingleDeleteClick}
         onSingleInviteClick={handleSingleInviteClick}
         refreshTeachers={refreshTeachers}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        rowsPerPage={ROWS_PER_PAGE}
+        isAllPagesSelected={isAllPagesSelected}
+        onSelectAllPages={handleSelectAllPages}
+        onClearAllPages={handleClearAllPages}
+        onFilteredTeachersUpdate={handleFilteredTeachersUpdate}
       />
-      
+
       <InviteModal
         isOpen={isInviteModalOpen}
         onClose={() => {
@@ -494,8 +532,7 @@ function AdminTeachers() {
         onConfirmBulk={inviteModalMode === 'bulk' ? handleConfirmInvite : undefined}
         loading={isSendingInvite}
       />
-      
-      {/* UPDATED: Using DeleteEntityModal instead of DeleteTeacherModal */}
+
       <DeleteEntityModal
         isOpen={isDeleteModalOpen}
         onClose={() => {

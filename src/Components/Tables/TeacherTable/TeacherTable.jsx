@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTeachers } from '../../Hooks/useEntities'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
@@ -8,25 +8,26 @@ import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Form
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPenToSquare, faTrashCan, faCircle as fasCircle, faEnvelope, faList, faBook, faUsers, faUserTie } from "@fortawesome/free-solid-svg-icons";
+import { faPenToSquare, faTrashCan, faCircle as fasCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 import Table from '../Table/Table';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown';
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 
-console.log('🔄 TeacherTable.jsx LOADED - Updated with consistent expanded row');
+console.log('🔄 TeacherTable.jsx LOADED - Updated with pagination');
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
-  
+
   try {
     const date = new Date(dateString);
-    
+
     if (isNaN(date.getTime())) {
       return 'Invalid date';
     }
-    
+
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -48,31 +49,58 @@ const TeacherTable = ({
   onTeacherDataUpdate,
   onSingleDeleteClick,
   onSingleInviteClick,
-  refreshTeachers
+  refreshTeachers,
+  currentPage = 1,
+  onPageChange = () => {},
+  rowsPerPage = 20,
+  // NEW: Cross-page selection props
+  isAllPagesSelected = false,
+  onSelectAllPages = () => {},
+  onClearAllPages = () => {},
+  onFilteredTeachersUpdate = () => {},
 }) => {
-    
+
   const { entities: teachers, loading, error, setEntities } = useTeachers();
   const [teacherAssignments, setTeacherAssignments] = useState({});
   const [loadingAssignments, setLoadingAssignments] = useState(false);
-  
+
   const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
     teachers, 
     setEntities,
     'teacher',
     refreshTeachers
   );
-  
+
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
 
   const { success, error: toastError } = useToast();
   const { user, profile } = useAuth();
   const [selectedTeachers, setSelectedTeachers] = useState([]);
   const [selectedGrade, setSelectedGrade] = useState('all');
-  const [selectedSectionFilter, setSelectedSectionFilter] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
 
   const teacherService = useMemo(() => new TeacherService(), []);
+
+  // Reset page when internal filters change
+  const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
+
+  useEffect(() => {
+    const current = { selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter };
+    const prev = filterRef.current;
+
+    const changed = prev.selectedGrade !== current.selectedGrade ||
+      prev.selectedSubjectFilter !== current.selectedSubjectFilter ||
+      prev.selectedSectionFilter !== current.selectedSectionFilter ||
+      prev.selectedStatusFilter !== current.selectedStatusFilter;
+
+    if (changed) {
+      onPageChange(1);
+      onClearAllPages(); // Clear cross-page selection when filters change
+      filterRef.current = current;
+    }
+  }, [selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
 
   useEffect(() => {
     if (teachers.length > 0) {
@@ -84,18 +112,18 @@ const TeacherTable = ({
     setLoadingAssignments(true);
     try {
       const assignments = {};
-      
+
       for (const teacher of teachers) {
         console.log(`📊 Fetching assignments for teacher ${teacher.id}: ${teacher.first_name} ${teacher.last_name}`);
         const result = await teacherService.getTeacherAssignments(teacher.id);
-        
+
         assignments[teacher.id] = {
           subjects: result.subjects || [],
           sections: result.sections || [],
           teachingAssignments: result.assignments || []
         };
       }
-      
+
       setTeacherAssignments(assignments);
       console.log('📊 All teacher assignments loaded:', assignments);
     } catch (error) {
@@ -113,7 +141,7 @@ const TeacherTable = ({
 
   const searchFilteredTeachers = useMemo(() => {
     if (!searchTerm.trim()) return teachers;
-    
+
     const searchLower = searchTerm.toLowerCase().trim();
     return teachers.filter(teacher => 
       teacher.employee_id?.toLowerCase().includes(searchLower) ||
@@ -205,6 +233,29 @@ const TeacherTable = ({
 
   const sortedTeachers = useMemo(() => sortTeachers(filteredTeachers), [filteredTeachers]);
 
+  // Notify parent of full filtered list (for "Select all pages")
+  useEffect(() => {
+    if (onFilteredTeachersUpdate) {
+      onFilteredTeachersUpdate(sortedTeachers);
+    }
+  }, [sortedTeachers, onFilteredTeachersUpdate]);
+
+  // PAGINATION
+  const totalPages = Math.ceil(sortedTeachers.length / rowsPerPage);
+
+  const paginatedTeachers = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return sortedTeachers.slice(start, start + rowsPerPage);
+  }, [sortedTeachers, currentPage, rowsPerPage]);
+
+  const paginationContent = sortedTeachers.length > 0 ? (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={onPageChange}
+    />
+  ) : null;
+
   const recordCountMessage = useMemo(() => {
     const count = sortedTeachers.length;
     const phrases = [];
@@ -231,16 +282,80 @@ const TeacherTable = ({
     return `Showing ${count} teacher/s ${phrases.join(' ')}`;
   }, [sortedTeachers.length, selectedSectionFilter, selectedSubjectFilter, selectedStatusFilter, selectedGrade]);
 
+  // Selection based on paginated (visible) rows
   const visibleSelectedTeachers = useMemo(() => {
-    const visibleTeacherIds = new Set(sortedTeachers.map(teacher => teacher.id));
+    const visibleTeacherIds = new Set(paginatedTeachers.map(teacher => teacher.id));
     return selectedTeachers.filter(id => visibleTeacherIds.has(id));
-  }, [selectedTeachers, sortedTeachers]);
+  }, [selectedTeachers, paginatedTeachers]);
 
   useEffect(() => {
     if (onSelectedTeachersUpdate) {
       onSelectedTeachersUpdate(visibleSelectedTeachers);
     }
   }, [visibleSelectedTeachers, onSelectedTeachersUpdate]);
+
+  // ===== NEW: Computed info text (matches StudentTable) =====
+  const allOnPageSelected = paginatedTeachers.length > 0 &&
+    paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
+
+  const computedInfoText = (() => {
+    if (isAllPagesSelected) return `All ${sortedTeachers.length} teachers selected`;
+    if (allOnPageSelected) return `Selected all ${paginatedTeachers.length} teacher/s • Page ${currentPage}`;
+    if (visibleSelectedTeachers.length > 0) return `${visibleSelectedTeachers.length} selected • Page ${currentPage}`;
+    return '';
+  })();
+
+  // ===== NEW: Select-all banner buttons (matches StudentTable) =====
+  const selectAllBanner = (() => {
+    if (isAllPagesSelected) {
+      return (
+        <button
+          onClick={onClearAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          style={{ 
+            background: '#2563eb', 
+            border: '1px solid #2563eb', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (allOnPageSelected && sortedTeachers.length > paginatedTeachers.length) {
+      return (
+        <button
+          onClick={onSelectAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+          style={{ 
+            background: '#0EA5E9', 
+            border: '1px solid #0EA5E9', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {sortedTeachers.length} teachers
+        </button>
+      );
+    }
+    return null;
+  })();
 
   const shouldHandleRowClick = (editingId, target) => {
     return !editingId || 
@@ -273,7 +388,7 @@ const TeacherTable = ({
 
   const handleSaveEdit = async (teacherId, e) => {
     if (e) e.stopPropagation();
-    
+
     const result = await saveEdit(
       teacherId, 
       null,
@@ -283,7 +398,7 @@ const TeacherTable = ({
         updated_at: new Date().toISOString()
       })
     );
-    
+
     if (result.success) {
       success('Teacher information updated successfully');
       if (refreshTeachers) {
@@ -306,10 +421,11 @@ const TeacherTable = ({
   };
 
   const handleSelectAll = () => {
-    const allVisibleTeacherIds = sortedTeachers.map(teacher => teacher.id);
-    
+    const allVisibleTeacherIds = paginatedTeachers.map(teacher => teacher.id);
+
     if (allVisibleTeacherIds.every(id => selectedTeachers.includes(id))) {
       setSelectedTeachers(prev => prev.filter(id => !allVisibleTeacherIds.includes(id)));
+      if (onClearAllPages) onClearAllPages();
     } else {
       setSelectedTeachers(prev => {
         const newSelection = new Set([...prev, ...allVisibleTeacherIds]);
@@ -318,16 +434,13 @@ const TeacherTable = ({
     }
   };
 
-  const allVisibleSelected = sortedTeachers.length > 0 && 
-    sortedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
-
   const getTeacherAssignments = (teacherId) => {
     const assignments = teacherAssignments[teacherId] || {};
-    
+
     const subjects = assignments.subjects?.map(s => 
       String(s.subject?.subject_name || '').trim()
     ).filter(name => name && name !== 'Unknown').join(', ') || 'None';
-    
+
     const teachingSections = assignments.teachingAssignments?.map(assignment => {
       const section = assignments.sections?.find(s => s.section_id === assignment.section_id);
       if (section && section.section) {
@@ -335,12 +448,12 @@ const TeacherTable = ({
       }
       return '';
     }).filter(s => s).join(', ') || 'None';
-    
+
     const adviserSection = assignments.sections?.find(s => s.is_adviser);
     const adviserDisplay = adviserSection && adviserSection.section ? 
       `Grade ${adviserSection.section.grade?.grade_level || '?'}-${adviserSection.section.section_name || '?'}` : 
       'None';
-    
+
     return { subjects, teachingSections, adviserDisplay };
   };
 
@@ -378,7 +491,7 @@ const TeacherTable = ({
     if (!window.confirm(`Deactivate ${teacher.first_name}'s account? They won't be able to login.`)) {
       return;
     }
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/teacher-invite/deactivate', {
         method: 'POST',
@@ -390,12 +503,12 @@ const TeacherTable = ({
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setEntities(prev => prev.map(t => 
           t.id === teacher.id ? { ...t, status: 'inactive' } : t
         ));
-        
+
         success(`Account deactivated: ${teacher.first_name} ${teacher.last_name}`);
         cancelEdit();
       } else {
@@ -410,7 +523,7 @@ const TeacherTable = ({
     if (!window.confirm(`Resend invitation to ${teacher.first_name}? Old account will be deleted and new invitation sent.`)) {
       return;
     }
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/teacher-invite/resend-invitation', {
         method: 'POST',
@@ -422,14 +535,14 @@ const TeacherTable = ({
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setEntities(prev => prev.map(t => 
           t.id === teacher.id ? { ...t, status: 'pending' } : t
         ));
-        
+
         success(`Invitation resent to: ${teacher.email_address}`);
-        
+
         alert(
           `✅ NEW INVITATION SENT!\n\n` +
           `Teacher: ${data.teacherName}\n` +
@@ -450,7 +563,7 @@ const TeacherTable = ({
     if (!window.confirm(`Reactivate ${teacher.first_name}'s account? They will be able to login again.`)) {
       return;
     }
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/teacher-invite/reactivate', {
         method: 'POST',
@@ -462,12 +575,12 @@ const TeacherTable = ({
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setEntities(prev => prev.map(t => 
           t.id === teacher.id ? { ...t, status: 'active' } : t
         ));
-        
+
         success(`Account reactivated: ${teacher.first_name} ${teacher.last_name}`);
         cancelEdit();
       } else {
@@ -480,7 +593,7 @@ const TeacherTable = ({
 
   const handleInviteClick = (teacher, e) => {
     e.stopPropagation();
-    
+
     if (onSingleInviteClick) {
       onSingleInviteClick(teacher);
     } else {
@@ -488,17 +601,17 @@ const TeacherTable = ({
         toastError('Teacher does not have an email address');
         return;
       }
-      
+
       if (teacher.status === 'active') {
         toastError('Teacher already has an active account');
         return;
       }
-      
+
       if (teacher.status === 'pending') {
         toastError('Teacher already has a pending invitation');
         return;
       }
-      
+
       if (teacher.status === 'inactive') {
         toastError('Teacher account is suspended');
         return;
@@ -508,7 +621,7 @@ const TeacherTable = ({
 
   const handleDeleteClick = (teacher, e) => {
     if (e) e.stopPropagation();
-    
+
     if (onSingleDeleteClick) {
       onSingleDeleteClick(teacher);
     }
@@ -529,9 +642,9 @@ const TeacherTable = ({
     if (editingTeacher !== teacher.id) {
       return renderStatusBadge(teacher.status);
     }
-    
+
     const currentStatus = editFormData.status || teacher.status;
-    
+
     if (currentStatus === 'active') {
       return (
         <button 
@@ -546,7 +659,7 @@ const TeacherTable = ({
         </button>
       );
     }
-    
+
     if (currentStatus === 'pending') {
       return (
         <button 
@@ -561,7 +674,7 @@ const TeacherTable = ({
         </button>
       );
     }
-    
+
     if (currentStatus === 'inactive') {
       return (
         <button 
@@ -576,7 +689,7 @@ const TeacherTable = ({
         </button>
       );
     }
-    
+
     return renderStatusBadge(currentStatus);
   };
 
@@ -584,11 +697,11 @@ const TeacherTable = ({
     if (fieldName === 'status') {
       return renderStatusField(teacher);
     }
-    
+
     if (editingTeacher === teacher.id && isEditable) {
       return renderEditInput(fieldName, fieldName === 'email_address' ? 'email' : 'text');
     }
-    
+
     return fieldName === 'email_address' || fieldName === 'phone_no'
       ? formatNA(teacher[fieldName])
       : teacher[fieldName];
@@ -602,16 +715,16 @@ const TeacherTable = ({
         </span>
       );
     }
-    
+
     const statusConfig = {
       'pending': { color: '#f59e0b', label: 'Pending' },
       'active': { color: '#10b981', label: 'Active' },
       'inactive': { color: '#ef4444', label: 'Inactive' },
       'invited': { color: '#8b5cf6', label: 'Invited' }
     };
-    
+
     const config = statusConfig[status.toLowerCase()] || { color: '#6c757d', label: status };
-    
+
     return (
       <span 
         className={styles.statusBadge}
@@ -663,7 +776,7 @@ const TeacherTable = ({
     const addedAt = formatDateTimeLocal(teacher.created_at);
     const updatedAt = teacher.updated_at ? formatDateTimeLocal(teacher.updated_at) : 'Never updated';
     const invitedAt = teacher.invited_at ? formatDateTimeLocal(teacher.invited_at) : 'Not invited';
-    
+
     const getCurrentUserName = () => {
       if (!user) return 'N/A';
       if (profile) {
@@ -672,10 +785,10 @@ const TeacherTable = ({
       }
       return user.email || 'Current User';
     };
-    
+
     const currentUserName = getCurrentUserName();
     const currentUserId = user?.id;
-      
+
     const updatedByName = teacher.updated_by 
       ? (teacher.updated_by_user 
           ? `${teacher.updated_by_user.first_name || ''} ${teacher.updated_by_user.last_name || ''}`.trim() || 
@@ -772,10 +885,10 @@ const TeacherTable = ({
       renderHeader: () => (
         <div className={styles.icon} onClick={handleSelectAll}>
           <FontAwesomeIcon 
-            icon={allVisibleSelected ? fasCircle : farCircle} 
+            icon={allOnPageSelected ? fasCircle : farCircle} 
             style={{ 
               cursor: 'pointer',
-              color: allVisibleSelected ? '#0f6b58' : ''
+              color: allOnPageSelected ? '#0f6b58' : ''
             }}
           />
         </div>
@@ -844,7 +957,10 @@ const TeacherTable = ({
           <EntityDropdown
             options={teacherSubjectOptions}
             selectedValue={selectedSubjectFilter}
-            onSelect={setSelectedSubjectFilter}
+            onSelect={(value) => {
+              setSelectedSubjectFilter(value);
+              onPageChange(1);
+            }}
             allLabel="All Subjects"
             buttonTitle="Filter by subject"
           />
@@ -887,7 +1003,10 @@ const TeacherTable = ({
           <EntityDropdown
             options={teacherSectionOptions}
             selectedValue={selectedSectionFilter}
-            onSelect={setSelectedSectionFilter}
+            onSelect={(value) => {
+              setSelectedSectionFilter(value);
+              onPageChange(1);
+            }}
             allLabel="All Sections"
             buttonTitle="Filter by section"
           />
@@ -931,7 +1050,10 @@ const TeacherTable = ({
           <EntityDropdown
             options={teacherStatusOptions}
             selectedValue={selectedStatusFilter}
-            onSelect={setSelectedStatusFilter}
+            onSelect={(value) => {
+              setSelectedStatusFilter(value);
+              onPageChange(1);
+            }}
             allLabel="All Statuses"
             buttonTitle="Filter by status"
             getOptionLabel={(option) => option.label}
@@ -1003,7 +1125,7 @@ const TeacherTable = ({
     <div className={styles.teacherTableContainer} ref={tableRef}>
       <Table
         columns={columns}
-        rows={sortedTeachers}
+        rows={paginatedTeachers}
         getRowId={(row) => row.id}
         loading={loading || loadingAssignments}
         error={error ? `Error: ${error}` : ''}
@@ -1023,12 +1145,21 @@ const TeacherTable = ({
         striped={true}
         stickyHeader
         wrapperClassName={styles.tableWrapper}
-        infoText={recordCountMessage}
-        selectedInfoText={visibleSelectedTeachers.length > 0 ? `${visibleSelectedTeachers.length} selected` : ''}
+        // CHANGED: Use computedInfoText + selectAllBanner (matches StudentTable)
+        infoText={computedInfoText}
+        selectedInfoText=""
+        headerContent={selectAllBanner}
+        paginationContent={paginationContent}
+        isAllPagesSelected={isAllPagesSelected}
+        visibleSelectedCount={visibleSelectedTeachers.length}
+        totalRowsOnPage={paginatedTeachers.length}
         gradeTabs={{
           options: teacherGradeOptions,
           currentValue: selectedGrade,
-          onChange: setSelectedGrade,
+          onChange: (grade) => {
+            setSelectedGrade(grade);
+            onPageChange(1);
+          },
           showAll: true,
           allLabel: 'All',
           renderLabel: (gradeLevel) => `Grade ${gradeLevel}`,
