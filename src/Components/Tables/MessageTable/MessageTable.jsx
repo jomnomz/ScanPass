@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import styles from './MessageTable.module.css';
 import { supabase } from '../../../lib/supabase';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import Table from '../Table/Table.jsx';
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 
 const MessageTable = ({
   searchTerm = '',
@@ -21,12 +22,14 @@ const MessageTable = ({
   const [availableSectionsLocal, setAvailableSectionsLocal] = useState([]);
   const [expandedRowId, setExpandedRowId] = useState(null);
 
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 20;
+
   // Get today's date in Philippine time (UTC+8)
   const getTodayPhilippines = () => {
     const now = new Date();
-    // Convert to Philippine time (UTC+8)
     const phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-    // Format as YYYY-MM-DD for database query
     return phTime.toISOString().split('T')[0];
   };
 
@@ -61,12 +64,12 @@ const MessageTable = ({
     if (currentClass === 'all') {
       return allUniqueSections;
     }
-    
+
     const sections = messages
       .filter(message => message.grade === currentClass)
       .map(message => message.section || '')
       .filter(section => section && section.trim() !== '');
-    
+
     const uniqueSections = [...new Set(sections)];
     return uniqueSections.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }, [messages, currentClass, allUniqueSections]);
@@ -80,14 +83,14 @@ const MessageTable = ({
 
   const formatDateTimeLocal = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
-      
+
       if (isNaN(date.getTime())) {
         return 'Invalid date';
       }
-      
+
       return date.toLocaleString('en-US', {
         timeZone: 'Asia/Manila',
         year: 'numeric',
@@ -106,25 +109,25 @@ const MessageTable = ({
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return 'N/A';
-    
+
     const cleaned = phone.replace(/\D/g, '');
-    
+
     if (cleaned.length === 10 && cleaned.startsWith('9')) {
       return `+63 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6)}`;
     } else if (cleaned.length === 12 && cleaned.startsWith('639')) {
       return `+63 ${cleaned.substring(3, 6)} ${cleaned.substring(6, 9)} ${cleaned.substring(9)}`;
     }
-    
+
     return phone;
   };
 
   const getGuardianName = (student) => {
     if (!student) return 'N/A';
-    
+
     const firstName = student.guardian_first_name || '';
     const middleName = student.guardian_middle_name ? ` ${student.guardian_middle_name}` : '';
     const lastName = student.guardian_last_name || '';
-    
+
     const fullName = `${firstName}${middleName} ${lastName}`.trim();
     return fullName || 'N/A';
   };
@@ -132,10 +135,10 @@ const MessageTable = ({
   const fetchSMSLogs = async (grade = 'all', dateFilter = '') => {
     setLoading(true);
     setError(null);
-    
+
     try {
       console.log(`📱 Fetching SMS logs for ${grade === 'all' ? 'all grades' : `Grade ${grade}`}`);
-      
+
       let query = supabase
         .from('sms_logs')
         .select(`
@@ -158,15 +161,12 @@ const MessageTable = ({
         `)
         .order('sent_at', { ascending: false });
 
-      // If no date is selected, default to today
       const targetDate = dateFilter || getTodayPhilippines();
       console.log(`📅 Fetching logs for date: ${targetDate}`);
-      
-      // Query for the specific date (from 00:00 to 23:59 in Philippine time)
-      // Convert to UTC for database query
+
       const startDate = new Date(`${targetDate}T00:00:00.000+08:00`);
       const endDate = new Date(`${targetDate}T23:59:59.999+08:00`);
-      
+
       query = query
         .gte('sent_at', startDate.toISOString())
         .lt('sent_at', endDate.toISOString());
@@ -176,15 +176,14 @@ const MessageTable = ({
       if (fetchError) throw fetchError;
 
       console.log(`✅ Loaded ${data?.length || 0} SMS logs for ${targetDate}`);
-      
+
       const transformedMessages = (data || []).map(log => {
         const student = log.student;
-        
-        // Get guardian info - prioritize student's guardian info, fall back to log data
+
         const guardianName = student ? getGuardianName(student) : (log.guardian_name || 'N/A');
         const guardianPhone = student?.guardian_phone_number || log.phone_number || 'N/A';
         const formattedPhone = formatPhoneNumber(guardianPhone);
-        
+
         const isDemo = log.demo_mode || log.provider === 'demo' || log.cost === '₱0.00';
 
         return {
@@ -213,15 +212,14 @@ const MessageTable = ({
           raw_sent_at: log.sent_at,
           created_at: log.created_at,
           log_date: new Date(log.sent_at).toISOString().split('T')[0],
-          // Keep the student object for debugging
           _student: student
         };
       });
 
       console.log('📈 Transformed messages count:', transformedMessages.length);
-      
+
       setMessages(transformedMessages);
-      
+
     } catch (err) {
       setError(err.message);
       console.error('❌ Error fetching SMS logs:', err);
@@ -231,21 +229,25 @@ const MessageTable = ({
   };
 
   useEffect(() => {
-    // Fetch messages for today by default, or for selectedDate if provided
     fetchSMSLogs('all', selectedDate);
   }, [selectedDate]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSection, currentClass, selectedDate]);
+
   const filteredMessages = useMemo(() => {
     let filtered = messages;
-    
+
     if (currentClass !== 'all') {
       filtered = filtered.filter(message => message.grade === currentClass);
     }
-    
+
     if (selectedSection) {
       filtered = filtered.filter(message => message.section === selectedSection);
     }
-    
+
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(message => 
@@ -263,10 +265,26 @@ const MessageTable = ({
         message.formatted_phone?.toLowerCase().includes(searchLower)
       );
     }
-    
+
     console.log('🔍 Filtered messages count:', filtered.length);
     return filtered;
   }, [messages, currentClass, selectedSection, searchTerm]);
+
+  // PAGINATION
+  const totalPages = Math.ceil(filteredMessages.length / ROWS_PER_PAGE);
+
+  const paginatedMessages = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredMessages.slice(start, start + ROWS_PER_PAGE);
+  }, [filteredMessages, currentPage]);
+
+  const paginationContent = filteredMessages.length > 0 ? (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={setCurrentPage}
+    />
+  ) : null;
 
   const handleClassChange = (className) => {
     setCurrentClass(className);
@@ -292,9 +310,8 @@ const MessageTable = ({
 
   const getTableInfoMessage = () => {
     const messageCount = filteredMessages.length;
-    
+
     if (selectedDate) {
-      // If a specific date is selected
       const dateObj = new Date(selectedDate + 'T00:00:00Z');
       const phDate = new Date(dateObj.getTime() + (8 * 60 * 60 * 1000));
       const formattedDate = phDate.toLocaleDateString('en-PH', {
@@ -302,55 +319,54 @@ const MessageTable = ({
         day: 'numeric',
         year: 'numeric'
       });
-      
+
       if (messageCount === 0) {
         return `No SMS messages found on ${formattedDate}`;
       }
-      
+
       let message = `Showing ${messageCount} SMS message/s on ${formattedDate}`;
-      
+
       if (currentClass !== 'all') {
         message += ` in Grade ${currentClass}`;
       }
-      
+
       if (selectedSection) {
         message += `, Section ${selectedSection}`;
       }
-      
+
       if (searchTerm.trim()) {
         message += ` matching "${searchTerm}"`;
       }
-      
+
       return message;
     } else {
-      // Default (today)
       const todayDisplay = getTodayDisplay();
-      
+
       if (messageCount === 0) {
         return `No SMS messages sent today (${todayDisplay})`;
       }
-      
+
       let message = `Showing ${messageCount} SMS message/s today (${todayDisplay})`;
-      
+
       if (currentClass !== 'all') {
         message += ` in Grade ${currentClass}`;
       }
-      
+
       if (selectedSection) {
         message += `, Section ${selectedSection}`;
       }
-      
+
       if (searchTerm.trim()) {
         message += ` matching "${searchTerm}"`;
       }
-      
+
       return message;
     }
   };
 
   const renderExpandedRow = useCallback((message) => {
     const isDemo = message.demo_mode;
-    
+
     return (
       <div className={`${styles.messageCard} ${styles.expandableCard}`}>
         <div className={styles.messageHeader}>SMS Message Details</div>
@@ -495,7 +511,7 @@ const MessageTable = ({
   return (
     <Table
       columns={tableColumns}
-      rows={filteredMessages}
+      rows={paginatedMessages}
       getRowId={(row) => row.id}
       loading={loading || parentLoading}
       error={error ? `Error: ${error}` : ''}
@@ -508,7 +524,7 @@ const MessageTable = ({
         allLabel: 'All',
         renderLabel: (grade) => `Grade ${grade}`
       }}
-      infoText={getTableInfoMessage()}
+      infoText=""
       tableLabel="Messages"
       onRowClick={({ rowId }) => toggleRow(rowId)}
       rowClassName={getVisibleRowClassName}
@@ -517,6 +533,7 @@ const MessageTable = ({
       getExpandedRowClassName={() => styles.expandRow}
       className={styles.messageTableContainer}
       wrapperClassName={styles.tableWrapper}
+      paginationContent={paginationContent}
     />
   );
 };
