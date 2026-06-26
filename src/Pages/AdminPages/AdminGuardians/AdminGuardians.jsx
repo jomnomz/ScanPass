@@ -1,11 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import styles from './AdminGuardians.module.css';
 import PageLabel from "../../../Components/UI/Labels/PageLabel/PageLabel.jsx";
 import SectionLabel from '../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx';
 import GuardianTable from '../../../Components/Tables/GuardianTable/GuardianTable.jsx';
 import Input from '../../../Components/UI/Input/Input.jsx';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import { supabase } from '../../../lib/supabase';
+import { sortGuardians } from '../../../Utils/SortEntities';
 
 function AdminGuardians() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,7 +18,9 @@ function AdminGuardians() {
   const [loadingData, setLoadingData] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Fetch all guardians from the database
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 20;
+
   const fetchAllGuardians = useCallback(async () => {
     try {
       console.log('🔄 Fetching ALL guardians from database...');
@@ -43,7 +47,6 @@ function AdminGuardians() {
       
       if (error) throw error;
       
-      // Transform data to guardian format
       const transformedData = (data || []).map(student => ({
         id: student.id,
         first_name: student.guardian_first_name,
@@ -51,10 +54,8 @@ function AdminGuardians() {
         last_name: student.guardian_last_name,
         email: student.guardian_email,
         phone_number: student.guardian_phone_number,
-        // Student information
         guardian_of: `${student.first_name} ${student.middle_name || ''} ${student.last_name}`.trim(),
         student_lrn: student.lrn,
-        // Flatten grade and section
         grade: student.grade?.grade_level || 'N/A',
         section: student.section?.section_name || 'N/A'
       }));
@@ -70,10 +71,13 @@ function AdminGuardians() {
     }
   }, []);
 
-  // Initial data fetch
   useEffect(() => {
     fetchAllGuardians();
   }, [fetchAllGuardians]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSection, currentGrade]);
 
   const refreshGuardians = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
@@ -101,24 +105,48 @@ function AdminGuardians() {
     setCurrentGrade(grade);
   };
 
-  // Filter guardians based on search term
-  const filteredGuardians = useCallback(() => {
-    if (!searchTerm.trim()) {
-      return allGuardians;
+  // STEP 1: Filter guardians based on grade, section, and search
+  const filteredGuardians = useMemo(() => {
+    let filtered = allGuardians;
+
+    if (currentGrade !== 'all') {
+      filtered = filtered.filter(g => g.grade === currentGrade);
     }
-    
-    const searchLower = searchTerm.toLowerCase().trim();
-    return allGuardians.filter(guardian => 
-      guardian.first_name?.toLowerCase().includes(searchLower) ||
-      guardian.last_name?.toLowerCase().includes(searchLower) ||
-      guardian.guardian_of?.toLowerCase().includes(searchLower) ||
-      guardian.student_lrn?.toLowerCase().includes(searchLower) ||
-      guardian.email?.toLowerCase().includes(searchLower) ||
-      guardian.phone_number?.toLowerCase().includes(searchLower) ||
-      guardian.grade?.toString().toLowerCase().includes(searchLower) ||
-      guardian.section?.toString().toLowerCase().includes(searchLower)
-    );
-  }, [allGuardians, searchTerm]);
+
+    if (selectedSection) {
+      filtered = filtered.filter(g => g.section === selectedSection);
+    }
+
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(g => 
+        g.first_name?.toLowerCase().includes(searchLower) ||
+        g.last_name?.toLowerCase().includes(searchLower) ||
+        g.guardian_of?.toLowerCase().includes(searchLower) ||
+        g.student_lrn?.toLowerCase().includes(searchLower) ||
+        g.email?.toLowerCase().includes(searchLower) ||
+        g.phone_number?.toLowerCase().includes(searchLower) ||
+        g.grade?.toString().toLowerCase().includes(searchLower) ||
+        g.section?.toString().toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }, [allGuardians, searchTerm, currentGrade, selectedSection]);
+
+  // STEP 2: Sort the FULL filtered result set before pagination
+  const sortedGuardians = useMemo(() => {
+    return sortGuardians(filteredGuardians);
+  }, [filteredGuardians]);
+
+  // STEP 3: Calculate total pages based on sorted count
+  const totalPages = Math.ceil(sortedGuardians.length / ROWS_PER_PAGE);
+
+  // STEP 4: Paginate the sorted guardians
+  const paginatedGuardians = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    return sortedGuardians.slice(start, start + ROWS_PER_PAGE);
+  }, [sortedGuardians, currentPage]);
 
   return (
     <>
@@ -150,9 +178,18 @@ function AdminGuardians() {
             onClearSectionFilter={handleClearSectionFilter}
             onSectionSelect={handleSectionSelect}
             availableSections={availableSections}
-            // Pass filtered guardians data directly
-            guardians={filteredGuardians()}
+            currentGrade={currentGrade}
+            guardians={paginatedGuardians}
+            totalGuardianCount={sortedGuardians.length}
+            currentPage={currentPage}
             loading={loadingData}
+            paginationContent={
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                onPageChange={setCurrentPage} 
+              />
+            }
           />
         )}
       </main>

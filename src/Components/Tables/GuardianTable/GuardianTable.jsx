@@ -3,7 +3,6 @@ import { useEntityEdit } from '../../Hooks/useEntityEdit';
 import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { grades } from '../../../Utils/TableHelpers';
 import { formatNA } from '../../../Utils/Formatters';
-import { sortGuardians } from '../../../Utils/SortEntities'; 
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import styles from './GuardianTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -20,10 +19,14 @@ const GuardianTable = ({
   onSectionSelect,
   availableSections = [],
   guardians: propGuardians = [],
-  loading: parentLoading = false
+  loading: parentLoading = false,
+  currentGrade = 'all',
+  paginationContent = null,
+  totalGuardianCount = 0,
+  currentPage = 1
 }) => {
   const [guardians, setGuardians] = useState([]);
-  const [currentClass, setCurrentClass] = useState('all');
+  const [currentClass, setCurrentClass] = useState(currentGrade);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -39,6 +42,10 @@ const GuardianTable = ({
     saveEdit 
   } = useEntityEdit(guardians, setGuardians, 'guardian');
   const [localGuardians, setLocalGuardians] = useState([]);
+
+  useEffect(() => {
+    setCurrentClass(currentGrade);
+  }, [currentGrade]);
 
   useEffect(() => {
     if (propGuardians && propGuardians.length > 0) {
@@ -79,12 +86,17 @@ const GuardianTable = ({
 
   useEffect(() => {
     if (guardians && guardians.length > 0) {
-      const sortedGuardians = sortGuardians(guardians);
-      setLocalGuardians(sortedGuardians);
+      setLocalGuardians(guardians);
     } else {
       setLocalGuardians([]);
     }
   }, [guardians]);
+
+  useEffect(() => {
+    if (onGradeUpdate) {
+      onGradeUpdate(currentClass);
+    }
+  }, [currentClass, onGradeUpdate]);
 
   const allUniqueSections = useMemo(() => {
     const sections = localGuardians
@@ -113,56 +125,14 @@ const GuardianTable = ({
     return currentGradeSections;
   }, [currentGradeSections]);
 
-  const sortedGuardians = useMemo(() => {
-    let filtered = localGuardians;
-    
-    if (currentClass !== 'all') {
-      filtered = filtered.filter(guardian => guardian.grade === currentClass);
-    }
-    
-    if (selectedSection) {
-      filtered = filtered.filter(guardian => guardian.section === selectedSection);
-    }
-    
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(guardian => 
-        guardian.first_name?.toLowerCase().includes(searchLower) ||
-        guardian.last_name?.toLowerCase().includes(searchLower) ||
-        guardian.guardian_of?.toLowerCase().includes(searchLower) ||
-        guardian.student_lrn?.toLowerCase().includes(searchLower) ||
-        guardian.email?.toLowerCase().includes(searchLower) ||
-        guardian.phone_number?.toLowerCase().includes(searchLower) ||
-        guardian.grade?.toString().toLowerCase().includes(searchLower) ||
-        guardian.section?.toString().toLowerCase().includes(searchLower)
-      );
-    }
-    
-    console.log(`🔍 Filtered guardians: ${filtered.length} (from ${localGuardians.length} total)`);
-    return filtered;
-  }, [localGuardians, currentClass, selectedSection, searchTerm]);
+  // No re-filtering or re-sorting needed — parent already handled it
+  const sortedGuardians = localGuardians;
 
   useEffect(() => {
     if (onSectionsUpdate) {
       onSectionsUpdate(allUniqueSections);
     }
   }, [allUniqueSections, onSectionsUpdate]);
-
-  useEffect(() => {
-    if (onGradeUpdate) {
-      onGradeUpdate(currentClass);
-    }
-  }, [currentClass, onGradeUpdate]);
-
-  useEffect(() => {
-    if (selectedSection && currentClass !== 'all') {
-      const isValidSection = currentGradeSections.includes(selectedSection);
-      if (!isValidSection && onSectionSelect) {
-        console.log(`🔄 Clearing invalid section selection: ${selectedSection} is not in Grade ${currentClass}`);
-        onSectionSelect('');
-      }
-    }
-  }, [currentClass, currentGradeSections, selectedSection, onSectionSelect]);
 
   const handleClassChange = (className) => {
     setCurrentClass(className);
@@ -197,7 +167,6 @@ const GuardianTable = ({
       guardianId, 
       currentClass, 
       async (id, data) => {
-        // Update guardian info in the student record
         const updateData = {
           guardian_first_name: data.first_name,
           guardian_middle_name: data.middle_name,
@@ -464,7 +433,9 @@ const GuardianTable = ({
         allLabel: 'All',
         renderLabel: (grade) => `Grade ${grade}`
       }}
-      infoText={getTableInfoMessage()}
+      infoText=""
+      selectedInfoText=""
+      paginationContent={paginationContent}
       tableLabel="Guardians"
       onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
       rowClassName={getVisibleRowClassName}
@@ -475,6 +446,10 @@ const GuardianTable = ({
       getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
       className={styles.guardianTableContainer}
       wrapperClassName={styles.tableWrapper}
+      isAllPagesSelected={false}
+      visibleSelectedCount={0}
+      totalRowsOnPage={sortedGuardians.length}
+      currentPage={currentPage}
     />
   );
 };

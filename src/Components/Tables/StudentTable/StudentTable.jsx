@@ -1,8 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
-import { sortStudents } from '../../../Utils/SortEntities'; 
-import { compareSections } from '../../../Utils/CompareHelpers'; 
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
+import { compareSections } from '../../../Utils/CompareHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import QRCodeModal from '../../Modals/QRCodeModal/QRCodeModal';
 import QRCodeUpdateWarningModal from '../../Modals/QRCodeUpdateWarningModal/QRCodeUpdateWarningModal';
@@ -56,7 +55,6 @@ const StudentTable = ({
   refreshAllStudents,
   onSectionSelect,
   availableSections = [],
-  // Props from parent
   students: propStudents = [],
   gradesData = [],
   sectionsData = [],
@@ -67,7 +65,7 @@ const StudentTable = ({
   onSelectAllPages,
   onClearAllPages,
   currentPage = 1,
-  onFilteredCountChange // ADD THIS
+  onFilteredCountChange
 }) => {
     
   const [students, setStudents] = useState([]);
@@ -168,8 +166,8 @@ const StudentTable = ({
   }, [students, currentClass, allUniqueSections]);
 
   const sectionsToShowInDropdown = useMemo(() => {
-  return currentGradeSections;
-}, [currentGradeSections]);
+    return currentGradeSections;
+  }, [currentGradeSections]);
 
   const availableSectionsForCurrentGrade = useMemo(() => {
     if (!editFormData.grade) return [];
@@ -190,46 +188,9 @@ const StudentTable = ({
     }
   }, [allUniqueSections, onSectionsUpdate]);
 
-  const filteredStudents = useMemo(() => {
-    let filtered = students;
-    
-    if (currentClass !== 'all') {
-      filtered = filtered.filter(student => {
-        const studentGrade = student.grade || '';
-        return studentGrade === currentClass;
-      });
-    }
-      
-    if (selectedSection) {
-      filtered = filtered.filter(student => student.section === selectedSection);
-    }
-    
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(student => 
-        student.lrn?.toLowerCase().includes(searchLower) ||
-        student.first_name?.toLowerCase().includes(searchLower) ||
-        student.last_name?.toLowerCase().includes(searchLower) ||
-        student.grade?.toString().toLowerCase().includes(searchLower) ||
-        student.section?.toString().toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower) ||
-        student.phone_number?.toLowerCase().includes(searchLower) ||
-        student.guardian_first_name?.toLowerCase().includes(searchLower) ||
-        student.guardian_last_name?.toLowerCase().includes(searchLower) ||
-        student.guardian_phone_number?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    console.log(`🔍 Filtered students: ${filtered.length} (from ${students.length} total)`);
-    return filtered;
-  }, [students, currentClass, selectedSection, searchTerm]);
+  // No re-filtering or re-sorting needed — parent already handled it
+  const sortedStudents = students;
 
-  const sortedStudents = useMemo(() => {
-    const sorted = sortStudents(filteredStudents);
-    return sorted;
-  }, [filteredStudents]);
-
-  // ADD THIS EFFECT - Notify parent of filtered count
   useEffect(() => {
     if (onFilteredCountChange) {
       onFilteredCountChange(sortedStudents.length);
@@ -300,22 +261,22 @@ const StudentTable = ({
   };
 
   const handleSelectChange = (e) => {
-  const { name, value } = e.target;
-  
-  if (name === 'grade') {
-    const gradeSections = gradeSectionsMap[value] || [];
+    const { name, value } = e.target;
     
-    if (editFormData.section && gradeSections.includes(editFormData.section)) {
-      updateEditField(name, value);
+    if (name === 'grade') {
+      const gradeSections = gradeSectionsMap[value] || [];
+      
+      if (editFormData.section && gradeSections.includes(editFormData.section)) {
+        updateEditField(name, value);
+      } else {
+        const firstSection = gradeSections.length > 0 ? gradeSections[0] : '';
+        updateEditField('section', firstSection);
+        updateEditField(name, value);
+      }
     } else {
-      const firstSection = gradeSections.length > 0 ? gradeSections[0] : '';
-      updateEditField('section', firstSection);
       updateEditField(name, value);
     }
-  } else {
-    updateEditField(name, value);
-  }
-};
+  };
 
   const handleSaveEdit = async (studentId, e) => {
     if (e) e.stopPropagation();
@@ -485,7 +446,6 @@ const StudentTable = ({
   const allVisibleSelected = sortedStudents.length > 0 && 
     sortedStudents.every(student => selectedStudents.includes(student.id));
 
-  // COMPUTED INFO TEXT - UPDATED to remove "Showing" message
   const allOnPageSelected = sortedStudents.length > 0 &&
     sortedStudents.every(student => selectedStudents.includes(student.id));
 
@@ -493,7 +453,7 @@ const StudentTable = ({
     if (isAllPagesSelected) return `All ${totalStudentCount} students selected`;
     if (allOnPageSelected) return `Selected all ${sortedStudents.length} student/s • Page ${currentPage}`;
     if (visibleSelectedStudents.length > 0) return `${visibleSelectedStudents.length} selected • Page ${currentPage}`;
-    return ''; // Empty = no pill shown
+    return '';
   })();
 
   const selectAllBanner = (() => {

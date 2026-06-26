@@ -17,6 +17,7 @@ import { supabase } from '../../../lib/supabase';
 import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
+import { sortStudents } from '../../../Utils/SortEntities';
 
 function AdminStudents() {
   const { success, error: toastError } = useToast();
@@ -24,7 +25,7 @@ function AdminStudents() {
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [currentGrade, setCurrentGrade] = useState('all'); // Changed from '7' to 'all'
+  const [currentGrade, setCurrentGrade] = useState('all');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalMode, setDeleteModalMode] = useState('single');
@@ -38,16 +39,12 @@ function AdminStudents() {
   const [sectionsData, setSectionsData] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 20;
-
-  // SELECT ALL STATE
   const [isAllPagesSelected, setIsAllPagesSelected] = useState(false);
 
   const studentService = new StudentService();
 
-  // Fetch grades data
   const fetchGrades = useCallback(async () => {
     try {
       console.log('🔄 Fetching grades data...');
@@ -65,7 +62,6 @@ function AdminStudents() {
     }
   }, [toastError]);
 
-  // Fetch sections data
   const fetchSections = useCallback(async () => {
     try {
       console.log('🔄 Fetching sections data...');
@@ -86,7 +82,6 @@ function AdminStudents() {
     }
   }, [toastError]);
 
-  // Fetch all students from the database
   const fetchAllStudents = useCallback(async () => {
     try {
       console.log('🔄 Fetching ALL students from database...');
@@ -95,7 +90,6 @@ function AdminStudents() {
       setAllStudents(allStudentsData);
       console.log('✅ All students loaded:', allStudentsData.length);
       
-      // Verify data integrity
       if (allStudentsData.length > 0) {
         console.log('📊 First student sample:', {
           id: allStudentsData[0].id,
@@ -113,22 +107,14 @@ function AdminStudents() {
     }
   }, [toastError]);
 
-  // Fetch all data in sequence
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoadingData(true);
       try {
         console.log('🚀 Starting data fetch sequence...');
-        
-        // 1. First fetch grades
         await fetchGrades();
-        
-        // 2. Then fetch sections (depends on grades)
         await fetchSections();
-        
-        // 3. Finally fetch students (depends on grades/sections for transformation)
         await fetchAllStudents();
-        
         console.log('✅ All data loaded successfully');
       } catch (err) {
         console.error('❌ Error fetching initial data:', err);
@@ -141,7 +127,6 @@ function AdminStudents() {
     fetchInitialData();
   }, [fetchGrades, fetchSections, fetchAllStudents]);
 
-  // Reset to page 1 whenever search/filter changes
   useEffect(() => {
     setCurrentPage(1);
     setIsAllPagesSelected(false);
@@ -151,17 +136,14 @@ function AdminStudents() {
   const filteredStudents = useMemo(() => {
     let filtered = allStudents;
 
-    // Filter by grade
     if (currentGrade !== 'all') {
       filtered = filtered.filter(s => s.grade === currentGrade);
     }
 
-    // Filter by section
     if (selectedSection) {
       filtered = filtered.filter(s => s.section === selectedSection);
     }
 
-    // Filter by search term
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(s =>
@@ -181,14 +163,19 @@ function AdminStudents() {
     return filtered;
   }, [allStudents, currentGrade, selectedSection, searchTerm]);
 
-  // STEP 2: Calculate total pages based on filtered count
-  const totalPages = Math.ceil(filteredStudents.length / ROWS_PER_PAGE);
+  // STEP 2: Sort the FULL filtered result set before pagination
+  const sortedStudents = useMemo(() => {
+    return sortStudents(filteredStudents);
+  }, [filteredStudents]);
 
-  // STEP 3: Paginate the filtered students
+  // STEP 3: Calculate total pages based on sorted count
+  const totalPages = Math.ceil(sortedStudents.length / ROWS_PER_PAGE);
+
+  // STEP 4: Paginate the sorted students
   const paginatedStudents = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredStudents.slice(start, start + ROWS_PER_PAGE);
-  }, [filteredStudents, currentPage]);
+    return sortedStudents.slice(start, start + ROWS_PER_PAGE);
+  }, [sortedStudents, currentPage]);
 
   const refreshStudents = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
@@ -267,7 +254,7 @@ function AdminStudents() {
 
   const handleSelectAllPages = () => {
     setIsAllPagesSelected(true);
-    const allFilteredIds = filteredStudents.map(s => s.id);
+    const allFilteredIds = sortedStudents.map(s => s.id);
     setSelectedStudents(allFilteredIds);
   };
 
@@ -334,7 +321,7 @@ function AdminStudents() {
     }
   };
 
-  const paginationContent = filteredStudents.length > 0 ? (
+  const paginationContent = sortedStudents.length > 0 ? (
     <Pagination
       currentPage={currentPage}
       totalPages={totalPages}
@@ -441,7 +428,7 @@ function AdminStudents() {
             sectionsData={sectionsData}
             loading={loadingData}
             paginationContent={paginationContent}
-            totalStudentCount={filteredStudents.length}
+            totalStudentCount={sortedStudents.length}
             isAllPagesSelected={isAllPagesSelected}
             onSelectAllPages={handleSelectAllPages}
             onClearAllPages={handleClearAllPages}
