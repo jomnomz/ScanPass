@@ -26,15 +26,6 @@
   background-color: #edf7f3 !important;
 }
 
-.expandRow {
-  background-color: #ffffff;
-}
-
-.expandRow td {
-  padding: 0;
-  border: none;
-}
-
 .messageCard {
   background-color: #f7fafc;
   border: 1px solid #dde5ef;
@@ -42,22 +33,24 @@
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;
   padding: 22px;
-  margin: 8px 12px;
+  cursor: default;
 }
 
 .expandableCard {
-  animation: expandIn 0.22s ease;
+  max-height: 0;
+  padding: 0 20px;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  transform: scaleY(0.8);
+  transform-origin: top;
 }
 
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.expandRowActive .expandableCard {
+  max-height: 500px;
+  padding: 20px;
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .details {
@@ -66,11 +59,28 @@
   gap: 50px;
 }
 
-.messageHeader {
-  font-weight: 800;
-  font-size: 1.5rem;
-  margin-bottom: 12px;
-  color: #24344a;
+.expandRow {
+  height: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.expandRowActive {
+  height: auto;
+  max-height: 500px;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.expandRow td {
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
 .messageInfo {
@@ -86,20 +96,12 @@
 
 .fullMessage {
   margin-top: 18px;
-  padding: 15px;
-  background-color: #edf3f9;
-  border-radius: 10px;
-  border: 1px solid #dde5ef;
 }
 
 .messageText {
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #ffffff;
-  border: 1px solid #d8e1ec;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
   color: #23344f;
 }
 

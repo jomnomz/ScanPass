@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import styles from './MessageTable.module.css';
 import { supabase } from '../../../lib/supabase';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
@@ -26,6 +26,9 @@ const MessageTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 20;
 
+  // Ref for click outside detection
+  const tableRef = useRef(null);
+
   // Get today's date in Philippine time (UTC+8)
   const getTodayPhilippines = () => {
     const now = new Date();
@@ -50,6 +53,20 @@ const MessageTable = ({
     const today = getTodayPhilippines();
     return dateString === today;
   };
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (expandedRowId && tableRef.current && !tableRef.current.contains(event.target)) {
+        setExpandedRowId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [expandedRowId]);
 
   const allUniqueSections = useMemo(() => {
     const sections = messages
@@ -368,9 +385,10 @@ const MessageTable = ({
     const isDemo = message.demo_mode;
 
     return (
-      <div className={`${styles.messageCard} ${styles.expandableCard}`}>
-        <div className={styles.messageHeader}>SMS Message Details</div>
-
+      <div 
+        className={`${styles.messageCard} ${styles.expandableCard}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.details}>
           <div>
             <div className={styles.messageInfo}>
@@ -440,7 +458,6 @@ const MessageTable = ({
       renderCell: ({ row }) => (
         <div className={styles.recipientCell}>
           <div>{row.guardian_name}</div>
-          <small className={styles.subtext}>{row.formatted_phone}</small>
         </div>
       )
     },
@@ -452,7 +469,6 @@ const MessageTable = ({
       renderCell: ({ row }) => (
         <div className={styles.studentCell}>
           <div>{row.student_name}</div>
-          <small className={styles.subtext}>LRN: {row.student_lrn}</small>
         </div>
       )
     },
@@ -488,7 +504,10 @@ const MessageTable = ({
       headerStyle: withColumnWidth('24%', 220),
       cellStyle: withColumnWidth('24%', 220),
       renderCell: ({ row }) => {
-        const truncatedMessage = row.message.length > 80 ? `${row.message.substring(0, 80)}...` : row.message;
+        const previewLength = 25;
+        const truncatedMessage = row.message.length > previewLength 
+          ? `${row.message.substring(0, previewLength)}...` 
+          : row.message;
         return <div className={styles.messageCell}>{truncatedMessage}</div>;
       }
     },
@@ -509,32 +528,36 @@ const MessageTable = ({
   }, [expandedRowId]);
 
   return (
-    <Table
-      columns={tableColumns}
-      rows={paginatedMessages}
-      getRowId={(row) => row.id}
-      loading={loading || parentLoading}
-      error={error ? `Error: ${error}` : ''}
-      emptyMessage={getTableInfoMessage()}
-      gradeTabs={{
-        options: ['7', '8', '9', '10'],
-        currentValue: currentClass,
-        onChange: handleClassChange,
-        showAll: true,
-        allLabel: 'All',
-        renderLabel: (grade) => `Grade ${grade}`
-      }}
-      infoText=""
-      tableLabel="Messages"
-      onRowClick={({ rowId }) => toggleRow(rowId)}
-      rowClassName={getVisibleRowClassName}
-      expandedRowId={expandedRowId}
-      renderExpandedRow={({ row }) => renderExpandedRow(row)}
-      getExpandedRowClassName={() => styles.expandRow}
-      className={styles.messageTableContainer}
-      wrapperClassName={styles.tableWrapper}
-      paginationContent={paginationContent}
-    />
+    <div ref={tableRef} className={styles.messageTableContainer}>
+      <Table
+        columns={tableColumns}
+        rows={paginatedMessages}
+        getRowId={(row) => row.id}
+        loading={loading || parentLoading}
+        error={error ? `Error: ${error}` : ''}
+        emptyMessage={getTableInfoMessage()}
+        gradeTabs={{
+          options: ['7', '8', '9', '10'],
+          currentValue: currentClass,
+          onChange: handleClassChange,
+          showAll: true,
+          allLabel: 'All',
+          renderLabel: (grade) => `Grade ${grade}`
+        }}
+        infoText=""
+        tableLabel="Messages"
+        onRowClick={({ rowId }) => toggleRow(rowId)}
+        rowClassName={getVisibleRowClassName}
+        expandedRowId={expandedRowId}
+        renderExpandedRow={({ row }) => renderExpandedRow(row)}
+        persistExpandedRows={true}
+        hideMainRowWhenExpanded={true}
+        getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
+        className={styles.messageTableContainer}
+        wrapperClassName={styles.tableWrapper}
+        paginationContent={paginationContent}
+      />
+    </div>
   );
 };
 
