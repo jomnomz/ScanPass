@@ -253,18 +253,18 @@ function Table({
 	const getPaginationMargin = () => {
 		// 1. All pages selected (all students across all pages)
 		if (isAllPagesSelected) {
-			return '179px';
+			return '190px';
 		}
 		// 2. Some rows selected (not all on page, not all pages)
 		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {
-			return '302px';
+			return '313px';
 		}
 		// 3. All on current page selected (but not all pages)
 		if (visibleSelectedCount === totalRowsOnPage && totalRowsOnPage > 0 && !isAllPagesSelected) {
-			return '31px';
+			return '21px';
 		}
 		// 4. Nothing selected
-		return '470px';
+		return '482px';
 	};
 
 	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;
