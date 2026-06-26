@@ -34,6 +34,11 @@ function getLayout(current, total) {
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
+  // Don't render if there's 1 or fewer pages
+  if (totalPages <= 1) {
+    return null;
+  }
+
   const { pages } = getLayout(currentPage, totalPages);
 
   function go(page) {

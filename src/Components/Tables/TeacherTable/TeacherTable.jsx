@@ -53,7 +53,6 @@ const TeacherTable = ({
   currentPage = 1,
   onPageChange = () => {},
   rowsPerPage = 20,
-  // NEW: Cross-page selection props
   isAllPagesSelected = false,
   onSelectAllPages = () => {},
   onClearAllPages = () => {},
@@ -83,7 +82,6 @@ const TeacherTable = ({
 
   const teacherService = useMemo(() => new TeacherService(), []);
 
-  // Reset page when internal filters change
   const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
 
   useEffect(() => {
@@ -97,7 +95,7 @@ const TeacherTable = ({
 
     if (changed) {
       onPageChange(1);
-      onClearAllPages(); // Clear cross-page selection when filters change
+      onClearAllPages();
       filterRef.current = current;
     }
   }, [selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
@@ -233,14 +231,12 @@ const TeacherTable = ({
 
   const sortedTeachers = useMemo(() => sortTeachers(filteredTeachers), [filteredTeachers]);
 
-  // Notify parent of full filtered list (for "Select all pages")
   useEffect(() => {
     if (onFilteredTeachersUpdate) {
       onFilteredTeachersUpdate(sortedTeachers);
     }
   }, [sortedTeachers, onFilteredTeachersUpdate]);
 
-  // PAGINATION
   const totalPages = Math.ceil(sortedTeachers.length / rowsPerPage);
 
   const paginatedTeachers = useMemo(() => {
@@ -248,7 +244,8 @@ const TeacherTable = ({
     return sortedTeachers.slice(start, start + rowsPerPage);
   }, [sortedTeachers, currentPage, rowsPerPage]);
 
-  const paginationContent = sortedTeachers.length > 0 ? (
+  // Only show pagination if there are 2 or more pages
+  const paginationContent = sortedTeachers.length > 0 && totalPages > 1 ? (
     <Pagination
       currentPage={currentPage}
       totalPages={totalPages}
@@ -282,7 +279,6 @@ const TeacherTable = ({
     return `Showing ${count} teacher/s ${phrases.join(' ')}`;
   }, [sortedTeachers.length, selectedSectionFilter, selectedSubjectFilter, selectedStatusFilter, selectedGrade]);
 
-  // Selection based on paginated (visible) rows
   const visibleSelectedTeachers = useMemo(() => {
     const visibleTeacherIds = new Set(paginatedTeachers.map(teacher => teacher.id));
     return selectedTeachers.filter(id => visibleTeacherIds.has(id));
@@ -294,18 +290,25 @@ const TeacherTable = ({
     }
   }, [visibleSelectedTeachers, onSelectedTeachersUpdate]);
 
-  // ===== NEW: Computed info text (matches StudentTable) =====
+  // Only show page info if there are 2 or more pages
+  const showPageInfo = totalPages > 1;
+
   const allOnPageSelected = paginatedTeachers.length > 0 &&
     paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
 
   const computedInfoText = (() => {
-    if (isAllPagesSelected) return `All ${sortedTeachers.length} teachers selected`;
-    if (allOnPageSelected) return `Selected all ${paginatedTeachers.length} teacher/s • Page ${currentPage}`;
-    if (visibleSelectedTeachers.length > 0) return `${visibleSelectedTeachers.length} selected • Page ${currentPage}`;
+    if (isAllPagesSelected) {
+      return showPageInfo ? `All ${sortedTeachers.length} teachers selected • Page ${currentPage}` : `All ${sortedTeachers.length} teachers selected`;
+    }
+    if (allOnPageSelected) {
+      return showPageInfo ? `Selected all ${paginatedTeachers.length} teacher/s • Page ${currentPage}` : `Selected all ${paginatedTeachers.length} teacher/s`;
+    }
+    if (visibleSelectedTeachers.length > 0) {
+      return showPageInfo ? `${visibleSelectedTeachers.length} selected • Page ${currentPage}` : `${visibleSelectedTeachers.length} selected`;
+    }
     return '';
   })();
 
-  // ===== NEW: Select-all banner buttons (matches StudentTable) =====
   const selectAllBanner = (() => {
     if (isAllPagesSelected) {
       return (
@@ -1145,7 +1148,6 @@ const TeacherTable = ({
         striped={true}
         stickyHeader
         wrapperClassName={styles.tableWrapper}
-        // CHANGED: Use computedInfoText + selectAllBanner (matches StudentTable)
         infoText={computedInfoText}
         selectedInfoText=""
         headerContent={selectAllBanner}

@@ -251,6 +251,11 @@ function Table({
 	};
 
 	const getPaginationMargin = () => {
+		// If no pagination content, return 0
+		if (!paginationContent) {
+			return '0px';
+		}
+		
 		// 1. All pages selected (all students across all pages)
 		if (isAllPagesSelected) {
 			return '190px';
