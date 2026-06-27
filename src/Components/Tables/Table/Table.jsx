@@ -295,13 +295,13 @@ function Table({
 		if (!paginationContent) return '0px';
 		
 		// 1. All pages selected
-		if (isAllPagesSelected) return '140px';
+		if (isAllPagesSelected) return '190px';
 		
 		// 2. Nothing selected
 		if (visibleSelectedCount === 0) return '482px';
 		
 		// 3. All rows on current page selected (visibleSelectedCount >= totalRowsOnPage)
-		if (visibleSelectedCount >= totalRowsOnPage && totalRowsOnPage > 0) return '21px';
+		if (visibleSelectedCount >= totalRowsOnPage && totalRowsOnPage > 0) return '103px';
 		
 		// 4. Some rows selected (partial — including cross-page selections)
 		return '313px';
