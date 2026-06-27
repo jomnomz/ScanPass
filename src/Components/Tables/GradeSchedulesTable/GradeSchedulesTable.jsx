@@ -135,13 +135,18 @@ const validateScheduleData = (data) => {
 
 const GradeSchedulesTable = ({ 
   searchTerm = '',
+  schedules: propSchedules = [],        // ← paginated from parent
+  totalFilteredCount = 0,
   onSelectedSchedulesUpdate,
   selectedSchedules = [],
   onSingleDeleteClick,
   onEntityDataUpdate,
-  onInfoTextChange
+  isAllPagesSelected = false,
+  onSelectAllPages,
+  onClearAllPages,
+  currentPage = 1,
 }) => {
-  const [schedules, setSchedules] = useState([]);
+  const [allSchedules, setAllSchedules] = useState([]); // full dataset for export/edit
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -189,12 +194,13 @@ const GradeSchedulesTable = ({
       
       const sortedData = sortSchedules(transformedSchedules);
       
-      setSchedules(sortedData);
+      setAllSchedules(sortedData);
+      if (onEntityDataUpdate) onEntityDataUpdate(sortedData);
       
     } catch (err) {
       console.error('Error fetching grade schedules:', err);
       setError(err.message);
-      setSchedules([]);
+      setAllSchedules([]);
       setGrades([]);
     } finally {
       setLoading(false);
@@ -257,7 +263,8 @@ const GradeSchedulesTable = ({
         throw new Error(`Grade ${editFormData.grade_level} not found`);
       }
       
-      const existingSchedule = schedules.find(s => 
+      // Check if grade already has a schedule (using allSchedules for conflict check)
+      const existingSchedule = allSchedules.find(s => 
         s.grade_id === selectedGrade.id && s.id !== scheduleId
       );
       
@@ -275,7 +282,7 @@ const GradeSchedulesTable = ({
       
       const updatedSchedule = await scheduleService.update(scheduleId, updateData);
       
-      setSchedules(prevSchedules => {
+      setAllSchedules(prevSchedules => {
         return prevSchedules.map(schedule => {
           if (schedule.id === scheduleId) {
             return {
@@ -291,6 +298,7 @@ const GradeSchedulesTable = ({
       
       success('Schedule updated successfully');
       cancelEdit();
+      await fetchSchedules(); // Refresh to sync with database
       
       return { success: true };
       
@@ -349,25 +357,18 @@ const GradeSchedulesTable = ({
     };
   }, []);
 
-  const filteredSchedules = sortSchedules(
-    schedules.filter(schedule => {
-      const searchLower = searchTerm.toLowerCase();
-      const gradeLevel = schedule.grade_level?.toString() || '';
-      const classStart = schedule.class_start || '';
-      const classEnd = schedule.class_end || '';
-      const gracePeriod = schedule.grace_period_minutes?.toString() || '';
-      
-      return (
-        gradeLevel.toLowerCase().includes(searchLower) ||
-        formatTimeAMPM(classStart).toLowerCase().includes(searchLower) ||
-        formatTimeAMPM(classEnd).toLowerCase().includes(searchLower) ||
-        gracePeriod.includes(searchLower)
-      );
-    })
-  );
+  // Use propSchedules for display (already paginated+filtered by parent)
+  const displaySchedules = propSchedules;
 
   const handleScheduleSelect = (scheduleId, e) => {
     e.stopPropagation();
+    
+    // If all pages are selected and we're unselecting one, clear the "all" state
+    if (isAllPagesSelected && selectedSchedules.includes(scheduleId)) {
+      if (onClearAllPages) onClearAllPages();
+      return;
+    }
+    
     const newSelected = selectedSchedules.includes(scheduleId)
       ? selectedSchedules.filter(id => id !== scheduleId)
       : [...selectedSchedules, scheduleId];
@@ -378,20 +379,25 @@ const GradeSchedulesTable = ({
   };
 
   const handleSelectAll = () => {
-    const allVisibleIds = filteredSchedules.map(schedule => schedule.id);
+    const allVisibleIds = displaySchedules.map(schedule => schedule.id);
     const allSelected = allVisibleIds.every(id => selectedSchedules.includes(id));
     
-    const newSelected = allSelected
-      ? selectedSchedules.filter(id => !allVisibleIds.includes(id))
-      : [...new Set([...selectedSchedules, ...allVisibleIds])];
-    
-    if (onSelectedSchedulesUpdate) {
-      onSelectedSchedulesUpdate(newSelected);
+    if (allSelected) {
+      // Deselect all on current page
+      if (onClearAllPages) onClearAllPages();
+      else if (onSelectedSchedulesUpdate) {
+        onSelectedSchedulesUpdate(selectedSchedules.filter(id => !allVisibleIds.includes(id)));
+      }
+    } else {
+      // Select all on current page
+      if (onSelectedSchedulesUpdate) {
+        onSelectedSchedulesUpdate([...new Set([...selectedSchedules, ...allVisibleIds])]);
+      }
     }
   };
 
-  const allVisibleSelected = filteredSchedules.length > 0 && 
-    filteredSchedules.every(schedule => selectedSchedules.includes(schedule.id));
+  const allVisibleSelected = displaySchedules.length > 0 && 
+    displaySchedules.every(schedule => selectedSchedules.includes(schedule.id));
 
   const handleDeleteClick = (schedule, e) => {
     e.stopPropagation();
@@ -408,7 +414,7 @@ const GradeSchedulesTable = ({
     try {
       await scheduleService.delete(id);
       success('Schedule deleted successfully');
-      fetchSchedules();
+      await fetchSchedules();
       const newSelected = selectedSchedules.filter(selectedId => selectedId !== id);
       if (onSelectedSchedulesUpdate) {
         onSelectedSchedulesUpdate(newSelected);
@@ -501,27 +507,11 @@ const GradeSchedulesTable = ({
     );
   };
 
-  const getTableInfoMessage = () => {
-    const scheduleCount = filteredSchedules.length;
-    
-    if (searchTerm) {
-      return `Found ${scheduleCount} schedule/s matching "${searchTerm}"`;
-    }
-    
-    return `Showing ${scheduleCount} grade schedule/s`;
-  };
-
-  useEffect(() => {
-    if (onInfoTextChange) {
-      onInfoTextChange(getTableInfoMessage());
-    }
-  }, [onInfoTextChange, searchTerm, filteredSchedules.length, selectedSchedules.length]);
-
   useEffect(() => {
     if (onEntityDataUpdate) {
-      onEntityDataUpdate(schedules);
+      onEntityDataUpdate(allSchedules);
     }
-  }, [schedules, onEntityDataUpdate]);
+  }, [allSchedules, onEntityDataUpdate]);
 
   const withColumnWidth = (width, minWidth) => ({
     width,
@@ -674,11 +664,11 @@ const GradeSchedulesTable = ({
     <div className={styles.scheduleTableContainer} ref={tableRef}>
       <Table
         columns={columns}
-        rows={filteredSchedules}
+        rows={displaySchedules}
         getRowId={(row) => row.id}
         loading={loading}
         error={error ? `Error: ${error}` : ''}
-        emptyMessage={getTableInfoMessage()}
+        emptyMessage={searchTerm ? `No schedules found matching "${searchTerm}"` : 'No schedules available'}
         containerRef={tableRef}
         tableLabel="Grade schedule records"
         onRowClick={({ row }) => toggleRow(row.id)}

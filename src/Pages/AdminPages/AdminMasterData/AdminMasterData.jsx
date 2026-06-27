@@ -164,8 +164,14 @@ function AdminMasterData() {
 
   const gradeSectionInfoText = (() => {
     if (isAllGradeSectionsSelected) return `All ${sortedGradeSections.length} grade sections selected`;
-    if (allGradeSectionsOnPageSelected) return `Selected all ${paginatedGradeSections.length} Grade & Section/s • Page ${gradeSectionPage}`;
-    if (visibleSelectedGradeSections.length > 0) return `${visibleSelectedGradeSections.length} selected • Page ${gradeSectionPage}`;
+    if (allGradeSectionsOnPageSelected) {
+      const pageInfo = gradeSectionTotalPages > 1 ? ` • Page ${gradeSectionPage}` : '';
+      return `Selected all ${paginatedGradeSections.length} Grade & Section/s${pageInfo}`;
+    }
+    if (visibleSelectedGradeSections.length > 0) {
+      const pageInfo = gradeSectionTotalPages > 1 ? ` • Page ${gradeSectionPage}` : '';
+      return `${visibleSelectedGradeSections.length} selected${pageInfo}`;
+    }
     return '';
   })();
 
@@ -209,7 +215,7 @@ function AdminMasterData() {
     return null;
   })();
 
-  // ==================== SUBJECTS PAGINATION (placeholder) ====================
+  // ==================== SUBJECTS PAGINATION ====================
 
   const filteredSubjects = useMemo(() => {
     if (!subjectSearch.trim()) return subjectData;
@@ -231,7 +237,65 @@ function AdminMasterData() {
     return sortedSubjects.slice(start, start + ROWS_PER_PAGE);
   }, [sortedSubjects, subjectPage]);
 
-  // ==================== SCHEDULES PAGINATION (placeholder) ====================
+  const visibleSelectedSubjects = useMemo(() => {
+    const visibleIds = new Set(paginatedSubjects.map(s => s.id));
+    return selectedSubjects.filter(id => visibleIds.has(id));
+  }, [selectedSubjects, paginatedSubjects]);
+
+  const allSubjectsOnPageSelected = paginatedSubjects.length > 0 &&
+    paginatedSubjects.every(s => selectedSubjects.includes(s.id));
+
+  const subjectInfoText = (() => {
+    if (isAllSubjectsSelected) return `All ${sortedSubjects.length} subjects selected`;
+    if (allSubjectsOnPageSelected) {
+      const pageInfo = subjectTotalPages > 1 ? ` • Page ${subjectPage}` : '';
+      return `Selected all ${paginatedSubjects.length} Subject/s${pageInfo}`;
+    }
+    if (visibleSelectedSubjects.length > 0) {
+      const pageInfo = subjectTotalPages > 1 ? ` • Page ${subjectPage}` : '';
+      return `${visibleSelectedSubjects.length} selected${pageInfo}`;
+    }
+    return '';
+  })();
+
+  const subjectSelectAllBanner = (() => {
+    if (isAllSubjectsSelected) {
+      return (
+        <button
+          onClick={() => { setIsAllSubjectsSelected(false); setSelectedSubjects([]); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (allSubjectsOnPageSelected && sortedSubjects.length > paginatedSubjects.length) {
+      return (
+        <button
+          onClick={() => { setIsAllSubjectsSelected(true); setSelectedSubjects(sortedSubjects.map(s => s.id)); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {sortedSubjects.length} subjects
+        </button>
+      );
+    }
+    return null;
+  })();
+
+  // ==================== SCHEDULES PAGINATION ====================
 
   const filteredSchedules = useMemo(() => {
     if (!scheduleSearch.trim()) return scheduleData;
@@ -251,6 +315,64 @@ function AdminMasterData() {
     const start = (schedulePage - 1) * ROWS_PER_PAGE;
     return sortedSchedules.slice(start, start + ROWS_PER_PAGE);
   }, [sortedSchedules, schedulePage]);
+
+  const visibleSelectedSchedules = useMemo(() => {
+    const visibleIds = new Set(paginatedSchedules.map(s => s.id));
+    return selectedSchedules.filter(id => visibleIds.has(id));
+  }, [selectedSchedules, paginatedSchedules]);
+
+  const allSchedulesOnPageSelected = paginatedSchedules.length > 0 &&
+    paginatedSchedules.every(s => selectedSchedules.includes(s.id));
+
+  const scheduleInfoText = (() => {
+    if (isAllSchedulesSelected) return `All ${sortedSchedules.length} schedules selected`;
+    if (allSchedulesOnPageSelected) {
+      const pageInfo = scheduleTotalPages > 1 ? ` • Page ${schedulePage}` : '';
+      return `Selected all ${paginatedSchedules.length} Schedule/s${pageInfo}`;
+    }
+    if (visibleSelectedSchedules.length > 0) {
+      const pageInfo = scheduleTotalPages > 1 ? ` • Page ${schedulePage}` : '';
+      return `${visibleSelectedSchedules.length} selected${pageInfo}`;
+    }
+    return '';
+  })();
+
+  const scheduleSelectAllBanner = (() => {
+    if (isAllSchedulesSelected) {
+      return (
+        <button
+          onClick={() => { setIsAllSchedulesSelected(false); setSelectedSchedules([]); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (allSchedulesOnPageSelected && sortedSchedules.length > paginatedSchedules.length) {
+      return (
+        <button
+          onClick={() => { setIsAllSchedulesSelected(true); setSelectedSchedules(sortedSchedules.map(s => s.id)); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {sortedSchedules.length} schedules
+        </button>
+      );
+    }
+    return null;
+  })();
 
   // ==================== SELECTION HANDLERS WITH GUARDS ====================
 
@@ -528,7 +650,18 @@ function AdminMasterData() {
             {activeTab === 'gradeSections' && (
               <>
                 {gradeSectionInfoText && (
-                  <span className={styles.selectedInfoText}>{gradeSectionInfoText}</span>
+                  <span style={{
+                    color: '#3f4f67',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    padding: '6px 10px',
+                    borderRadius: '999px',
+                    background: '#e8f4ef',
+                    border: '1px solid #cae6dd',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {gradeSectionInfoText}
+                  </span>
                 )}
                 {gradeSectionSelectAllBanner}
                 {gradeSectionTotalPages > 1 && (
@@ -543,6 +676,21 @@ function AdminMasterData() {
             
             {activeTab === 'subjects' && (
               <>
+                {subjectInfoText && (
+                  <span style={{
+                    color: '#3f4f67',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    padding: '6px 10px',
+                    borderRadius: '999px',
+                    background: '#e8f4ef',
+                    border: '1px solid #cae6dd',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {subjectInfoText}
+                  </span>
+                )}
+                {subjectSelectAllBanner}
                 {subjectTotalPages > 1 && (
                   <Pagination 
                     currentPage={subjectPage} 
@@ -555,6 +703,21 @@ function AdminMasterData() {
             
             {activeTab === 'schedules' && (
               <>
+                {scheduleInfoText && (
+                  <span style={{
+                    color: '#3f4f67',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    padding: '6px 10px',
+                    borderRadius: '999px',
+                    background: '#e8f4ef',
+                    border: '1px solid #cae6dd',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {scheduleInfoText}
+                  </span>
+                )}
+                {scheduleSelectAllBanner}
                 {scheduleTotalPages > 1 && (
                   <Pagination 
                     currentPage={schedulePage} 
@@ -602,6 +765,15 @@ function AdminMasterData() {
               onSelectedSubjectsUpdate={handleSubjectsSelectedUpdate}
               onSingleDeleteClick={handleSingleDeleteClick}
               onEntityDataUpdate={handleSubjectDataUpdate}
+              isAllPagesSelected={isAllSubjectsSelected}
+              onSelectAllPages={() => {
+                setIsAllSubjectsSelected(true);
+                setSelectedSubjects(sortedSubjects.map(s => s.id));
+              }}
+              onClearAllPages={() => {
+                setIsAllSubjectsSelected(false);
+                setSelectedSubjects([]);
+              }}
               currentPage={subjectPage}
             />
           </div>
@@ -616,6 +788,15 @@ function AdminMasterData() {
               onSelectedSchedulesUpdate={handleSchedulesSelectedUpdate}
               onSingleDeleteClick={handleSingleDeleteClick}
               onEntityDataUpdate={handleScheduleDataUpdate}
+              isAllPagesSelected={isAllSchedulesSelected}
+              onSelectAllPages={() => {
+                setIsAllSchedulesSelected(true);
+                setSelectedSchedules(sortedSchedules.map(s => s.id));
+              }}
+              onClearAllPages={() => {
+                setIsAllSchedulesSelected(false);
+                setSelectedSchedules([]);
+              }}
               currentPage={schedulePage}
             />
           </div>

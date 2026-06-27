@@ -42,13 +42,18 @@ const formatDateTimeLocal = (dateString) => {
 
 const SubjectTable = ({ 
   searchTerm = '',
+  subjects: propSubjects = [], // ← paginated from parent
+  totalFilteredCount = 0,
   onSelectedSubjectsUpdate,
   selectedSubjects = [],
   onSingleDeleteClick,
   onEntityDataUpdate,
-  onInfoTextChange
+  isAllPagesSelected = false,
+  onSelectAllPages,
+  onClearAllPages,
+  currentPage = 1,
 }) => {
-  const [subjects, setSubjects] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]); // full dataset for export
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -73,17 +78,18 @@ const SubjectTable = ({
       
       if (error) throw error;
       
-      setSubjects(data || []);
+      setAllSubjects(data || []);
+      if (onEntityDataUpdate) onEntityDataUpdate(data || []);
       
     } catch (err) {
       console.error('Error fetching subjects:', err);
       setError(err.message);
-      setSubjects([]);
+      setAllSubjects([]);
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Entity edit hook
   const {
     editingId,
@@ -94,7 +100,7 @@ const SubjectTable = ({
     cancelEdit,
     updateEditField,
     saveEdit
-  } = useEntityEdit(subjects, setSubjects, 'subject', fetchSubjects);
+  } = useEntityEdit(allSubjects, setAllSubjects, 'subject', fetchSubjects);
 
   // Initial fetch and real-time subscription
   useEffect(() => {
@@ -120,18 +126,19 @@ const SubjectTable = ({
     };
   }, []);
 
-  // Filter subjects based on search term
-  const filteredSubjects = subjects.filter(subject => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      subject.subject_code.toLowerCase().includes(searchLower) ||
-      subject.subject_name.toLowerCase().includes(searchLower)
-    );
-  });
+  // Use propSubjects for display (already paginated+filtered by parent)
+  const displaySubjects = propSubjects;
 
   // Handle individual subject selection
   const handleSubjectSelect = (subjectId, e) => {
     e.stopPropagation();
+    
+    // If all pages are selected and we're unselecting one, clear the "all" state
+    if (isAllPagesSelected && selectedSubjects.includes(subjectId)) {
+      if (onClearAllPages) onClearAllPages();
+      return;
+    }
+    
     const newSelected = selectedSubjects.includes(subjectId)
       ? selectedSubjects.filter(id => id !== subjectId)
       : [...selectedSubjects, subjectId];
@@ -141,22 +148,27 @@ const SubjectTable = ({
     }
   };
 
-  // Handle select all
+  // Handle select all on current page
   const handleSelectAll = () => {
-    const allVisibleIds = filteredSubjects.map(subject => subject.id);
+    const allVisibleIds = displaySubjects.map(subject => subject.id);
     const allSelected = allVisibleIds.every(id => selectedSubjects.includes(id));
     
-    const newSelected = allSelected
-      ? selectedSubjects.filter(id => !allVisibleIds.includes(id))
-      : [...new Set([...selectedSubjects, ...allVisibleIds])];
-    
-    if (onSelectedSubjectsUpdate) {
-      onSelectedSubjectsUpdate(newSelected);
+    if (allSelected) {
+      // Deselect all on current page
+      if (onClearAllPages) onClearAllPages();
+      else if (onSelectedSubjectsUpdate) {
+        onSelectedSubjectsUpdate(selectedSubjects.filter(id => !allVisibleIds.includes(id)));
+      }
+    } else {
+      // Select all on current page
+      if (onSelectedSubjectsUpdate) {
+        onSelectedSubjectsUpdate([...new Set([...selectedSubjects, ...allVisibleIds])]);
+      }
     }
   };
 
-  const allVisibleSelected = filteredSubjects.length > 0 && 
-    filteredSubjects.every(subject => selectedSubjects.includes(subject.id));
+  const allVisibleSelected = displaySubjects.length > 0 && 
+    displaySubjects.every(subject => selectedSubjects.includes(subject.id));
 
   // Delete handler
   const handleDeleteClick = (subject, e) => {
@@ -175,7 +187,7 @@ const SubjectTable = ({
     try {
       await subjectService.delete(id);
       success('Subject deleted successfully');
-      fetchSubjects();
+      await fetchSubjects();
       // Remove from selected if it was selected
       const newSelected = selectedSubjects.filter(selectedId => selectedId !== id);
       if (onSelectedSubjectsUpdate) {
@@ -208,6 +220,7 @@ const SubjectTable = ({
 
     if (result.success) {
       success('Subject updated successfully');
+      await fetchSubjects();
     }
   };
 
@@ -281,29 +294,6 @@ const SubjectTable = ({
       </div>
     );
   };
-
-  // Get table info message
-  const getTableInfoMessage = () => {
-    const subjectCount = filteredSubjects.length;
-    
-    if (searchTerm) {
-      return `Found ${subjectCount} subject/s matching "${searchTerm}"`;
-    }
-    
-    return `Showing ${subjectCount} subject/s`;
-  };
-
-  useEffect(() => {
-    if (onInfoTextChange) {
-      onInfoTextChange(getTableInfoMessage());
-    }
-  }, [onInfoTextChange, searchTerm, filteredSubjects.length, selectedSubjects.length]);
-
-  useEffect(() => {
-    if (onEntityDataUpdate) {
-      onEntityDataUpdate(subjects);
-    }
-  }, [subjects, onEntityDataUpdate]);
 
   const withColumnWidth = (width, minWidth) => ({
     width,
@@ -405,11 +395,11 @@ const SubjectTable = ({
     <div className={styles.subjectTableContainer} ref={tableRef}>
       <Table
         columns={columns}
-        rows={filteredSubjects}
+        rows={displaySubjects}
         getRowId={(row) => row.id}
         loading={loading}
         error={error ? `Error: ${error}` : ''}
-        emptyMessage={getTableInfoMessage()}
+        emptyMessage={searchTerm ? `No subjects found matching "${searchTerm}"` : 'No subjects available'}
         containerRef={tableRef}
         tableLabel="Subject records"
         onRowClick={({ row }) => toggleRow(row.id)}
