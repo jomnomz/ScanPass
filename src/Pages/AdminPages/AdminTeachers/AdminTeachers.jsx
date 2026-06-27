@@ -506,20 +506,21 @@ function AdminTeachers() {
       />
 
       <TeacherTable 
-        key={`teacher-table-${refreshTrigger}`}
-        searchTerm={searchTerm}
-        onSelectedTeachersUpdate={handleSelectedTeachersUpdate}
-        onTeacherDataUpdate={handleTeacherDataUpdate}
-        onSingleDeleteClick={handleSingleDeleteClick}
-        onSingleInviteClick={handleSingleInviteClick}
-        refreshTeachers={refreshTeachers}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        rowsPerPage={ROWS_PER_PAGE}
-        isAllPagesSelected={isAllPagesSelected}
-        onSelectAllPages={handleSelectAllPages}
-        onClearAllPages={handleClearAllPages}
-        onFilteredTeachersUpdate={handleFilteredTeachersUpdate}
+          key={`teacher-table-${refreshTrigger}`}
+          searchTerm={searchTerm}
+          selectedTeachers={selectedTeachers}        // ← ADD THIS
+          onSelectedTeachersUpdate={handleSelectedTeachersUpdate}
+          onTeacherDataUpdate={handleTeacherDataUpdate}
+          onSingleDeleteClick={handleSingleDeleteClick}
+          onSingleInviteClick={handleSingleInviteClick}
+          refreshTeachers={refreshTeachers}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          rowsPerPage={ROWS_PER_PAGE}
+          isAllPagesSelected={isAllPagesSelected}
+          onSelectAllPages={handleSelectAllPages}
+          onClearAllPages={handleClearAllPages}
+          onFilteredTeachersUpdate={handleFilteredTeachersUpdate}
       />
 
       <InviteModal

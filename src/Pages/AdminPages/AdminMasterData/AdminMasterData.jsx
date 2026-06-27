@@ -162,58 +162,54 @@ function AdminMasterData() {
   const allGradeSectionsOnPageSelected = paginatedGradeSections.length > 0 && 
     paginatedGradeSections.every(gs => selectedGradeSections.includes(gs.id));
 
-  const gradeSectionInfoText = (() => {
-    if (isAllGradeSectionsSelected) return `All ${sortedGradeSections.length} grade sections selected`;
-    if (allGradeSectionsOnPageSelected) {
-      const pageInfo = gradeSectionTotalPages > 1 ? ` • Page ${gradeSectionPage}` : '';
-      return `Selected all ${paginatedGradeSections.length} Grade & Section/s${pageInfo}`;
-    }
-    if (visibleSelectedGradeSections.length > 0) {
-      const pageInfo = gradeSectionTotalPages > 1 ? ` • Page ${gradeSectionPage}` : '';
-      return `${visibleSelectedGradeSections.length} selected${pageInfo}`;
-    }
+    const gradeSectionInfoText = (() => {
+    // All grade sections selected
+    if (selectedGradeSections.length === sortedGradeSections.length && sortedGradeSections.length > 0)
+      return `All ${sortedGradeSections.length} grade sections selected`;
+    if (selectedGradeSections.length > 0) return `${selectedGradeSections.length} grade section/s selected`;
     return '';
   })();
 
   const gradeSectionSelectAllBanner = (() => {
-    if (isAllGradeSectionsSelected) {
-      return (
-        <button
-          onClick={() => { setIsAllGradeSectionsSelected(false); setSelectedGradeSections([]); }}
-          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
-          style={{
-            background: '#2563eb', border: '1px solid #2563eb', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', textDecoration: 'none', transition: 'background 0.2s ease'
-          }}
-        >
-          Clear all
-        </button>
-      );
-    }
-    if (allGradeSectionsOnPageSelected && sortedGradeSections.length > paginatedGradeSections.length) {
-      return (
-        <button
-          onClick={() => { 
-            setIsAllGradeSectionsSelected(true); 
-            setSelectedGradeSections(sortedGradeSections.map(gs => gs.id)); 
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
-          style={{
-            background: '#0EA5E9', border: '1px solid #0EA5E9', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', textDecoration: 'none', transition: 'background 0.2s ease'
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-          Select all {sortedGradeSections.length} grade sections
-        </button>
-      );
-    }
-    return null;
-  })();
+  // All selected AND multiple pages exist — show Clear all
+  if (selectedGradeSections.length === sortedGradeSections.length && sortedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
+    return (
+      <button
+        onClick={() => { setIsAllGradeSectionsSelected(false); setSelectedGradeSections([]); }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        Clear all
+      </button>
+    );
+  }
+  if (selectedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
+    return (
+      <button
+        onClick={() => { 
+          setIsAllGradeSectionsSelected(true); 
+          setSelectedGradeSections(sortedGradeSections.map(gs => gs.id)); 
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+        Select all {sortedGradeSections.length} grade sections
+      </button>
+    );
+  }
+  return null;
+})();
 
   // ==================== SUBJECTS PAGINATION ====================
 
@@ -245,55 +241,51 @@ function AdminMasterData() {
   const allSubjectsOnPageSelected = paginatedSubjects.length > 0 &&
     paginatedSubjects.every(s => selectedSubjects.includes(s.id));
 
-  const subjectInfoText = (() => {
-    if (isAllSubjectsSelected) return `All ${sortedSubjects.length} subjects selected`;
-    if (allSubjectsOnPageSelected) {
-      const pageInfo = subjectTotalPages > 1 ? ` • Page ${subjectPage}` : '';
-      return `Selected all ${paginatedSubjects.length} Subject/s${pageInfo}`;
-    }
-    if (visibleSelectedSubjects.length > 0) {
-      const pageInfo = subjectTotalPages > 1 ? ` • Page ${subjectPage}` : '';
-      return `${visibleSelectedSubjects.length} selected${pageInfo}`;
-    }
+    const subjectInfoText = (() => {
+    // All subjects selected
+    if (selectedSubjects.length === sortedSubjects.length && sortedSubjects.length > 0)
+      return `All ${sortedSubjects.length} subjects selected`;
+    if (selectedSubjects.length > 0) return `${selectedSubjects.length} subject/s selected`;
     return '';
   })();
 
   const subjectSelectAllBanner = (() => {
-    if (isAllSubjectsSelected) {
-      return (
-        <button
-          onClick={() => { setIsAllSubjectsSelected(false); setSelectedSubjects([]); }}
-          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{
-            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', transition: 'background 0.2s ease'
-          }}
-        >
-          Clear all
-        </button>
-      );
-    }
-    if (allSubjectsOnPageSelected && sortedSubjects.length > paginatedSubjects.length) {
-      return (
-        <button
-          onClick={() => { setIsAllSubjectsSelected(true); setSelectedSubjects(sortedSubjects.map(s => s.id)); }}
-          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{
-            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', transition: 'background 0.2s ease'
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-          Select all {sortedSubjects.length} subjects
-        </button>
-      );
-    }
-    return null;
-  })();
+  // All selected AND multiple pages exist — show Clear all
+  if (selectedSubjects.length === sortedSubjects.length && sortedSubjects.length > 0 && sortedSubjects.length > paginatedSubjects.length) {
+    return (
+      <button
+        onClick={() => { setIsAllSubjectsSelected(false); setSelectedSubjects([]); }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        Clear all
+      </button>
+    );
+  }
+  if (selectedSubjects.length > 0 && sortedSubjects.length > paginatedSubjects.length) {
+    return (
+      <button
+        onClick={() => { setIsAllSubjectsSelected(true); setSelectedSubjects(sortedSubjects.map(s => s.id)); }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+        Select all {sortedSubjects.length} subjects
+      </button>
+    );
+  }
+  return null;
+})();
 
   // ==================== SCHEDULES PAGINATION ====================
 
@@ -324,55 +316,51 @@ function AdminMasterData() {
   const allSchedulesOnPageSelected = paginatedSchedules.length > 0 &&
     paginatedSchedules.every(s => selectedSchedules.includes(s.id));
 
-  const scheduleInfoText = (() => {
-    if (isAllSchedulesSelected) return `All ${sortedSchedules.length} schedules selected`;
-    if (allSchedulesOnPageSelected) {
-      const pageInfo = scheduleTotalPages > 1 ? ` • Page ${schedulePage}` : '';
-      return `Selected all ${paginatedSchedules.length} Schedule/s${pageInfo}`;
-    }
-    if (visibleSelectedSchedules.length > 0) {
-      const pageInfo = scheduleTotalPages > 1 ? ` • Page ${schedulePage}` : '';
-      return `${visibleSelectedSchedules.length} selected${pageInfo}`;
-    }
+    const scheduleInfoText = (() => {
+    // All schedules selected
+    if (selectedSchedules.length === sortedSchedules.length && sortedSchedules.length > 0)
+      return `All ${sortedSchedules.length} schedules selected`;
+    if (selectedSchedules.length > 0) return `${selectedSchedules.length} schedule/s selected`;
     return '';
   })();
 
   const scheduleSelectAllBanner = (() => {
-    if (isAllSchedulesSelected) {
-      return (
-        <button
-          onClick={() => { setIsAllSchedulesSelected(false); setSelectedSchedules([]); }}
-          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{
-            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', transition: 'background 0.2s ease'
-          }}
-        >
-          Clear all
-        </button>
-      );
-    }
-    if (allSchedulesOnPageSelected && sortedSchedules.length > paginatedSchedules.length) {
-      return (
-        <button
-          onClick={() => { setIsAllSchedulesSelected(true); setSelectedSchedules(sortedSchedules.map(s => s.id)); }}
-          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{
-            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-            padding: '6px 12px', transition: 'background 0.2s ease'
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-          Select all {sortedSchedules.length} schedules
-        </button>
-      );
-    }
-    return null;
-  })();
+  // All selected AND multiple pages exist — show Clear all
+  if (selectedSchedules.length === sortedSchedules.length && sortedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
+    return (
+      <button
+        onClick={() => { setIsAllSchedulesSelected(false); setSelectedSchedules([]); }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        Clear all
+      </button>
+    );
+  }
+  if (selectedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
+    return (
+      <button
+        onClick={() => { setIsAllSchedulesSelected(true); setSelectedSchedules(sortedSchedules.map(s => s.id)); }}
+        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+        style={{
+          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+          padding: '6px 12px', transition: 'background 0.2s ease'
+        }}
+      >
+        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+        Select all {sortedSchedules.length} schedules
+      </button>
+    );
+  }
+  return null;
+})();
 
   // ==================== SELECTION HANDLERS WITH GUARDS ====================
 

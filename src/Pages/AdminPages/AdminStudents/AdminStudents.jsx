@@ -413,29 +413,30 @@ function AdminStudents() {
           />
           
           <StudentTable 
-            key={`student-table-${refreshTrigger}`}
-            searchTerm={searchTerm} 
-            selectedSection={selectedSection}
-            onSectionsUpdate={handleSectionsUpdate}
-            onSelectedStudentsUpdate={handleSelectedStudentsUpdate}
-            onStudentDataUpdate={handleStudentDataUpdate}
-            onGradeUpdate={handleGradeUpdate}
-            onClearSectionFilter={handleClearSectionFilter}
-            onSingleDeleteClick={handleSingleDeleteClick}
-            refreshStudents={refreshStudents}
-            refreshAllStudents={fetchAllStudents}
-            onSectionSelect={handleSectionSelect}
-            availableSections={availableSections}
-            students={paginatedStudents}
-            gradesData={gradesData}
-            sectionsData={sectionsData}
-            loading={loadingData}
-            paginationContent={paginationContent}
-            totalStudentCount={sortedStudents.length}
-            isAllPagesSelected={isAllPagesSelected}
-            onSelectAllPages={handleSelectAllPages}
-            onClearAllPages={handleClearAllPages}
-            currentPage={currentPage}
+              key={`student-table-${refreshTrigger}`}
+              searchTerm={searchTerm} 
+              selectedSection={selectedSection}
+              onSectionsUpdate={handleSectionsUpdate}
+              onSelectedStudentsUpdate={handleSelectedStudentsUpdate}
+              onStudentDataUpdate={handleStudentDataUpdate}
+              onGradeUpdate={handleGradeUpdate}
+              onClearSectionFilter={handleClearSectionFilter}
+              onSingleDeleteClick={handleSingleDeleteClick}
+              refreshStudents={refreshStudents}
+              refreshAllStudents={fetchAllStudents}
+              onSectionSelect={handleSectionSelect}
+              availableSections={availableSections}
+              students={paginatedStudents}
+              gradesData={gradesData}
+              sectionsData={sectionsData}
+              loading={loadingData}
+              paginationContent={paginationContent}
+              totalStudentCount={sortedStudents.length}
+              isAllPagesSelected={isAllPagesSelected}
+              onSelectAllPages={handleSelectAllPages}
+              onClearAllPages={handleClearAllPages}
+              currentPage={currentPage}
+              selectedStudents={selectedStudents} 
           />
         </>
       )}

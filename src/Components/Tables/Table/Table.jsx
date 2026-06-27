@@ -232,7 +232,7 @@ function Table({
 				<tr
 					className={joinClassNames(
 						styles.expandedRow,
-						rowStripeClassName,  /* <-- ADD THIS - passes the original stripe class */
+						rowStripeClassName,
 						getValue(getExpandedRowClassName, { row, rowIndex, rowId, isExpanded })
 					)}
 				>
@@ -254,7 +254,7 @@ function Table({
 							onRowClick && styles.rowClickable,
 							computedRowClassName,
 							extraRowProps.className,
-							isExpanded && hideMainRowWhenExpanded && styles.rowHidden  /* <-- ADD THIS */
+							isExpanded && hideMainRowWhenExpanded && styles.rowHidden
 						)}
 						onClick={onRowClick ? (event) => onRowClick({ row, rowIndex, rowId, event }) : extraRowProps.onClick}
 						aria-hidden={isExpanded && hideMainRowWhenExpanded ? 'true' : undefined}
@@ -290,26 +290,21 @@ function Table({
 		});
 	};
 
+	// ===== UPDATED: getPaginationMargin with new constraints =====
 	const getPaginationMargin = () => {
-		// If no pagination content, return 0
-		if (!paginationContent) {
-			return '0px';
-		}
+		if (!paginationContent) return '0px';
 		
-		// 1. All pages selected (all students across all pages)
-		if (isAllPagesSelected) {
-			return '140px';
-		}
-		// 2. Some rows selected (not all on page, not all pages)
-		if (visibleSelectedCount > 0 && visibleSelectedCount < totalRowsOnPage) {
-			return '313px';
-		}
-		// 3. All on current page selected (but not all pages)
-		if (visibleSelectedCount === totalRowsOnPage && totalRowsOnPage > 0 && !isAllPagesSelected) {
-			return '21px';
-		}
-		// 4. Nothing selected
-		return '482px';
+		// 1. All pages selected
+		if (isAllPagesSelected) return '140px';
+		
+		// 2. Nothing selected
+		if (visibleSelectedCount === 0) return '482px';
+		
+		// 3. All rows on current page selected (visibleSelectedCount >= totalRowsOnPage)
+		if (visibleSelectedCount >= totalRowsOnPage && totalRowsOnPage > 0) return '21px';
+		
+		// 4. Some rows selected (partial — including cross-page selections)
+		return '313px';
 	};
 
 	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;
