@@ -472,7 +472,7 @@ const TeacherTable = ({
     </div>
   );
 
-  const renderExpandedRow = (teacher) => {
+const renderExpandedRow = (teacher) => {
     const addedAt = formatDateTimeLocal(teacher.created_at);
     const updatedAt = teacher.updated_at ? formatDateTimeLocal(teacher.updated_at) : 'Never updated';
     const invitedAt = teacher.invited_at ? formatDateTimeLocal(teacher.invited_at) : 'Not invited';
@@ -506,29 +506,44 @@ const TeacherTable = ({
     };
 
     return (
-      <div className={`${styles.studentCard} ${styles.expandableCard}`} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.studentHeader}>{formatTeacherName(teacher)}</div>
+      <div 
+        className={`${styles.teacherCard} ${styles.expandableCard}`} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ✅ Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
+        <div className={styles.teacherHeader}>{formatTeacherName(teacher)}</div>
         <div className={styles.details}>
           <div>
-            <div className={styles.studentInfo}><strong>Teacher Details</strong></div>
-            <div className={styles.studentInfo}>Employee ID: {teacher.employee_id}</div>
-            <div className={styles.studentInfo}>Full Name: {formatTeacherName(teacher)}</div>
-            <div className={styles.studentInfo}>Email: {formatNA(teacher.email_address)}</div>
-            <div className={styles.studentInfo}>Phone: {formatNA(teacher.phone_no)}</div>
-            <div className={styles.studentInfo}>Status: {formatStatusText(teacher.status)}</div>
+            <div className={styles.teacherInfo}><strong>Teacher Details</strong></div>
+            <div className={styles.teacherInfo}>Employee ID: {teacher.employee_id}</div>
+            <div className={styles.teacherInfo}>Full Name: {formatTeacherName(teacher)}</div>
+            <div className={styles.teacherInfo}>Email: {formatNA(teacher.email_address)}</div>
+            <div className={styles.teacherInfo}>Phone: {formatNA(teacher.phone_no)}</div>
+            <div className={styles.teacherInfo}>Status: {formatStatusText(teacher.status)}</div>
           </div>
           <div>
-            <div className={styles.studentInfo}><strong>Teaching Assignments</strong></div>
-            <div className={styles.studentInfo}>Subjects: {assignments.subjects}</div>
-            <div className={styles.studentInfo}>Teaching Sections: {assignments.teachingSections}</div>
-            <div className={styles.studentInfo}>Adviser Section: {assignments.adviserDisplay}</div>
+            <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
+            <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
+            <div className={styles.teacherInfo}>Teaching Sections: {assignments.teachingSections}</div>
+            <div className={styles.teacherInfo}>Adviser Section: {assignments.adviserDisplay}</div>
           </div>
           <div>
-            <div className={styles.studentInfo}><strong>Record Information</strong></div>
-            {teacher.status === 'pending' && <div className={styles.studentInfo}>Invitation Sent: {invitedAt}</div>}
-            <div className={styles.studentInfo}>Added: {addedAt}</div>
-            <div className={styles.studentInfo}>Last Updated: {updatedAt}</div>
-            <div className={styles.studentInfo}>
+            <div className={styles.teacherInfo}><strong>Record Information</strong></div>
+            {teacher.status === 'pending' && <div className={styles.teacherInfo}>Invitation Sent: {invitedAt}</div>}
+            <div className={styles.teacherInfo}>Added: {addedAt}</div>
+            <div className={styles.teacherInfo}>Last Updated: {updatedAt}</div>
+            <div className={styles.teacherInfo}>
               Last Updated By: {updatedByName}
               {teacher.updated_by && teacher.updated_by_user && (
                 <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>

@@ -11,8 +11,8 @@
   width: 98%;
 }
 
-/* ===== EXPANDED ROW STYLES - MATCHING STUDENT TABLE ===== */
-.studentCard {
+.teacherCard {
+  position: relative; 
   background-color: #edf7f3;
   border: 1px solid #cae6dd;
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
@@ -69,14 +69,14 @@
   border: none;
 }
 
-.studentHeader {
+.teacherHeader {
   font-weight: bold;
   font-size: 30px;
   margin-bottom: 10px;
   margin-top: 0;
 }
 
-.studentInfo {
+.teacherInfo {
   font-size: 15px;
   margin: 4px 0;
 }
@@ -330,6 +330,38 @@
   background: #eef1f5;
   border: 1px solid #d9e0e8;
   line-height: 1.3;
+}
+
+/* ===== CLOSE BUTTON - matches modal X style ===== */
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;  /* Dark navy/black circle */
+  color: #ffffff;              /* White X */
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;  /* Slightly lighter on hover */
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
 }
 
 /* Responsive adjustments */
