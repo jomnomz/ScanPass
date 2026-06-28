@@ -261,39 +261,51 @@ const SubjectTable = ({
     </div>
   );
 
-  // Render expanded row with details
-  const renderExpandedRow = (subject) => {
-    const addedAt = formatDateTimeLocal(subject.created_at);
-    const updatedAt = subject.updated_at ? formatDateTimeLocal(subject.updated_at) : 'Never updated';
-    
-    return (
-      <div 
-        className={`${styles.subjectCard} ${styles.expandableCard}`}
-        onClick={(e) => e.stopPropagation()}
+// Render expanded row with details
+const renderExpandedRow = (subject) => {
+  const addedAt = formatDateTimeLocal(subject.created_at);
+  const updatedAt = subject.updated_at ? formatDateTimeLocal(subject.updated_at) : 'Never updated';
+  
+  return (
+    <div 
+      className={`${styles.subjectCard} ${styles.expandableCard}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* ✅ Close button - collapses the expanded row */}
+      <button
+        className={styles.closeExpandBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleRow(null);
+        }}
+        aria-label="Close"
       >
-        <div className={styles.subjectHeader}>
-          {subject.subject_code} - {subject.subject_name}
+        ✕
+      </button>
+
+      <div className={styles.subjectHeader}>
+        {subject.subject_code} - {subject.subject_name}
+      </div>
+      <div className={styles.details}>
+        <div>
+          <div className={styles.subjectInfo}>
+            <strong>Subject Details</strong>
+          </div>
+          <div className={styles.subjectInfo}>Subject Code: {subject.subject_code}</div>
+          <div className={styles.subjectInfo}>Subject Name: {subject.subject_name}</div>
         </div>
-        <div className={styles.details}>
-          <div>
-            <div className={styles.subjectInfo}>
-              <strong>Subject Details</strong>
-            </div>
-            <div className={styles.subjectInfo}>Subject Code: {subject.subject_code}</div>
-            <div className={styles.subjectInfo}>Subject Name: {subject.subject_name}</div>
+        
+        <div>
+          <div className={styles.subjectInfo}>
+            <strong>Record Information</strong>
           </div>
-          
-          <div>
-            <div className={styles.subjectInfo}>
-              <strong>Record Information</strong>
-            </div>
-            <div className={styles.subjectInfo}>Added: {addedAt}</div>
-            <div className={styles.subjectInfo}>Last Updated: {updatedAt}</div>
-          </div>
+          <div className={styles.subjectInfo}>Added: {addedAt}</div>
+          <div className={styles.subjectInfo}>Last Updated: {updatedAt}</div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   const withColumnWidth = (width, minWidth) => ({
     width,

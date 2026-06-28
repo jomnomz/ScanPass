@@ -472,40 +472,52 @@ const GradeSchedulesTable = ({
     </div>
   );
 
-  const renderExpandedRow = (schedule) => {
-    const addedAt = formatDateTimeLocal(schedule.created_at);
-    const updatedAt = schedule.updated_at ? formatDateTimeLocal(schedule.updated_at) : 'Never updated';
-    const classDuration = calculateClassDuration(schedule.class_start, schedule.class_end);
-    
-    return (
-      <div 
-        className={`${styles.scheduleCard} ${styles.expandableCard}`}
-        onClick={(e) => e.stopPropagation()}
+const renderExpandedRow = (schedule) => {
+  const addedAt = formatDateTimeLocal(schedule.created_at);
+  const updatedAt = schedule.updated_at ? formatDateTimeLocal(schedule.updated_at) : 'Never updated';
+  const classDuration = calculateClassDuration(schedule.class_start, schedule.class_end);
+  
+  return (
+    <div 
+      className={`${styles.scheduleCard} ${styles.expandableCard}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* ✅ Close button - collapses the expanded row */}
+      <button
+        className={styles.closeExpandBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleRow(null);
+        }}
+        aria-label="Close"
       >
-        <div className={styles.scheduleHeader}>
-          Grade {schedule.grade_level} Schedule
+        ✕
+      </button>
+
+      <div className={styles.scheduleHeader}>
+        Grade {schedule.grade_level} Schedule
+      </div>
+      <div className={styles.details}>
+        <div>
+          <div className={styles.scheduleInfo}>
+            <strong>Schedule Details</strong>
+          </div>
+          <div className={styles.scheduleInfo}>Class Duration: {formatDuration(classDuration)}</div>
+          <div className={styles.scheduleInfo}>Late Policy: Students are considered late {formatDuration(schedule.grace_period_minutes || 15)} after class starts</div>
+          <div className={styles.scheduleInfo}>Time: {formatTimeAMPM(schedule.class_start)} - {formatTimeAMPM(schedule.class_end)}</div>
         </div>
-        <div className={styles.details}>
-          <div>
-            <div className={styles.scheduleInfo}>
-              <strong>Schedule Details</strong>
-            </div>
-            <div className={styles.scheduleInfo}>Class Duration: {formatDuration(classDuration)}</div>
-            <div className={styles.scheduleInfo}>Late Policy: Students are considered late {formatDuration(schedule.grace_period_minutes || 15)} after class starts</div>
-            <div className={styles.scheduleInfo}>Time: {formatTimeAMPM(schedule.class_start)} - {formatTimeAMPM(schedule.class_end)}</div>
+        
+        <div>
+          <div className={styles.scheduleInfo}>
+            <strong>Record Information</strong>
           </div>
-          
-          <div>
-            <div className={styles.scheduleInfo}>
-              <strong>Record Information</strong>
-            </div>
-            <div className={styles.scheduleInfo}>Added: {addedAt}</div>
-            <div className={styles.scheduleInfo}>Last Updated: {updatedAt}</div>
-          </div>
+          <div className={styles.scheduleInfo}>Added: {addedAt}</div>
+          <div className={styles.scheduleInfo}>Last Updated: {updatedAt}</div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   useEffect(() => {
     if (onEntityDataUpdate) {
