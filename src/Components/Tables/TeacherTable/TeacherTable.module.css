@@ -2,72 +2,29 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-   --table-content-width: 98%;
+  --table-content-width: 98%;
 }
 
 .tableWrapper {
   max-height: 66vh;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
   width: 98%;
 }
 
-.tableWrapper table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0;
-  table-layout: auto;
-}
-
-.tableWrapper thead th {
-  position: sticky;
-  top: 0;
-  background-color: #f2f2f2;
-  z-index: 10;
-  box-shadow: 0 1px 0 #e0e0e0;
-}
-
-th {
-  padding: 12px;
-  text-align: center;
-  font-weight: bold;
-}
-
-td, th {
-  text-align: center;
-  padding: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-tbody tr {
-  margin: 0;
-  padding: 0;
-  border-spacing: 0;
-}
-
-
-
-.classContainers {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 5px;
-}
-
-.teacherCard {
-  background-color: #edf7f3;  
-	border: 1px solid #cae6dd;  
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+/* ===== EXPANDED ROW STYLES - MATCHING STUDENT TABLE ===== */
+.studentCard {
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
+  box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;
-  padding: 20px;
+  padding: 0px;
   cursor: default;
 }
 
 .expandableCard {
   max-height: 0;
   padding: 0 20px;
+  padding: 0;
   opacity: 0;
   overflow: hidden;
   transition: all 0.3s ease-in-out;
@@ -77,7 +34,7 @@ tbody tr {
 
 .expandRowActive .expandableCard {
   max-height: 500px;
-  padding: 20px;
+  padding: 20px 20px 20px;
   opacity: 1;
   transform: scaleY(1);
 }
@@ -85,7 +42,7 @@ tbody tr {
 .details {
   display: flex;
   flex-direction: row;
-  gap: 50px; 
+  gap: 50px;
 }
 
 .expandRow {
@@ -116,6 +73,7 @@ tbody tr {
   font-weight: bold;
   font-size: 30px;
   margin-bottom: 10px;
+  margin-top: 0;
 }
 
 .studentInfo {
@@ -146,14 +104,19 @@ tbody tr {
 .tableInfo {
   display: flex;
   flex-direction: column;
-  justify-content: end;
+  justify-content: center;
 }
 
 .tableInfo p {
   margin: 0;
-  font-weight: bold;
-  color: #003a02;
-} 
+  font-weight: 700;
+  color: #2f5d4f;
+  font-size: 0.92rem;
+  background: #e8f4ef;
+  border: 1px solid #cae6dd;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
 
 .icon {
   font-size: 30px;
@@ -164,11 +127,11 @@ tbody tr {
 
 .icon svg {
   transition: color 0.2s;
-  color: #6C757D;
+  color: #6a7788;
 }
 
 .icon svg:hover {
-  color: white;
+  color: #0f6b58;
 }
 
 .editInput {
@@ -272,8 +235,6 @@ tbody tr {
   box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.25);
 }
 
-
-
 .statusBadge {
   padding: 4px 10px;
   border-radius: 12px;
@@ -300,30 +261,6 @@ tbody tr {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-/* Invite button styling */
-.inviteIconActive {
-  color: #007bff !important;
-  cursor: pointer !important;
-}
-
-.inviteIconDisabled {
-  color: #6b7280 !important;
-  cursor: default !important;
-  opacity: 0.5;
-}
-
-.inviteIconPending {
-  color: #f59e0b !important;
-}
-
-.inviteIconActiveStatus {
-  color: #10b981 !important;
-}
-
-.inviteIconInactive {
-  color: #ef4444 !important;
 }
 
 .deactivateButton,
@@ -365,19 +302,6 @@ tbody tr {
   background-color: #bbf7d0;
 }
 
-.noAction {
-  color: #9ca3af;
-  font-style: italic;
-}
-
-/* Action buttons container */
-.actionButtons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
-
 .action-button {
   cursor: pointer;
 }
@@ -408,108 +332,17 @@ tbody tr {
   line-height: 1.3;
 }
 
-/* Column widths using percentages for 11 columns */
-.tableWrapper table th:nth-child(1),
-.tableWrapper table td:nth-child(1) {
-  width: 5%;
-  min-width: 40px;
-}
-
-.tableWrapper table th:nth-child(2),
-.tableWrapper table td:nth-child(2) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(3),
-.tableWrapper table td:nth-child(3) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(4),
-.tableWrapper table td:nth-child(4) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(5),
-.tableWrapper table td:nth-child(5) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(6),
-.tableWrapper table td:nth-child(6) {
-  width: 12%;
-  min-width: 120px;
-}
-
-.tableWrapper table th:nth-child(7),
-.tableWrapper table td:nth-child(7) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(8),
-.tableWrapper table td:nth-child(8) {
-  width: 10%;
-  min-width: 100px;
-}
-
-.tableWrapper table th:nth-child(9),
-.tableWrapper table td:nth-child(9) {
-  width: 8%;
-  min-width: 70px;
-}
-
-.tableWrapper table th:nth-child(10),
-.tableWrapper table td:nth-child(10) {
-  width: 8%;
-  min-width: 70px;
-}
-
-.tableWrapper table th:nth-child(11),
-.tableWrapper table td:nth-child(11) {
-  width: 7%;
-  min-width: 70px;
-}
-
 /* Responsive adjustments */
 @media (max-width: 1400px) {
   .details {
     flex-direction: column;
     gap: 20px;
   }
-  
-  /* Allow horizontal scroll only on mobile */
+
   .teacherTableContainer {
     overflow-x: auto;
   }
 }
 
 @media (max-width: 768px) {
-  .tableWrapper table th:nth-child(2),
-  .tableWrapper table td:nth-child(2),
-  .tableWrapper table th:nth-child(3),
-  .tableWrapper table td:nth-child(3),
-  .tableWrapper table th:nth-child(4),
-  .tableWrapper table td:nth-child(4),
-  .tableWrapper table th:nth-child(5),
-  .tableWrapper table td:nth-child(5) {
-    width: 9%;
-    min-width: 90px;
-  }
-  
-  .tableWrapper table th:nth-child(6),
-  .tableWrapper table td:nth-child(6) {
-    width: 11%;
-    min-width: 110px;
-  }
-  
-  .tableWrapper table th:nth-child(8),
-  .tableWrapper table td:nth-child(8) {
-    width: 9%;
-    min-width: 90px;
-  }
 }
