@@ -9,6 +9,32 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from '../../../lib/supabase'; 
 import Table from '../Table/Table.jsx';
+import { useAuth } from '../../Authentication/AuthProvider/AuthProvider'; 
+
+const formatDateTimeLocal = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting date:', dateString, error);
+    return 'N/A';
+  }
+};
 
 const GuardianTable = ({
   searchTerm = '',
@@ -42,6 +68,8 @@ const GuardianTable = ({
     saveEdit 
   } = useEntityEdit(guardians, setGuardians, 'guardian');
   const [localGuardians, setLocalGuardians] = useState([]);
+  
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     setCurrentClass(currentGrade);
@@ -254,37 +282,98 @@ const GuardianTable = ({
     );
   };
 
-  const renderExpandedContent = (guardian) => (
-    <div 
-      className={`${styles.guardianCard} ${styles.expandableCard}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className={styles.guardianHeader}>
-        {guardian.first_name} {guardian.last_name}
+  const renderExpandedContent = (guardian) => {
+    const addedAt = formatDateTimeLocal(guardian.created_at);
+    const updatedAt = guardian.updated_at ? formatDateTimeLocal(guardian.updated_at) : 'Never updated';
+    
+    const getCurrentUserName = () => {
+      if (!user) return 'N/A';
+      if (profile) {
+        const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+        return name || profile.username || profile.email || 'Current User';
+      }
+      return user.email || 'Current User';
+    };
+    
+    const currentUserName = getCurrentUserName();
+    const currentUserId = user?.id;
+    
+    const updatedByName = guardian.updated_by 
+      ? (guardian.updated_by_user 
+          ? `${guardian.updated_by_user.first_name || ''} ${guardian.updated_by_user.last_name || ''}`.trim() || 
+            guardian.updated_by_user.username || 
+            guardian.updated_by_user.email || 
+            'User'
+          : (currentUserId && guardian.updated_by === currentUserId ? currentUserName : 'User')
+        )
+      : 'Not yet updated';
+
+    return (
+      <div 
+        className={`${styles.guardianCard} ${styles.expandableCard}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.guardianHeader}>
+          {guardian.first_name} {guardian.middle_name} {guardian.last_name}
+        </div>
+      
+        <div className={styles.details}>
+          {/* Guardian Details Section */}
+          <div>
+            <div className={styles.guardianInfo}>
+              <strong>Guardian Details</strong>
+            </div>
+            <div className={styles.guardianInfo}>
+              Full Name: {guardian.first_name} {guardian.middle_name || ''} {guardian.last_name}
+            </div>
+            <div className={styles.guardianInfo}>
+              Email: {formatNA(guardian.email)}
+            </div>
+            <div className={styles.guardianInfo}>
+              Phone: {formatNA(guardian.phone_number)}
+            </div>
+          </div>
+
+          {/* Children/Student Details Section */}
+          <div>
+            <div className={styles.guardianInfo}>
+              <strong>Children/Student Details</strong>
+            </div>
+            <div className={styles.guardianInfo}>
+              Full Name: {guardian.guardian_of || 'N/A'}
+            </div>
+            <div className={styles.guardianInfo}>
+              Student LRN: {guardian.student_lrn || 'N/A'}
+            </div>
+            <div className={styles.guardianInfo}>
+              Grade and Section: {guardian.grade} - {guardian.section}
+            </div>
+          </div>
+
+          {/* Record Information Section */}
+          <div>
+            <div className={styles.guardianInfo}>
+              <strong>Record Information</strong>
+            </div>
+            <div className={styles.guardianInfo}>
+              Added: {addedAt}
+            </div>
+            <div className={styles.guardianInfo}>
+              Last Updated: {updatedAt}
+            </div>
+            <div className={styles.guardianInfo}>
+              Last Updated By: {updatedByName}
+              {guardian.updated_by && guardian.updated_by_user && (
+                <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>
+                  ({guardian.updated_by_user.username || guardian.updated_by_user.email})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className={styles.guardianInfo}>
-        <strong>Guardian Details</strong>
-      </div>
-      <div className={styles.guardianInfo}>
-        Full Name: {guardian.first_name} {guardian.middle_name} {guardian.last_name}
-      </div>
-      <div className={styles.guardianInfo}>
-        Guardian Of: {guardian.guardian_of}
-      </div>
-      <div className={styles.guardianInfo}>
-        Student LRN: {guardian.student_lrn || 'N/A'}
-      </div>
-      <div className={styles.guardianInfo}>
-        Grade and Section: {guardian.grade} - {guardian.section}
-      </div>
-      <div className={styles.guardianInfo}>
-        Email: {formatNA(guardian.email)}
-      </div>
-      <div className={styles.guardianInfo}>
-        Phone: {formatNA(guardian.phone_number)}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderEditCell = (guardian) => (
     <div className={styles.editCell}>

@@ -20,6 +20,31 @@ const STATUS_OPTIONS = [
   { label: 'Absent', value: 'absent' }
 ];
 
+const formatDateTimeLocal = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting date:', dateString, error);
+    return 'N/A';
+  }
+};
+
 const TimePicker = ({ value, onChange, name }) => {
   const handleChange = (e) => {
     const newTime = e.target.value;
@@ -334,7 +359,7 @@ const AttendanceTable = ({
 
   const handleClassChange = useCallback((className) => {
     changeClass(className);
-    onPageChange(1); // Reset page on grade change
+    onPageChange(1);
     toggleRow(null);
     cancelEdit();
     
@@ -353,7 +378,7 @@ const AttendanceTable = ({
     if (onSectionSelect) {
       onSectionSelect(section);
     }
-    onPageChange(1); // Reset page on section change
+    onPageChange(1);
   }, [onSectionSelect, onPageChange]);
 
   const handleRowClick = useCallback((attendanceId, e) => {
@@ -434,7 +459,6 @@ const AttendanceTable = ({
     return currentGradeSections;
   }, [currentGradeSections]);
 
-  // STEP 1: Filter attendances
   const sortedAttendances = useMemo(() => {
     let filtered = attendances;
     
@@ -472,10 +496,8 @@ const AttendanceTable = ({
     return sortEntities(filtered, { type: 'student' });
   }, [attendances, selectedDate, statusFilter, currentClass, selectedSection, searchTerm]);
 
-  // STEP 2: Calculate total pages
   const totalPages = Math.ceil(sortedAttendances.length / rowsPerPage);
 
-  // STEP 3: Paginate the sorted attendances
   const paginatedAttendances = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     return sortedAttendances.slice(start, start + rowsPerPage);
@@ -575,7 +597,8 @@ const AttendanceTable = ({
   ), [editingId, renderActionButtons, startEdit]);
 
   const renderExpandedContent = useCallback((attendance) => {
-    const statusInfo = formatStatusWithStyle(attendance.status);
+    const statusText = formatAttendanceStatus(attendance.status);
+    const recordedAt = attendance.created_at ? formatDateTimeLocal(attendance.created_at) : 'N/A';
     
     return (
       <div 
@@ -585,28 +608,59 @@ const AttendanceTable = ({
         <div className={styles.attendanceHeader}>
           {formatStudentName(attendance)}
         </div>
-        <div className={styles.studentInfo}>
-          <strong>Attendance Details</strong>
-        </div>
-        <div className={styles.attendanceInfo}>LRN: {formatNA(attendance.lrn)}</div>
-        <div className={styles.attendanceInfo}>Full Name: {formatStudentName(attendance)}</div>
-        <div className={styles.attendanceInfo}>Grade & Section: {attendance.grade} - {attendance.section}</div>
-        <div className={styles.attendanceInfo}>Time In: {formatTimeDisplay(attendance.time_in)}</div>
-        <div className={styles.attendanceInfo}>Time Out: {formatTimeDisplay(attendance.time_out)}</div>
-        <div className={styles.attendanceInfo}>Date: {formatDate(attendance.date)}</div>
-        <div className={styles.attendanceInfo}>Status: {statusInfo.text}</div>
-          
-        <div className={styles.attendanceInfo}>
-          Scan Type: {formatNA(attendance.scan_type)}
-        </div>
-        {attendance.created_at && (
-          <div className={styles.attendanceInfo}>
-            Record Created: {formatDate(attendance.created_at)}
+        
+        <div className={styles.details}>
+          {/* LEFT COLUMN - Attendance Details */}
+          <div>
+            <div className={styles.attendanceInfo}>
+              <strong>Attendance Details</strong>
+            </div>
+            <div className={styles.attendanceInfo}>
+              Time In: {formatTimeDisplayShort(attendance.time_in) || 'N/A'}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Time Out: {formatTimeDisplayShort(attendance.time_out) || 'N/A'}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Date: {formatDate(attendance.date)}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Status: {statusText}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Scan Type: {attendance.scan_type || 'N/A'}
+            </div>
           </div>
-        )}
+
+          {/* MIDDLE COLUMN - Student Details */}
+          <div>
+            <div className={styles.attendanceInfo}>
+              <strong>Student Details</strong>
+            </div>
+            <div className={styles.attendanceInfo}>
+              LRN: {attendance.lrn || 'N/A'}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Full Name: {formatStudentName(attendance)}
+            </div>
+            <div className={styles.attendanceInfo}>
+              Grade & Section: {attendance.grade} - {attendance.section}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN - Record Information */}
+          <div>
+            <div className={styles.attendanceInfo}>
+              <strong>Record Information</strong>
+            </div>
+            <div className={styles.attendanceInfo}>
+              Recorded at: {recordedAt}
+            </div>
+          </div>
+        </div>
       </div>
     );
-  }, [formatTimeDisplay, formatStatusWithStyle]);
+  }, [formatStudentName, formatTimeDisplayShort, formatDate]);
 
   const getTableInfoMessage = useCallback(() => {
     const attendanceCount = sortedAttendances.length;
@@ -760,7 +814,7 @@ const AttendanceTable = ({
             selectedValue={statusFilter === 'all' ? '' : statusFilter}
             onSelect={(value) => {
               setStatusFilter(value || 'all');
-              onPageChange(1); // Reset page on status filter change
+              onPageChange(1);
             }}
             allLabel="All"
             buttonTitle="Filter status"

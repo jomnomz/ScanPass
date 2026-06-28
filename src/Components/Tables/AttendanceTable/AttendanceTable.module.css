@@ -15,7 +15,6 @@
   cursor: pointer;
 }
 
-
 .editingRow {
   cursor: default !important;
 }
@@ -24,26 +23,26 @@
   background-color: inherit !important;
 }
 
-
 .classContainers {
   display: flex;
   gap: 10px;
   margin-bottom: 5px;
 }
 
+/* ===== EXPANDED ROW STYLING - MATCHES STUDENTTABLE ===== */
 .attendanceCard {
-  background-color: #edf7f3;  
-	border: 1px solid #cae6dd;  
-  border-radius: 12px;
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;
-  padding: 22px;
+  padding: 0px;
   cursor: default;
 }
 
 .expandableCard {
   max-height: 0;
   padding: 0 20px;
+  padding: 0;
   opacity: 0;
   overflow: hidden;
   transition: all 0.3s ease-in-out;
@@ -53,9 +52,32 @@
 
 .expandRowActive .expandableCard {
   max-height: 500px;
-  padding: 20px;
+  padding: 20px 20px 20px;
   opacity: 1;
   transform: scaleY(1);
+}
+
+.attendanceHeader {
+  font-weight: bold;
+  font-size: 30px;
+  margin-bottom: 10px;
+  margin-top: 0;
+}
+
+.details {
+  display: flex;
+  flex-direction: row;
+  gap: 50px;
+}
+
+.attendanceInfo {
+  font-size: 15px;
+  margin: 4px 0;
+}
+
+.attendanceInfo strong {
+  font-weight: 600;
+  color: #1a2a3a;
 }
 
 .expandRow {
@@ -86,18 +108,7 @@
   background-color: inherit;
 }
 
-.attendanceHeader {
-  font-weight: bold;
-  font-size: 30px;
-  margin-bottom: 10px;
-}
-
-.attendanceInfo,
-.studentInfo {
-  font-size: 15px;
-  margin: 4px 0;
-}
-
+/* ===== LOADING & ERROR STATES ===== */
 .loading,
 .error,
 .noAttendance {
@@ -126,7 +137,7 @@
   color: #d32f2f;
   background-color: #ffebee;
   border: 1px solid #f44336;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .retryButton {
@@ -146,23 +157,7 @@
   padding: 40px;
 }
 
-.tableInfo {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.tableInfo p {
-  margin: 0;
-  font-weight: 700;
-  color: #2f5d4f;
-  font-size: 0.92rem;
-  background: #e8f4ef;
-  border: 1px solid #cae6dd;
-  border-radius: 999px;
-  padding: 6px 12px;
-}
-
+/* ===== STATUS BADGES ===== */
 .statusLate {
   background-color: #ffc107;
   color: #000;
@@ -196,10 +191,7 @@
   min-width: 70px;
 }
 
-.hiddenRow {
-  display: none;
-}
-
+/* ===== HEADER FILTERS ===== */
 .sectionHeader {
   display: flex;
   align-items: center;
@@ -232,6 +224,7 @@
   white-space: nowrap;
 }
 
+/* ===== ICONS & BUTTONS ===== */
 .icon {
   font-size: 30px;
   display: flex;
@@ -241,11 +234,11 @@
 
 .icon svg {
   transition: color 0.2s;
-  color: #6a7788;
+  color: #6C757D;
 }
 
 .icon svg:hover {
-  color: #0f6b58;
+  color: white;
 }
 
 .editCell {
@@ -273,7 +266,7 @@
 
 .saveBtn {
   background-color: #28a745;
-  color: #fff;
+  color: white;
   border-color: #28a745;
 }
 
@@ -284,7 +277,7 @@
 
 .cancelBtn {
   background-color: #6c757d;
-  color: #fff;
+  color: white;
   border-color: #6c757d;
 }
 
@@ -299,6 +292,7 @@
   cursor: not-allowed;
 }
 
+/* ===== TIME PICKER ===== */
 .errorMessage {
   color: #f44336;
   font-size: 12px;
@@ -385,7 +379,13 @@
   cursor: pointer;
 }
 
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1400px) {
+  .details {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
   .attendanceTableContainer {
     overflow-x: auto;
   }

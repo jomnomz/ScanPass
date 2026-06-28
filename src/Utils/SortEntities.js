@@ -1,5 +1,5 @@
 // SortEntities.js
-import { compareSections } from './CompareHelpers';
+import { compareSections, sortTeachers } from './CompareHelpers';
 
 export const sortEntities = (entities, sortConfig = {}) => {
   if (!entities || !Array.isArray(entities)) return [];
@@ -92,7 +92,8 @@ const sortGuardiansLogic = (a, b) => {
   return guardianLastNameA.localeCompare(guardianLastNameB);
 };
 
-// Teacher sorting logic
+// Teacher sorting logic - legacy version (without assignments) 
+// Used by sortEntities when type is 'teacher'
 const sortTeachersLogic = (a, b) => {
   // Sort by last name first
   const lastNameA = (a.last_name || '').toLowerCase().trim();
@@ -110,7 +111,8 @@ const sortTeachersLogic = (a, b) => {
   return firstNameA.localeCompare(firstNameB);
 };
 
-// Export for backward compatibility
+// Export for backward compatibility - uses the grade-aware sort from CompareHelpers
 export const sortStudents = (students) => sortEntities(students, { type: 'student' });
 export const sortGuardians = (guardians) => sortEntities(guardians, { type: 'guardian' });
-export const sortTeachers = (teachers) => sortEntities(teachers, { type: 'teacher' });
+// Re-export sortTeachers from CompareHelpers (grade-aware version)
+export { sortTeachers };
