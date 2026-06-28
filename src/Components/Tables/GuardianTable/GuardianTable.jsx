@@ -13,14 +13,14 @@ import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
-  
+
   try {
     const date = new Date(dateString);
-    
+
     if (isNaN(date.getTime())) {
       return 'Invalid date';
     }
-    
+
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -55,7 +55,7 @@ const GuardianTable = ({
   const [currentClass, setCurrentClass] = useState(currentGrade);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
   const { 
     editingId, 
@@ -68,7 +68,7 @@ const GuardianTable = ({
     saveEdit 
   } = useEntityEdit(guardians, setGuardians, 'guardian');
   const [localGuardians, setLocalGuardians] = useState([]);
-  
+
   const { user, profile } = useAuth();
 
   useEffect(() => {
@@ -130,7 +130,7 @@ const GuardianTable = ({
     const sections = localGuardians
       .map(guardian => guardian.section || '')
       .filter(section => section && section !== 'N/A' && section.trim() !== '');
-    
+
     const uniqueSections = [...new Set(sections)];
     return uniqueSections.sort();
   }, [localGuardians]);
@@ -139,12 +139,12 @@ const GuardianTable = ({
     if (currentClass === 'all') {
       return allUniqueSections;
     }
-    
+
     const sections = localGuardians
       .filter(guardian => guardian.grade === currentClass)
       .map(guardian => guardian.section || '')
       .filter(section => section && section !== 'N/A' && section.trim() !== '');
-    
+
     const uniqueSections = [...new Set(sections)];
     return uniqueSections.sort();
   }, [localGuardians, currentClass, allUniqueSections]);
@@ -165,15 +165,17 @@ const GuardianTable = ({
   const handleClassChange = (className) => {
     setCurrentClass(className);
     setLoading(true);
-    
+    toggleRow(null);
+    cancelEdit();
+
     if (selectedSection && onSectionSelect) {
       onSectionSelect('');
     }
-    
+
     if (selectedSection && onClearSectionFilter) {
       onClearSectionFilter();
     }
-    
+
     setTimeout(() => setLoading(false), 100);
   };
 
@@ -186,11 +188,12 @@ const GuardianTable = ({
   const handleEditClick = (guardian, e) => {
     e.stopPropagation();
     startEdit(guardian);
+    toggleRow(null);
   };
 
   const handleSaveEdit = async (guardianId, e) => {
     if (e) e.stopPropagation();
-    
+
     const result = await saveEdit(
       guardianId, 
       currentClass, 
@@ -203,17 +206,17 @@ const GuardianTable = ({
           guardian_phone_number: data.phone_number,
           updated_at: new Date().toISOString()
         };
-        
+
         const { error } = await supabase
           .from('students')
           .update(updateData)
           .eq('id', id);
-        
+
         if (error) throw error;
         return { success: true };
       }
     );
-    
+
     if (result.success) {
     }
   };
@@ -224,7 +227,7 @@ const GuardianTable = ({
                                  e.target.closest('.action-button') ||
                                  e.target.closest('button') ||
                                  e.target.closest('input');
-    
+
     if (!isEditing && !isInteractiveElement) {
       toggleRow(guardianId);
     }
@@ -233,7 +236,7 @@ const GuardianTable = ({
   const renderEditField = (guardian, fieldName) => {
     if (editingId === guardian.id) {
       const error = validationErrors[fieldName];
-      
+
       return (
         <div className={styles.editFieldContainer}>
           <input
@@ -285,7 +288,7 @@ const GuardianTable = ({
   const renderExpandedContent = (guardian) => {
     const addedAt = formatDateTimeLocal(guardian.created_at);
     const updatedAt = guardian.updated_at ? formatDateTimeLocal(guardian.updated_at) : 'Never updated';
-    
+
     const getCurrentUserName = () => {
       if (!user) return 'N/A';
       if (profile) {
@@ -294,10 +297,10 @@ const GuardianTable = ({
       }
       return user.email || 'Current User';
     };
-    
+
     const currentUserName = getCurrentUserName();
     const currentUserId = user?.id;
-    
+
     const updatedByName = guardian.updated_by 
       ? (guardian.updated_by_user 
           ? `${guardian.updated_by_user.first_name || ''} ${guardian.updated_by_user.last_name || ''}`.trim() || 
@@ -313,10 +316,22 @@ const GuardianTable = ({
         className={`${styles.guardianCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         <div className={styles.guardianHeader}>
           {guardian.first_name} {guardian.middle_name} {guardian.last_name}
         </div>
-      
+
         <div className={styles.details}>
           {/* Guardian Details Section */}
           <div>
@@ -393,24 +408,24 @@ const GuardianTable = ({
 
   const getTableInfoMessage = () => {
     const guardianCount = sortedGuardians.length;
-    
+
     let message = '';
-    
+
     if (selectedSection) {
       message = `Showing ${guardianCount} guardian/s in Section ${selectedSection}`;
-      
+
       if (currentClass === 'all') {
         message += ' across all grades';
       } else {
         message += ` in Grade ${currentClass}`;
       }
-      
+
       if (searchTerm) {
         message += ` matching "${searchTerm}"`;
       }
     } else if (searchTerm) {
       message = `Found ${guardianCount} guardian/s matching "${searchTerm}"`;
-      
+
       if (currentClass === 'all') {
         message += ' across all grades';
       } else {
@@ -423,7 +438,7 @@ const GuardianTable = ({
         message = `Showing ${guardianCount} guardian/s in Grade ${currentClass}`;
       }
     }
-    
+
     return message;
   };
 

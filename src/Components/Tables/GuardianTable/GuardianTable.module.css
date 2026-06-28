@@ -18,8 +18,9 @@
 }
 
 .guardianCard {
-  background-color: #edf7f3;  
-	border: 1px solid #cae6dd;  
+  position: relative;
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
   text-align: left;
   padding: 0px;
@@ -27,27 +28,27 @@
 }
 
 .expandableCard {
-	max-height: 0;
-	padding: 0 20px; 
-	padding: 0; 
-	opacity: 0;
-	overflow: hidden;
-	transition: all 0.3s ease-in-out;
-	transform: scaleY(0.8);
-	transform-origin: top;
+  max-height: 0;
+  padding: 0 20px;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  transform: scaleY(0.8);
+  transform-origin: top;
 }
 
 .expandRowActive .expandableCard {
-	max-height: 500px;
-	padding: 20px 20px 20px;
-	opacity: 1;
-	transform: scaleY(1);
+  max-height: 500px;
+  padding: 20px 20px 20px;
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .details {
   display: flex;
   flex-direction: row;
-  gap: 50px; 
+  gap: 50px;
 }
 
 .expandRow {
@@ -78,7 +79,7 @@
   font-weight: bold;
   font-size: 30px;
   margin-bottom: 10px;
-  margin-top: 0;        
+  margin-top: 0;
 }
 
 .guardianInfo {
@@ -121,7 +122,7 @@
   border: 1px solid #cae6dd;
   border-radius: 999px;
   padding: 6px 12px;
-} 
+}
 
 .icon {
   font-size: 30px;
@@ -307,14 +308,45 @@
   cursor: pointer;
 }
 
+/* ===== CLOSE BUTTON - matches modal X style ===== */
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;  /* Dark navy/black circle */
+  color: #ffffff;              /* White X */
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
+}
+
 /* Responsive adjustments */
 @media (max-width: 1400px) {
   .details {
     flex-direction: column;
     gap: 20px;
   }
-  
-  /* Allow horizontal scroll only on mobile */
+
   .guardianTableContainer {
     overflow-x: auto;
   }

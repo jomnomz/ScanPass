@@ -638,6 +638,7 @@ const StudentTable = ({
     </div>
   );
 
+  // ===== UPDATED: renderExpandedContent with close button =====
   const renderExpandedContent = (student) => {
     const addedAt = formatDateTimeLocal(student.created_at);
     const updatedAt = student.updated_at ? formatDateTimeLocal(student.updated_at) : 'Never updated';
@@ -669,6 +670,18 @@ const StudentTable = ({
         className={`${styles.studentCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ✅ Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         <div className={styles.studentHeader}>
           {formatStudentName(student)}
         </div>

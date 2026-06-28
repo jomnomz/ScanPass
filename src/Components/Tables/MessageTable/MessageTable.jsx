@@ -389,6 +389,18 @@ const MessageTable = ({
         className={`${styles.messageCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedRowId(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         <div className={styles.details}>
           <div>
             <div className={styles.messageInfo}>

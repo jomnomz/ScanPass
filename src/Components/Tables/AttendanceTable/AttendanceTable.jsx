@@ -605,6 +605,18 @@ const AttendanceTable = ({
         className={`${styles.attendanceCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         <div className={styles.attendanceHeader}>
           {formatStudentName(attendance)}
         </div>

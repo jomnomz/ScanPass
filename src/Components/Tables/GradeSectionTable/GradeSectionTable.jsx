@@ -352,31 +352,43 @@ const GradeSectionTable = ({
   );
 
   const renderExpandedRow = (gradeSection) => {
-    const addedAt = formatDateTimeLocal(gradeSection.created_at);
-    const updatedAt = gradeSection.updated_at ? formatDateTimeLocal(gradeSection.updated_at) : 'Never updated';
-    return (
-      <div 
-        className={`${styles.gradeSectionCard} ${styles.expandableCard}`} 
-        onClick={(e) => e.stopPropagation()}
+  const addedAt = formatDateTimeLocal(gradeSection.created_at);
+  const updatedAt = gradeSection.updated_at ? formatDateTimeLocal(gradeSection.updated_at) : 'Never updated';
+  return (
+    <div 
+      className={`${styles.gradeSectionCard} ${styles.expandableCard}`} 
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* ✅ Close button - collapses the expanded row */}
+      <button
+        className={styles.closeExpandBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleRow(null);
+        }}
+        aria-label="Close"
       >
-        <div className={styles.gradeSectionHeader}>
-          Grade {gradeSection.grade} - Section {gradeSection.section}
+        ✕
+      </button>
+
+      <div className={styles.gradeSectionHeader}>
+        Grade {gradeSection.grade} - Section {gradeSection.section}
+      </div>
+      <div className={styles.details}>
+        <div>
+          <div className={styles.gradeSectionInfo}><strong>Grade Section Details</strong></div>
+          <div className={styles.gradeSectionInfo}>Grade Level: {gradeSection.grade}</div>
+          <div className={styles.gradeSectionInfo}>Section: {gradeSection.section}</div>
         </div>
-        <div className={styles.details}>
-          <div>
-            <div className={styles.gradeSectionInfo}><strong>Grade Section Details</strong></div>
-            <div className={styles.gradeSectionInfo}>Grade Level: {gradeSection.grade}</div>
-            <div className={styles.gradeSectionInfo}>Section: {gradeSection.section}</div>
-          </div>
-          <div>
-            <div className={styles.gradeSectionInfo}><strong>Record Information</strong></div>
-            <div className={styles.gradeSectionInfo}>Added: {addedAt}</div>
-            <div className={styles.gradeSectionInfo}>Last Updated: {updatedAt}</div>
-          </div>
+        <div>
+          <div className={styles.gradeSectionInfo}><strong>Record Information</strong></div>
+          <div className={styles.gradeSectionInfo}>Added: {addedAt}</div>
+          <div className={styles.gradeSectionInfo}>Last Updated: {updatedAt}</div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   const withColumnWidth = (width, minWidth) => ({ width, minWidth: `${minWidth}px` });
 
