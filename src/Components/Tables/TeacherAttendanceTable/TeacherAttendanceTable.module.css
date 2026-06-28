@@ -1,91 +1,3 @@
-.pendingRow {
-  background: #fffbe6 !important;
-}
-.pendingEdit {
-  color: #b8860b;
-  font-weight: bold;
-  font-size: 1rem;
-}
-.editBtn {
-  background: #f4f8fc;
-  border: 1px solid #dde5ef;
-  color: #1f2f45;
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.editBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.saveBtn {
-  background: #0f6b58;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-weight: 600;
-  margin-right: 8px;
-  cursor: pointer;
-}
-.cancelBtn {
-  background: #e0e7ef;
-  color: #1f2f45;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.expandedEditSection {
-  display: flex;
-  flex-direction: row;
-  gap: 32px;
-  background: #fff;
-  border: 1px solid #f7e7b7;
-  border-radius: 8px;
-  margin: 0 12px 12px 12px;
-  padding: 18px 18px 12px 18px;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.08);
-  animation: expandFadeIn 0.25s ease;
-}
-@keyframes expandFadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: none; }
-}
-.expandedLeft, .expandedRight {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.expandedLabel {
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-.expandedTextarea {
-  min-height: 60px;
-  border-radius: 6px;
-  border: 1px solid #dde5ef;
-  padding: 8px;
-  font-size: 1rem;
-  resize: vertical;
-  margin-bottom: 6px;
-}
-.expandedFileInput {
-  margin-bottom: 6px;
-}
-.fileName {
-  font-size: 0.95rem;
-  color: #1f2f45;
-  margin-top: 2px;
-}
-.expandedError {
-  color: #b3261e;
-  font-size: 0.95rem;
-  margin-top: 2px;
-}
 .attendanceTableContainer {
   height: 100%;
   display: flex;
@@ -104,9 +16,10 @@
 
 .summaryHeader {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;  /* was space-between */
   align-items: flex-start;
-  gap: 16px;
+  gap: 16px;  /* space between label and chips */
+  
 }
 
 .eyebrow {
@@ -118,19 +31,13 @@
   color: #5d728d;
 }
 
-.className {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1f2f45;
-}
-
 .metaCluster {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: -10px;
 }
 
 .metaChip,
@@ -148,31 +55,62 @@
   color: #42536d;
 }
 
-.metaChipStrong {
-  background: #e8f4ef;
-  border-color: #cae6dd;
-  color: #205340;
-}
-
+/* ── Controls row: search + calendar close together ── */
 .controlsRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 12px;
   margin-top: 18px;
+  flex-wrap: nowrap;
 }
 
 .searchContainer {
-  flex: 1 1 320px;
+  flex: 0 1 320px;
   min-width: 240px;
+  max-width: 380px;
 }
 
 .dateControls {
   display: flex;
-  justify-content: flex-end;
-  flex: 0 1 auto;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
+/* ── Calendar wrapper (positioning for dropdown) ── */
+.calendarWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Calendar trigger button inner layout ── */
+.calendarTriggerInner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendarDivider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.calendarTriggerLabel {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* ── Calendar dropdown ── */
+.calendarDropdown {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+}
+
+/* ── Keep old dateSelector styles for backward compat ── */
 .dateSelector {
   display: flex;
   align-items: center;
@@ -284,6 +222,41 @@
   color: #bc4749;
 }
 
+/* ── Section Tab Bar — floating between stats and table ── */
+.sectionTabBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 16px;
+  margin: 0;
+  background: #F6F8FC;
+  border: 1px solid #dbe5f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(15, 35, 58, 0.04);
+}
+
+.sectionTabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  color: #1f2f45;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: default;
+}
+
+.sectionTabGrade {
+  font-weight: 600;
+}
+
+.sectionTabName {
+  font-weight: 600;
+}
+
 .tableSurface {
   display: flex;
   flex-direction: column;
@@ -327,43 +300,60 @@
   white-space: nowrap;
 }
 
+/* REPLACE the current statusPill block with this */
 .statusPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 88px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  display: inline-block;
+  text-align: center;
+  min-width: 70px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .statusPresent {
-  background: #e8f7ec;
-  color: #1f8a4d;
+  background-color: #28a745;
+  color: #fff;
 }
 
 .statusLate {
-  background: #fff3dc;
-  color: #c57900;
+  background-color: #ffc107;
+  color: #000;
 }
 
 .statusAbsent {
-  background: #fdebec;
-  color: #bc4749;
+  background-color: #dc3545;
+  color: #fff;
 }
-
+/* ── Responsive ── */
 @media (max-width: 1024px) {
-  .summaryHeader,
-  .controlsRow {
+  .summaryHeader {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .controlsRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .searchContainer {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
   .dateControls {
-    justify-content: stretch;
+    flex: 0 0 auto;
+  }
+
+  .calendarWrapper {
+    width: auto;
+  }
+
+  .calendarWrapper > button,
+  .calendarWrapper > [class*="Button"] {
+    width: auto;
   }
 
   .dateSelector {
@@ -380,8 +370,29 @@
     padding: 16px;
   }
 
-  .className {
-    font-size: 1.45rem;
+  .controlsRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .searchContainer {
+    max-width: 100%;
+    min-width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .dateControls {
+    justify-content: stretch;
+  }
+
+  .calendarWrapper {
+    width: 100%;
+  }
+
+  .calendarWrapper > button,
+  .calendarWrapper > [class*="Button"] {
+    width: 100%;
   }
 
   .dateSelector {

@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { sortEntities } from '../../../Utils/SortEntities';
 import styles from './TeacherAttendanceTable.module.css';
 import { supabase } from '../../../lib/supabase';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarDays } from '@fortawesome/free-solid-svg-icons';
 import Input from '../../../Components/UI/Input/Input.jsx';
 import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
+import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
+import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -18,17 +18,6 @@ const STATUS_OPTIONS = [
 const getPHDateIso = (date = new Date()) => {
   const phTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
   return phTime.toISOString().split('T')[0];
-};
-
-const formatDateOption = (dateString) => {
-  const date = new Date(`${dateString}T00:00:00Z`);
-  const phTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
-
-  return phTime.toLocaleDateString('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
 };
 
 function TeacherAttendanceTable({
@@ -45,8 +34,21 @@ function TeacherAttendanceTable({
   const [selectedDate, setSelectedDate] = useState('');
   const [availableDates, setAvailableDates] = useState([]);
   const [datesLoading, setDatesLoading] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const calendarBtnRef = useRef(null);
 
   const activeDate = selectedDate || getPHDateIso();
+
+  // Parse className into grade and section
+  const parsedClass = useMemo(() => {
+    if (!className) return { grade: null, section: null };
+    const match = className.match(/^(\d+)[-\s](.+)$/);
+    if (match) {
+      return { grade: match[1].trim(), section: match[2].trim() };
+    }
+    return { grade: null, section: null };
+  }, [className]);
 
   const getPhilippinesDisplayDate = useCallback((dateString) => {
     const date = new Date(`${dateString}T00:00:00Z`);
@@ -312,11 +314,6 @@ function TeacherAttendanceTable({
     return dateString === getPHDateIso();
   }, []);
 
-  const dateOptions = useMemo(() => {
-    const options = [activeDate, ...availableDates];
-    return [...new Set(options)].sort((left, right) => right.localeCompare(left));
-  }, [activeDate, availableDates]);
-
   const filteredAttendances = useMemo(() => {
     let filtered = attendances;
 
@@ -418,6 +415,21 @@ function TeacherAttendanceTable({
     return rowIndex % 2 === 0 ? styles.attendanceRowEven : styles.attendanceRowOdd;
   }, []);
 
+  const getDateLabel = useCallback(() => {
+    if (!activeDate) return 'Select date';
+    const [y, m, d] = activeDate.split('-').map(Number);
+    const sel = new Date(y, m - 1, d);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isToday = sel.getTime() === todayStart.getTime();
+    const isPast = sel.getTime() < todayStart.getTime();
+    const monthStr = sel.toLocaleString('default', { month: 'short' });
+
+    if (isToday) return `Today · ${monthStr} ${d}, ${y}`;
+    if (isPast) return `Past Date · ${monthStr} ${d}, ${y}`;
+    return `${monthStr} ${d}, ${y}`;
+  }, [activeDate]);
+
   useEffect(() => {
     fetchAvailableDates();
   }, [fetchAvailableDates]);
@@ -452,21 +464,33 @@ function TeacherAttendanceTable({
     };
   }, [className, fetchAvailableDates, fetchClassAttendance]);
 
+  // Close calendar on click outside
+  useEffect(() => {
+    if (!calendarOpen) return;
+    function handleClick(e) {
+      if (calendarBtnRef.current && !calendarBtnRef.current.contains(e.target)) {
+        setCalendarOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [calendarOpen]);
+
   return (
     <div className={styles.attendanceTableContainer}>
       <section className={styles.summaryCard}>
+        {/* Top row: eyebrow + meta chips */}
         <div className={styles.summaryHeader}>
           <div>
             <p className={styles.eyebrow}>Daily attendance snapshot</p>
-            <h2 className={styles.className}>{className}</h2>
           </div>
           <div className={styles.metaCluster}>
             {subject && <span className={styles.metaChip}>{subject}</span>}
             {schoolYear && <span className={styles.metaChip}>{schoolYear}</span>}
-            <span className={styles.metaChipStrong}>{displayDate || getPhilippinesDisplayDate(activeDate)}</span>
           </div>
         </div>
 
+        {/* Controls row: search + calendar close together */}
         <div className={styles.controlsRow}>
           <div className={styles.searchContainer}>
             <Input
@@ -478,28 +502,37 @@ function TeacherAttendanceTable({
           </div>
 
           <div className={styles.dateControls}>
-            <div className={styles.dateSelector}>
-              <span className={styles.dateIconWrap}>
-                <FontAwesomeIcon icon={faCalendarDays} className={styles.dateIcon} />
-              </span>
-              <div className={styles.dateCopy}>
-                <span className={styles.dateLabel}>Viewing date</span>
-                <span className={`${styles.dateBadge} ${isToday(activeDate) ? styles.dateBadgeActive : ''}`}>
-                  {isToday(activeDate) ? 'Today' : 'Past record'}
-                </span>
-              </div>
-              <select
-                className={styles.dateSelect}
-                value={activeDate}
-                onChange={(event) => setSelectedDate(event.target.value === getPHDateIso() ? '' : event.target.value)}
+            <div ref={calendarBtnRef} className={styles.calendarWrapper}>
+              <Button
+                color="nav"
+                height="sm"
+                width="auto"
+                onClick={() => setCalendarOpen((v) => !v)}
                 disabled={datesLoading}
-              >
-                {dateOptions.map((date) => (
-                  <option key={date} value={date}>
-                    {formatDateOption(date)}{isToday(date) ? ' (Today)' : ''}
-                  </option>
-                ))}
-              </select>
+                icon={
+                  <span className={styles.calendarTriggerInner}>
+                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.6 }}>calendar_today</span>
+                    <span className={styles.calendarDivider} />
+                    <span className={styles.calendarTriggerLabel}>{getDateLabel()}</span>
+                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.5 }}>
+                      {calendarOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                    </span>
+                  </span>
+                }
+              />
+
+              {calendarOpen && (
+                <div className={styles.calendarDropdown}>
+                  <DatePickerCalendar
+                    selectedDateKey={activeDate}
+                    hasDataDates={availableDates}
+                    onSelect={({ key }) => {
+                      setSelectedDate(key === getPHDateIso() ? '' : key);
+                      setCalendarOpen(false);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -523,6 +556,16 @@ function TeacherAttendanceTable({
           </article>
         </div>
       </section>
+
+      {/* Section tab bar — floating between stats and table */}
+      {parsedClass.section && (
+        <div className={styles.sectionTabBar}>
+          <div className={styles.sectionTabActive}>
+            <span className={styles.sectionTabGrade}>Grade {parsedClass.grade} -</span>
+            <span className={styles.sectionTabName}>{parsedClass.section}</span>
+          </div>
+        </div>
+      )}
 
       <Table
         columns={tableColumns}
