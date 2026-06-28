@@ -114,7 +114,7 @@ function Chatbot() {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Ask about QR Code Attendance System..."
+          placeholder="Any Questions?  Ask me anything!"
           className={styles.input}
           disabled={isLoading}
         />

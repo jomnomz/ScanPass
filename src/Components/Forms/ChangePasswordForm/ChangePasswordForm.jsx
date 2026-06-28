@@ -133,7 +133,7 @@ function ChangePasswordForm({ onChangePassword, loading = false }) {
       <Button
         type="submit"
         label={loading ? "Changing Password..." : "Change Password"}
-        color="primary"
+        color="ocean"
         disabled={loading}
         width="100%"
       />

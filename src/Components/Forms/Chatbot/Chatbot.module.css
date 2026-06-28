@@ -30,15 +30,15 @@
 }
 
 .botMessage {
-  background: white;
+  background: #1e293b;
   border: 1px solid #e2e8f0;
   align-self: flex-start;
   border-bottom-left-radius: 5px;
-  color: #334155;
+  color: white;
 }
 
 .userMessage {
-  background: #3B82F6;
+  background: #3E5C76;
   color: white;
   align-self: flex-end;
   border-bottom-right-radius: 5px;
@@ -83,7 +83,7 @@
   flex: 1;
   padding: 12px 16px;
   border: 1px solid #d1d5db;
-  border-radius: 25px;
+  border-radius: 5px;
   outline: none;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -99,7 +99,7 @@
 }
 
 .sendButton {
-  background: #3B82F6;
+  background: #3E5C76;
   color: white;
   border: none;
   border-radius: 50%;
@@ -113,10 +113,10 @@
 }
 
 .sendButton:hover:not(:disabled) {
-  background: #2563eb;
+  background: #2C4356;
 }
 
 .sendButton:disabled {
-  background: #93c5fd;
+  background: #3E5C76;
   cursor: not-allowed;
 }

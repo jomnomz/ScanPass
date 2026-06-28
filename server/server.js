@@ -34,6 +34,8 @@ app.use((req, res, next) => {
   next();
 });
 
+console.log('Gemini key loaded:', !!process.env.GEMINI_API_KEY);
+
 
 app.get('/', async (req, res) => {
   const balance = await checkIprogBalance();
@@ -236,7 +238,7 @@ app.post('/api/chatbot', async (req, res) => {
   try {
     const { userMessage, recentMessages = [] } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GROQ_API_KEY) {
       return res.status(503).json({
         success: false,
         error: 'Gemini API is not configured on the server'
@@ -313,7 +315,7 @@ Current user is likely an administrator or teacher in the Settings section.`;
     ];
 
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -329,28 +331,51 @@ Current user is likely an administrator or teacher in the Settings section.`;
       }
     );
 
-    const geminiData = await geminiResponse.json();
+    console.log('Using key:', process.env.GEMINI_API_KEY?.substring(0, 10) + '...');
 
-    if (!geminiResponse.ok) {
-      return res.status(geminiResponse.status).json({
-        success: false,
-        error: geminiData?.error?.message || 'Gemini request failed'
-      });
-    }
+    const groqResponse = await fetch(
+  'https://api.groq.com/openai/v1/chat/completions',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...recentMessages.map(m => ({
+          role: m.role === 'model' ? 'assistant' : m.role,
+          content: m.parts[0].text
+        })),
+        { role: 'user', content: userMessage.trim() }
+      ],
+      temperature: 0.3,
+      max_tokens: 800
+    })
+  }
+);
 
-    const message = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+const groqData = await groqResponse.json();
 
-    if (!message) {
-      return res.status(502).json({
-        success: false,
-        error: 'Gemini returned an empty response'
-      });
-    }
+if (!groqResponse.ok) {
+  return res.status(groqResponse.status).json({
+    success: false,
+    error: groqData?.error?.message || 'Groq request failed'
+  });
+}
 
-    res.json({
-      success: true,
-      message
-    });
+const message = groqData?.choices?.[0]?.message?.content;
+
+if (!message) {
+  return res.status(502).json({
+    success: false,
+    error: 'Groq returned an empty response'
+  });
+}
+
+res.json({ success: true, message });
   } catch (error) {
     console.error('❌ Chatbot endpoint error:', error);
     res.status(500).json({
