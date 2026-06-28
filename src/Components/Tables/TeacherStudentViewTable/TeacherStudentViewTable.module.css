@@ -150,8 +150,8 @@
 }
 
 .studentCard {
-  background-color: #f9f9f9;
-  border-radius: 10px;
+  position: relative; 
+  background-color: #E8F4EF;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   text-align: left;
   padding: 20px;
@@ -267,6 +267,37 @@
   flex-direction: row;
   justify-content: end;
   align-items: center
+}
+
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;  /* Dark navy/black circle */
+  color: #ffffff;              /* White X */
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;  /* Slightly lighter on hover */
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
 }
 
 

@@ -435,12 +435,25 @@ const TeacherStudentViewTable = () => {
     );
   }
 
-  const renderExpandedRow = (student) => {
+const renderExpandedRow = (student) => {
     return (
       <div 
         className={`${styles.studentCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ✅ Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+          type="button"
+        >
+          ✕
+        </button>
+
         <div className={styles.studentHeader}>
           {formatStudentName(student)}
         </div>
