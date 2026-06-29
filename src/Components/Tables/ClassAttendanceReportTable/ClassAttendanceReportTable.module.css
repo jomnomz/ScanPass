@@ -1,12 +1,32 @@
+.tabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: #F6F8FC;
+  border: 1px solid #dbe5f0;
+  border-radius: 12px;
+}
+
+.tabBarLeft {
+  display: flex;
+  align-items: center;
+}
+
+.tabBarRight {
+  display: flex;
+  align-items: center;
+}
+
+.classLabel {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1f2f45;
+}
+
 .modalTableScroll {
-  max-height: 65vh;
+  max-height: 62vh;
   min-height: 200px;
   overflow-y: auto;
-}
-.attendanceTableRow {
-  background: #f9fafb;
-  transition: background 0.2s;
-}
-.attendanceTableRow:hover {
-  background: #e6f4f1;
 }

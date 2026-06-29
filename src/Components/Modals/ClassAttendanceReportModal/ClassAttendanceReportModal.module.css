@@ -1,11 +1,69 @@
+.modalHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  
+}
+
+.modalTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+    margin-top: 20px;
+}
+
+.topControlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.topControlsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monthNavButton {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+  color: #0f6b58;
+  transition: background 0.2s;
+}
+
+.monthNavButton:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.monthDropdown {
+  font-size: 0.95rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #dbe5f0;
+  background: #fff;
+}
+
 .pendingRow {
   background: #fffbe6 !important;
 }
+
 .pendingEdit {
   color: #b8860b;
   font-weight: bold;
   font-size: 1rem;
 }
+
 .editBtn {
   background: #f4f8fc;
   border: 1px solid #dde5ef;
@@ -16,10 +74,12 @@
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .editBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .saveBtn {
   background: #0f6b58;
   color: #fff;
@@ -30,6 +90,7 @@
   margin-right: 8px;
   cursor: pointer;
 }
+
 .cancelBtn {
   background: #e0e7ef;
   color: #1f2f45;
@@ -39,6 +100,7 @@
   font-weight: 600;
   cursor: pointer;
 }
+
 .expandedEditSection {
   display: flex;
   flex-direction: row;
@@ -51,19 +113,23 @@
   box-shadow: 0 2px 8px rgba(255, 215, 0, 0.08);
   animation: expandFadeIn 0.25s ease;
 }
+
 @keyframes expandFadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: none; }
 }
+
 .expandedLeft, .expandedRight {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
+
 .expandedLabel {
   font-weight: 600;
   margin-bottom: 6px;
 }
+
 .expandedTextarea {
   min-height: 60px;
   border-radius: 6px;
@@ -73,68 +139,21 @@
   resize: vertical;
   margin-bottom: 6px;
 }
+
 .expandedFileInput {
   margin-bottom: 6px;
 }
+
 .fileName {
   font-size: 0.95rem;
   color: #1f2f45;
   margin-top: 2px;
 }
+
 .expandedError {
   color: #b3261e;
   font-size: 0.95rem;
   margin-top: 2px;
-}
-.modalTitle {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 3rem;
-
-}
-
-.sectionLabel {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #0f6b58;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.monthSelectorRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.monthNavButton {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0 0.5rem;
-  color: #0f6b58;
-  transition: background 0.2s;
-}
-.monthNavButton:disabled {
-  color: #ccc;
-  cursor: not-allowed;
-}
-
-.monthLabel {
-  font-size: 1.1rem;
-  font-weight: 500;
-  min-width: 120px;
-  text-align: center;
-}
-
-.monthDropdown {
-  font-size: 1rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
 }
 
 .tableScrollWrapper {
@@ -143,14 +162,7 @@
   margin-top: 0.5rem;
   position: relative;
 }
+
 .stickyHeader {
   /* Ensures sticky header works inside scroll wrapper */
-}
-
-.attendanceTableRow {
-  background: #f9fafb;
-  transition: background 0.2s;
-}
-.attendanceTableRow:hover {
-  background: #e6f4f1;
 }

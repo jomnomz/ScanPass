@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Modal from '../Modal/Modal';
 import ClassAttendanceReportTable from '../../Tables/ClassAttendanceReportTable/ClassAttendanceReportTable.jsx';
 import Button from '../../UI/Buttons/Button/Button.jsx';
@@ -11,21 +11,14 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
     return { month: now.getMonth(), year: now.getFullYear() };
   });
 
-  // Parse grade and section from currentClass (e.g., "7-A")
-  const parseClassName = (className) => {
-    const match = className?.match(/^(\d+)[-\s](.+)$/);
-    if (match) {
-      return { grade: match[1], section: match[2] };
-    }
-    return { grade: null, section: null };
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-
-  // Month navigation helpers
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+
   const handlePrevMonth = () => {
     setSelectedMonth(prev => {
       let month = prev.month - 1;
@@ -37,6 +30,7 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
       return { month, year };
     });
   };
+
   const handleNextMonth = () => {
     setSelectedMonth(prev => {
       let month = prev.month + 1;
@@ -48,19 +42,13 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
       return { month, year };
     });
   };
+
   const handleMonthDropdown = (e) => {
     setSelectedMonth(prev => ({ ...prev, month: Number(e.target.value) }));
   };
 
-  // Section label
-  const { grade, section } = parseClassName(currentClass);
-  const sectionLabel = grade && section ? `Grade ${grade} - ${section}` : '';
-
-
-  // Shared attendance data state for both table and export
   const [attendanceRows, setAttendanceRows] = useState([]);
   const [loading, setLoading] = useState(false);
-
 
   const handleExport = () => {
     exportClassAttendanceReportToExcel({
@@ -73,26 +61,27 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xxl">
-      <h2 className={styles.modalTitle}>Class Attendance Report</h2>
-      {sectionLabel && <div className={styles.sectionLabel}>{sectionLabel}</div>}
-      <div className={styles.monthSelectorRow}>
-        <button className={styles.monthNavButton} onClick={handlePrevMonth} aria-label="Previous Month">&#60;</button>
-        <select className={styles.monthDropdown} value={selectedMonth.month} onChange={handleMonthDropdown}>
-          {monthNames.map((name, idx) => (
-            <option key={name} value={idx}>{name} {selectedMonth.year}</option>
-          ))}
-        </select>
-        <button className={styles.monthNavButton} onClick={handleNextMonth} aria-label="Next Month">&#62;</button>
-        <Button
-          label={loading ? 'Exporting...' : 'Export'}
-          onClick={handleExport}
-          disabled={loading || attendanceRows.length === 0}
-          height="sm"
-          width="xs-sm"
-          color="primary"
-          style={{ marginLeft: 'auto' }}
-        />
+      <div className={styles.topControlsRow}>
+        <h2 className={styles.modalTitle}>Class Attendance Report</h2>
+        <div className={styles.topControlsRight}>
+          <button className={styles.monthNavButton} onClick={handlePrevMonth} aria-label="Previous Month">&#60;</button>
+          <select className={styles.monthDropdown} value={selectedMonth.month} onChange={handleMonthDropdown}>
+            {monthNames.map((name, idx) => (
+              <option key={name} value={idx}>{name} {selectedMonth.year}</option>
+            ))}
+          </select>
+          <button className={styles.monthNavButton} onClick={handleNextMonth} aria-label="Next Month">&#62;</button>
+          <Button
+            label={loading ? 'Exporting...' : 'Export'}
+            onClick={handleExport}
+            disabled={loading || attendanceRows.length === 0}
+            height="sm"
+            width="xs-sm"
+            color="primary"
+          />
+        </div>
       </div>
+
       <ClassAttendanceReportTable
         currentClass={currentClass}
         selectedMonth={selectedMonth}
@@ -100,6 +89,11 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
         setAttendanceRows={setAttendanceRows}
         loading={loading}
         setLoading={setLoading}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        setTotalPages={setTotalPages}
+        monthNames={monthNames}
       />
     </Modal>
   );
