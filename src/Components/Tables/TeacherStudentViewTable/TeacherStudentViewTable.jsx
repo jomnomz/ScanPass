@@ -10,6 +10,7 @@ import Button from '../../UI/Buttons/Button/Button';
 import ReportGenerationModal from '../../Modals/ReportGenerationModal/ReportGenerationModal';
 import ClassAttendanceReportModal from '../../Modals/ClassAttendanceReportModal/ClassAttendanceReportModal';
 import Table from '../Table/Table.jsx';
+import Pagination from '../../UI/Buttons/Pagination/Pagination.jsx';
 
 const TeacherStudentViewTable = ({ selectedClass = '' }) => {
   const [students, setStudents] = useState([]);
@@ -181,6 +182,20 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     );
   }, [sortedStudents, searchTerm]);
 
+  const ROWS_PER_PAGE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(filteredStudents.length / ROWS_PER_PAGE);
+
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredStudents.slice(start, start + ROWS_PER_PAGE);
+  }, [filteredStudents, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedClass]);
+
   const handleRowClick = (studentId, e) => {
     if (e.target.closest('button') || e.target.closest('.action-button')) return;
     toggleRow(studentId);
@@ -324,9 +339,33 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         </div>
       </div>
 
+      {currentClassDetails && (
+        <div className={styles.sectionTabBar}>
+          <div className={styles.sectionTabActive}>
+            <span className={styles.sectionTabGrade}>Grade {currentClassDetails.grade} -</span>
+            <span className={styles.sectionTabName}>{currentClassDetails.section}</span>
+            {currentClassDetails.subjectDisplay && (
+              <span className={styles.sectionTabSubject}>· {currentClassDetails.subjectDisplay}</span>
+            )}
+            {currentClassDetails.isAdvisory && (
+              <span className={styles.sectionTabAdvisory}>· Advisory Class</span>
+            )}
+          </div>
+          {totalPages > 1 && (
+            <div className={styles.sectionTabPagination}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <Table
         columns={columns}
-        rows={filteredStudents}
+        rows={paginatedStudents}
         getRowId={(row) => row.id}
         loading={loading}
         error={error ? `Error: ${error}` : ''}
@@ -347,7 +386,6 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         }
         className={styles.teacherStudentTableContainer}
         wrapperClassName={styles.tableWrapper}
-        infoText={getTableInfoMessage()}
         striped={true}
         stickyHeader
       />
