@@ -8,6 +8,7 @@ import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
+import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -35,6 +36,7 @@ function TeacherAttendanceTable({
   const [availableDates, setAvailableDates] = useState([]);
   const [datesLoading, setDatesLoading] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const calendarBtnRef = useRef(null);
 
@@ -335,6 +337,26 @@ function TeacherAttendanceTable({
     return sortEntities(filtered, { type: 'student' });
   }, [attendances, searchTerm, statusFilter]);
 
+  const ROWS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredAttendances.length / ROWS_PER_PAGE);
+
+  const paginatedAttendances = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredAttendances.slice(start, start + ROWS_PER_PAGE);
+  }, [filteredAttendances, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, activeDate, className]);
+
+  const paginationContent = totalPages > 1 ? (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={setCurrentPage}
+    />
+  ) : null;
+
   const stats = useMemo(() => {
     const total = filteredAttendances.length;
     const present = filteredAttendances.filter((item) => item.status === 'present').length;
@@ -564,12 +586,17 @@ function TeacherAttendanceTable({
             <span className={styles.sectionTabGrade}>Grade {parsedClass.grade} -</span>
             <span className={styles.sectionTabName}>{parsedClass.section}</span>
           </div>
+          {paginationContent && (
+            <div className={styles.sectionTabPagination}>
+              {paginationContent}
+            </div>
+          )}
         </div>
       )}
 
       <Table
         columns={tableColumns}
-        rows={filteredAttendances}
+        rows={paginatedAttendances}
         getRowId={(row) => row.id}
         loading={loading}
         error={error}
