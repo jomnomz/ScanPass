@@ -6,6 +6,7 @@
 
 .contentWrapper {
   display: flex;
+  flex-direction: column; /* Stack columns vertically */
   gap: 25px;
 }
 
@@ -17,11 +18,11 @@
 }
 
 .chatbotColumn {
-  flex: 2;
+  flex: 1; /* Equal width or auto, no longer needs flex: 2 */
   display: flex;
   flex-direction: column;
   gap: 25px;
-  margin-right: 20px;
+  margin-right: 0; /* Remove right margin since it's stacked */
 }
 
 .section {

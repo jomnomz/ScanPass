@@ -34,8 +34,6 @@ app.use((req, res, next) => {
   next();
 });
 
-console.log('Gemini key loaded:', !!process.env.GEMINI_API_KEY);
-
 
 app.get('/', async (req, res) => {
   const balance = await checkIprogBalance();
@@ -241,7 +239,7 @@ app.post('/api/chatbot', async (req, res) => {
     if (!process.env.GROQ_API_KEY) {
       return res.status(503).json({
         success: false,
-        error: 'Gemini API is not configured on the server'
+        error: 'Groq API is not configured on the server'
       });
     }
 
