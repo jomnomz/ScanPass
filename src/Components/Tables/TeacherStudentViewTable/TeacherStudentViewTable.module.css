@@ -2,40 +2,35 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-   --table-content-width: 98%;
+  --table-content-width: 98%;
 }
 
 .searchContainer {
   margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.classContainers {
+/* ── Search row ── */
+
+.searchRow {
   display: flex;
   gap: 10px;
-  margin-bottom: 5px;
-  flex-wrap: wrap;
-  align-items: center; 
+  margin-right: 30px;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
 }
 
-.tableInfo {
-  margin-left: 20px; 
-  padding-bottom: 5px;
-}
-
-.tableInfo p {
-  margin: 0;
-  font-weight: bold;
-  color: #003a02;
-  font-size: 15px;
-  white-space: nowrap;
-}
+/* ── Table wrapper ── */
 
 .tableWrapper {
   max-height: 66vh;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-  width:98%;
+  width: 98%;
   flex: 1;
 }
 
@@ -72,39 +67,11 @@
   text-overflow: ellipsis;
 }
 
-.reportButtonContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-}
+/* ── State messages ── */
 
-.reportButton {
-  padding: 0;
-  border: none;
-  background-color: transparent;
-  cursor: pointer;
-  font-size: 30px;
-  color: #6C757D;
-  transition: all 0.2s;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.reportButton:hover {
-  color: #49f3ff;
-  background-color: rgba(73, 243, 255, 0.1);
-  transform: scale(1.1);
-}
-
-
-
-.loading, .error, .noStudents {
+.loading,
+.error,
+.noStudents {
   text-align: center;
   padding: 40px;
   font-size: 16px;
@@ -124,6 +91,8 @@
   text-align: center;
   padding: 40px;
 }
+
+/* ── Expand row animation ── */
 
 .expandRow {
   height: 0;
@@ -150,9 +119,9 @@
 }
 
 .studentCard {
-  position: relative; 
+  position: relative;
   background-color: #E8F4EF;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   text-align: left;
   padding: 20px;
   cursor: default;
@@ -196,6 +165,8 @@
   display: none;
 }
 
+/* ── Column widths ── */
+
 .tableWrapper table th:nth-child(1),
 .tableWrapper table td:nth-child(1) {
   width: 20%;
@@ -226,48 +197,7 @@
   min-width: 70px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1400px) {
-  .details {
-    flex-direction: column;
-    gap: 20px;
-  }
-  
-  .tableWrapper {
-    overflow-x: auto;
-  }
-  
-  .tableWrapper table {
-    min-width: 800px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .classContainers {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .tableInfo {
-    margin-left: 0;
-    margin-top: 10px;
-    align-self: flex-start;
-  }
-  
-  .tableInfo p {
-    white-space: normal;
-    text-align: left;
-  }
-}
-
-.searchRow {
-  display: flex;
-  gap: 10px;
-  margin-right: 30px;
-  flex-direction: row;
-  justify-content: end;
-  align-items: center
-}
+/* ── Close button ── */
 
 .closeExpandBtn {
   position: absolute;
@@ -276,8 +206,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: #1a2332;  /* Dark navy/black circle */
-  color: #ffffff;              /* White X */
+  background-color: #1a2332;
+  color: #ffffff;
   border: none;
   font-size: 14px;
   font-weight: 600;
@@ -292,7 +222,7 @@
 }
 
 .closeExpandBtn:hover {
-  background-color: #2d3a4f;  /* Slightly lighter on hover */
+  background-color: #2d3a4f;
   transform: scale(1.05);
 }
 
@@ -300,9 +230,33 @@
   transform: scale(0.95);
 }
 
+/* ── Responsive ── */
+
+@media (max-width: 1400px) {
+  .details {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .tableWrapper {
+    overflow-x: auto;
+  }
+
+  .tableWrapper table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .searchRow {
+    margin-right: 0;
+  }
+}
 
 @media (max-width: 768px) {
-  .tableInfo p {
-    font-size: 14px;
+  .searchRow {
+    flex-direction: column;
+    align-items: stretch;
+    margin-right: 0;
   }
 }
