@@ -25,6 +25,9 @@ async function sendResendEmail(email, firstName, tempPassword) {
     }
     
     const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`;
+
+    console.log('🔍 DEBUG - FRONTEND_URL env var is:', process.env.FRONTEND_URL);
+    console.log('🔍 DEBUG - loginUrl resolved to:', loginUrl);
     
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
