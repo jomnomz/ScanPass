@@ -613,7 +613,7 @@ const runStudentSync = async () => {
 app.listen(port, '0.0.0.0', async () => {
   console.log(`
   ============================================
-  🚀 TEACHER MANAGEMENT SERVER STARTED ON PORT ${port}
+  TEACHER MANAGEMENT SERVER STARTED ON PORT ${port}
   ============================================
   `);
   
@@ -621,7 +621,7 @@ app.listen(port, '0.0.0.0', async () => {
   await runStudentSync();
   
   console.log(`
-  ✅ AVAILABLE ENDPOINTS:
+  AVAILABLE ENDPOINTS:
   
   TEACHER UPLOAD:
   POST /api/teachers/upload               - Upload teacher data

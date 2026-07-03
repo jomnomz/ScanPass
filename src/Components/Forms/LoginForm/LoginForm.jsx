@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
+import { apiClient } from "../../../config/api"; 
 import styles from "./LoginForm.module.css";
 import Button from "../../UI/Buttons/Button/Button";
 import stonino from "../../../assets/sto nino.png";
@@ -33,13 +34,13 @@ function LoginForm() {
 
       let loginResult = null;
       try {
-        const response = await fetch('http://localhost:5000/api/teacher-invite/teacher-login', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ email, password })
+        // Use apiClient instead of fetch
+        const response = await apiClient.post('/api/teacher-invite/teacher-login', {
+          email,
+          password
         });
         
-        loginResult = await response.json();
+        loginResult = response.data;
         
         if (loginResult.success) {
           console.log('✅ Teacher login successful');
@@ -73,6 +74,7 @@ function LoginForm() {
         
       } catch (teacherLoginError) {
         console.log('⚠️ Teacher login endpoint failed, trying regular login');
+        // If the teacher login endpoint fails, we'll try regular login
       }
 
       console.log('🔄 Trying regular login');
@@ -113,13 +115,13 @@ function LoginForm() {
       if (userData.status === "pending") {
         console.log('⚠️ Account is still pending - trying to auto-activate');
         try {
-          const activateResponse = await fetch('http://localhost:5000/api/teacher-invite/teacher-login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ email, password })
+          // Use apiClient for auto-activation retry
+          const activateResponse = await apiClient.post('/api/teacher-invite/teacher-login', {
+            email,
+            password
           });
           
-          const activateResult = await activateResponse.json();
+          const activateResult = activateResponse.data;
           
           if (activateResult.success) {
             console.log('✅ Auto-activated successfully on retry');
@@ -148,9 +150,24 @@ function LoginForm() {
     } catch (err) {
       console.error('❌ Login error:', err);
       
-      if (err.message.includes('Failed to fetch')) {
+      // Better error handling with axios errors
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (err.response.status === 404) {
+          setError("Service unavailable. Please try again later.");
+        } else if (err.response.status === 401) {
+          setError("Invalid email or password");
+        } else if (err.response.data?.error) {
+          setError(err.response.data.error);
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
+      } else if (err.request) {
+        // The request was made but no response was received
         setError("Cannot connect to server. Please check your connection.");
       } else {
+        // Something happened in setting up the request that triggered an Error
         setError("Something went wrong. Please try again.");
       }
       

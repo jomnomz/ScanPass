@@ -1,3 +1,4 @@
+// src/components/TeacherTable/TeacherTable.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTeachers } from '../../Hooks/useEntities'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
@@ -5,6 +6,7 @@ import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { TeacherService } from '../../../Utils/EntityService'; 
 import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
+import { apiClient } from '../../../config/api.js'; // Import apiClient
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
@@ -347,11 +349,11 @@ const TeacherTable = ({
   const handleDeactivateClick = async (teacher) => {
     if (!window.confirm(`Deactivate ${teacher.first_name}'s account? They won't be able to login.`)) return;
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/deactivate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: teacher.id, deactivatedBy: user?.id }),
+      const response = await apiClient.post('/api/teacher-invite/deactivate', {
+        teacherId: teacher.id,
+        deactivatedBy: user?.id
       });
-      const data = await response.json();
+      const data = response.data;
       if (data.success) {
         setEntities(prev => prev.map(t => t.id === teacher.id ? { ...t, status: 'inactive' } : t));
         success(`Account deactivated: ${teacher.first_name} ${teacher.last_name}`);
@@ -359,17 +361,19 @@ const TeacherTable = ({
       } else {
         toastError(data.error || 'Failed to deactivate account');
       }
-    } catch (err) { toastError('Error: ' + err.message); }
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Error: ' + err.message);
+    }
   };
 
   const handleResendInvitation = async (teacher) => {
     if (!window.confirm(`Resend invitation to ${teacher.first_name}? Old account will be deleted and new invitation sent.`)) return;
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/resend-invitation', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: teacher.id, invitedBy: user?.id }),
+      const response = await apiClient.post('/api/teacher-invite/resend-invitation', {
+        teacherId: teacher.id,
+        invitedBy: user?.id
       });
-      const data = await response.json();
+      const data = response.data;
       if (data.success) {
         setEntities(prev => prev.map(t => t.id === teacher.id ? { ...t, status: 'pending' } : t));
         success(`Invitation resent to: ${teacher.email_address}`);
@@ -378,17 +382,19 @@ const TeacherTable = ({
       } else {
         toastError(data.error || 'Failed to resend invitation');
       }
-    } catch (err) { toastError('Error: ' + err.message); }
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Error: ' + err.message);
+    }
   };
 
   const handleReactivateClick = async (teacher) => {
     if (!window.confirm(`Reactivate ${teacher.first_name}'s account? They will be able to login again.`)) return;
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/reactivate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: teacher.id, reactivatedBy: user?.id }),
+      const response = await apiClient.post('/api/teacher-invite/reactivate', {
+        teacherId: teacher.id,
+        reactivatedBy: user?.id
       });
-      const data = await response.json();
+      const data = response.data;
       if (data.success) {
         setEntities(prev => prev.map(t => t.id === teacher.id ? { ...t, status: 'active' } : t));
         success(`Account reactivated: ${teacher.first_name} ${teacher.last_name}`);
@@ -396,7 +402,9 @@ const TeacherTable = ({
       } else {
         toastError(data.error || 'Failed to reactivate account');
       }
-    } catch (err) { toastError('Error: ' + err.message); }
+    } catch (err) {
+      toastError(err.response?.data?.error || 'Error: ' + err.message);
+    }
   };
 
   const handleInviteClick = (teacher, e) => {
@@ -472,7 +480,7 @@ const TeacherTable = ({
     </div>
   );
 
-const renderExpandedRow = (teacher) => {
+  const renderExpandedRow = (teacher) => {
     const addedAt = formatDateTimeLocal(teacher.created_at);
     const updatedAt = teacher.updated_at ? formatDateTimeLocal(teacher.updated_at) : 'Never updated';
     const invitedAt = teacher.invited_at ? formatDateTimeLocal(teacher.invited_at) : 'Not invited';
@@ -510,7 +518,6 @@ const renderExpandedRow = (teacher) => {
         className={`${styles.teacherCard} ${styles.expandableCard}`} 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ✅ Close button - collapses the expanded row */}
         <button
           className={styles.closeExpandBtn}
           onClick={(e) => {

@@ -1,3 +1,4 @@
+// src/pages/Teacher/TeacherSettings/TeacherSettings.jsx
 import { useState } from 'react';
 import styles from './TeacherSettings.module.css';
 import PageLabel from "../../../Components/UI/Labels/PageLabel/PageLabel.jsx";
@@ -9,11 +10,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../../Components/Authentication/AuthProvider/AuthProvider.jsx';
 import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
 import Chatbot from '../../../Components/Forms/Chatbot/Chatbot.jsx';
+import { apiClient } from '../../../config/api.js'; // Import apiClient
 
 function TeacherSettings() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
   
   const [changingPassword, setChangingPassword] = useState(false);
 
@@ -41,19 +43,14 @@ function TeacherSettings() {
     setChangingPassword(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: user.email,
-          currentPassword,
-          newPassword
-        }),
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/teacher-invite/change-password', {
+        email: user.email,
+        currentPassword,
+        newPassword
       });
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         success('Password changed successfully! You can continue using your session.');
@@ -69,7 +66,19 @@ function TeacherSettings() {
       }
     } catch (error) {
       console.error('Password change error:', error);
-      return { error: 'Connection error. Please try again.' };
+      
+      // Better error handling with axios error object
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.error || 'Failed to change password. Please check your current password.';
+        return { error: errorMessage };
+      } else if (error.request) {
+        // Request made but no response received
+        return { error: 'Cannot connect to server. Please check your connection.' };
+      } else {
+        // Something else happened
+        return { error: 'Connection error. Please try again.' };
+      }
     } finally {
       setChangingPassword(false);
     }

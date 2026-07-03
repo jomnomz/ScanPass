@@ -1,3 +1,4 @@
+// src/pages/Admin/AdminTeachers/AdminTeachers.jsx
 import { useState, useCallback, useEffect } from 'react';
 import styles from './AdminTeachers.module.css';
 import TeacherTable from '../../../Components/Tables/TeacherTable/TeacherTable.jsx';
@@ -17,6 +18,7 @@ import { useAuth } from '../../../Components/Authentication/AuthProvider/AuthPro
 import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
+import { apiClient } from '../../../config/api.js'; // Import apiClient
 
 function AdminTeachers() {
   const { success, error: toastError } = useToast();
@@ -109,13 +111,13 @@ function AdminTeachers() {
 
   const sendInvitationAPI = async (teacherId) => {
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: teacherId, invitedBy: user?.id }),
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/teacher-invite/invite', {
+        teacherId: teacherId,
+        invitedBy: user?.id
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         if (data.emailTemplate) {
@@ -196,22 +198,26 @@ function AdminTeachers() {
         return { success: false, error: data.error || 'Failed to create account' };
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      // Better error handling with axios error object
+      if (err.response) {
+        return { success: false, error: err.response.data?.error || 'Failed to create account' };
+      } else if (err.request) {
+        return { success: false, error: 'Cannot connect to server. Please check your connection.' };
+      } else {
+        return { success: false, error: err.message };
+      }
     }
   };
 
   const sendBulkInvitationsAPI = async (teacherIds) => {
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/invite/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teacherIds: teacherIds,
-          invitedBy: user?.id
-        }),
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/teacher-invite/invite/bulk', {
+        teacherIds: teacherIds,
+        invitedBy: user?.id
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         return { 
@@ -223,7 +229,14 @@ function AdminTeachers() {
         return { success: false, error: data.error || 'Failed to send bulk invitations' };
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      // Better error handling with axios error object
+      if (err.response) {
+        return { success: false, error: err.response.data?.error || 'Failed to send bulk invitations' };
+      } else if (err.request) {
+        return { success: false, error: 'Cannot connect to server. Please check your connection.' };
+      } else {
+        return { success: false, error: err.message };
+      }
     }
   };
 
@@ -343,16 +356,13 @@ function AdminTeachers() {
 
   const deleteSingleTeacherAPI = async (teacherId) => {
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/delete-teacher', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          teacherId: teacherId, 
-          deletedBy: user?.id 
-        }),
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/teacher-invite/delete-teacher', {
+        teacherId: teacherId,
+        deletedBy: user?.id
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         return { success: true };
@@ -360,33 +370,43 @@ function AdminTeachers() {
         return { success: false, error: data.error || 'Failed to delete teacher' };
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      if (err.response) {
+        return { success: false, error: err.response.data?.error || 'Failed to delete teacher' };
+      } else if (err.request) {
+        return { success: false, error: 'Cannot connect to server. Please check your connection.' };
+      } else {
+        return { success: false, error: err.message };
+      }
     }
   };
 
   const deleteMultipleTeachersAPI = async (teacherIds) => {
     try {
-      const response = await fetch('http://localhost:5000/api/teacher-invite/delete-teachers-bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          teacherIds: teacherIds, 
-          deletedBy: user?.id 
-        }),
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/teacher-invite/delete-teachers-bulk', {
+        teacherIds: teacherIds,
+        deletedBy: user?.id
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         return { 
           success: true,
-          count: data.results?.success?.length || 0 
+          count: data.results?.success?.length || 0,
+          data: data
         };
       } else {
         return { success: false, error: data.error || 'Failed to delete teachers' };
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      if (err.response) {
+        return { success: false, error: err.response.data?.error || 'Failed to delete teachers' };
+      } else if (err.request) {
+        return { success: false, error: 'Cannot connect to server. Please check your connection.' };
+      } else {
+        return { success: false, error: err.message };
+      }
     }
   };
 
@@ -508,7 +528,7 @@ function AdminTeachers() {
       <TeacherTable 
           key={`teacher-table-${refreshTrigger}`}
           searchTerm={searchTerm}
-          selectedTeachers={selectedTeachers}        // ← ADD THIS
+          selectedTeachers={selectedTeachers}
           onSelectedTeachersUpdate={handleSelectedTeachersUpdate}
           onTeacherDataUpdate={handleTeacherDataUpdate}
           onSingleDeleteClick={handleSingleDeleteClick}

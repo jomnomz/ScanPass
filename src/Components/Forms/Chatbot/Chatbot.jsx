@@ -1,8 +1,8 @@
+// src/components/Forms/Chatbot/Chatbot.jsx
 import { useState, useRef, useEffect } from 'react';
 import styles from './Chatbot.module.css';
 import SendIcon from '@mui/icons-material/Send';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+import { apiClient } from '../../../config/api.js'; // Import apiClient
 
 function Chatbot() {
   const [messages, setMessages] = useState([
@@ -36,20 +36,15 @@ function Chatbot() {
         parts: [{ text: msg.text }]
       }));
 
-      const response = await fetch(`${API_BASE_URL}/api/chatbot`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userMessage,
-          recentMessages
-        })
+      // Use apiClient instead of fetch
+      const response = await apiClient.post('/api/chatbot', {
+        userMessage,
+        recentMessages
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Chat request failed');
       }
 
@@ -61,14 +56,34 @@ function Chatbot() {
       
       let errorMessage = "Sorry, I'm having trouble connecting. ";
       
-      if (error.message.includes('not configured')) {
-        errorMessage += "The AI assistant is not configured on the server.";
-      } else if (error.message.includes('API key not valid') || error.message.includes('quota')) {
-        errorMessage += "The server-side Gemini key is invalid or out of quota.";
-      } else if (error.message.includes('Network Error')) {
-        errorMessage += "Network error. Check your internet connection.";
+      // Better error handling with axios error object
+      if (error.response) {
+        // Server responded with error status
+        const errorData = error.response.data;
+        
+        if (errorData.error) {
+          errorMessage += errorData.error;
+        } else if (error.response.status === 404) {
+          errorMessage += "The AI assistant service is not available on the server.";
+        } else if (error.response.status === 429) {
+          errorMessage += "Too many requests. Please try again later.";
+        } else if (error.response.status >= 500) {
+          errorMessage += "The server encountered an error. Please try again later.";
+        } else {
+          errorMessage += `Server error (${error.response.status}). Please try again.`;
+        }
+      } else if (error.request) {
+        // Request made but no response received
+        errorMessage += "Network error. Please check your internet connection.";
       } else {
-        errorMessage += error.message;
+        // Something else happened
+        if (error.message.includes('not configured')) {
+          errorMessage += "The AI assistant is not configured on the server.";
+        } else if (error.message.includes('API key not valid') || error.message.includes('quota')) {
+          errorMessage += "The server-side Gemini key is invalid or out of quota.";
+        } else {
+          errorMessage += error.message;
+        }
       }
       
       setMessages(prev => [...prev, { 

@@ -1,5 +1,5 @@
+// src/components/Modals/FileUploadModal/FileUploadModal.jsx
 import { useState, useRef, useEffect } from 'react'
-import axios from "axios";
 import Modal from '../Modal/Modal.jsx'
 import styles from './FileUploadModal.module.css'
 import Button from '../../UI/Buttons/Button/Button.jsx';
@@ -8,6 +8,7 @@ import { useToast } from '../../Toast/ToastContext/ToastContext.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
 import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
 import UploadIcon from '@mui/icons-material/Upload';
+import { apiClient } from '../../../config/api.js'; // Import apiClient
 
 function FileUploadModal({ 
   isOpen, 
@@ -112,39 +113,21 @@ function FileUploadModal({
     };
 
     const getImportantNote = () => {
-        if (entityType === 'student') {
-            return (
-                <InfoBox type="important">
-                    <strong>Important:</strong> All records must be valid. If any record has errors, the entire upload will be rejected.
-                    <p className={styles.templateLink}>
-                        <a 
-                            href={getFieldMappingLink()} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={styles.downloadLink}
-                        >
-                            <span><span className={styles.download}>Download:</span> {entityType} import template</span>
-                        </a>
-                    </p>
-                </InfoBox>
-            );
-        } else {
-            return (
-                <InfoBox type="important">
-                    <strong>Important:</strong> All records must be valid. If any record has errors, the entire upload will be rejected.
-                    <p className={styles.templateLink}>
-                        <a 
-                            href={getFieldMappingLink()} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={styles.downloadLink}
-                        >
-                            <span><span className={styles.download}>Download:</span> {entityType} import template</span>
-                        </a>
-                    </p>
-                </InfoBox>
-            );
-        }
+        return (
+            <InfoBox type="important">
+                <strong>Important:</strong> All records must be valid. If any record has errors, the entire upload will be rejected.
+                <p className={styles.templateLink}>
+                    <a 
+                        href={getFieldMappingLink()} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.downloadLink}
+                    >
+                        <span><span className={styles.download}>Download:</span> {entityType} import template</span>
+                    </a>
+                </p>
+            </InfoBox>
+        );
     };
 
     async function handleUpload() {
@@ -164,19 +147,20 @@ function FileUploadModal({
             let endpoint;
             switch(entityType) {
                 case 'teacher':
-                    endpoint = 'http://localhost:5000/api/teachers/upload';
+                    endpoint = '/api/teachers/upload';
                     break;
                 case 'student':
-                    endpoint = 'http://localhost:5000/api/students/upload';
+                    endpoint = '/api/students/upload';
                     break;
                 case 'master-data':
-                    endpoint = 'http://localhost:5000/api/master-data/upload';
+                    endpoint = '/api/master-data/upload';
                     break;
                 default:
                     throw new Error('Invalid entity type');
             }
             
-            const response = await axios.post(endpoint, formData, {
+            // Use apiClient instead of axios directly
+            const response = await apiClient.post(endpoint, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
@@ -257,23 +241,35 @@ function FileUploadModal({
         } catch (err) {
             console.error('❌ Upload failed:', err);
             
-            if (err.response?.data?.error) {
-                error(err.response.data.error);
+            // Better error handling with axios error object
+            if (err.response) {
+                // Server responded with error status
+                const errorData = err.response.data;
                 
-                if (err.response.data.invalidRecords) {
-                    err.response.data.invalidRecords.slice(0, 3).forEach(record => {
+                if (errorData.error) {
+                    error(errorData.error);
+                } else {
+                    error('Upload failed. Please check the file format and try again.');
+                }
+                
+                if (errorData.invalidRecords) {
+                    errorData.invalidRecords.slice(0, 3).forEach(record => {
                         const errorMsg = Object.values(record.errors || {}).join(', ');
                         warning(`Row ${record.row}: ${errorMsg}`);
                     });
                 }
                 
-                if (err.response.data.errorSummary) {
-                    err.response.data.errorSummary.slice(0, 3).forEach(errMsg => {
+                if (errorData.errorSummary) {
+                    errorData.errorSummary.slice(0, 3).forEach(errMsg => {
                         warning(errMsg);
                     });
                 }
+            } else if (err.request) {
+                // Request made but no response received
+                error('Cannot connect to server. Please check your connection.');
             } else {
-                error(`Upload failed. Please check the file format and try again.`);
+                // Something else happened
+                error('Upload failed. Please try again.');
             }
         } finally {
             setIsUploading(false);
