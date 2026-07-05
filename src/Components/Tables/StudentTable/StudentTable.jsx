@@ -2,13 +2,13 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { compareSections } from '../../../Utils/CompareHelpers';
+import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import QRCodeModal from '../../Modals/QRCodeModal/QRCodeModal';
 import QRCodeUpdateWarningModal from '../../Modals/QRCodeUpdateWarningModal/QRCodeUpdateWarningModal';
 import styles from './StudentTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
-import { faQrcode, faPenToSquare, faTrashCan, faCircle as fasCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faQrcode, faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
@@ -16,6 +16,7 @@ import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { useStudentActions } from '../../Hooks/useEntityActions'; 
 import { StudentService } from '../../../Utils/EntityService'; 
 import Table from '../Table/Table.jsx';
+import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -42,6 +43,28 @@ const formatDateTimeLocal = (dateString) => {
   }
 };
 
+// ===== SHARED PROFILE CIRCLE RENDERER =====
+const renderProfileCircle = (student, sizeClassName) => {
+  const { bg, text } = getProfileColor(student.id ?? `${student.first_name}${student.last_name}`);
+
+  if (student.photo_url) {
+    return (
+      <img
+        src={student.photo_url}
+        alt={formatStudentName(student)}
+        className={sizeClassName}
+        style={{ objectFit: 'cover' }}
+      />
+    );
+  }
+
+  return (
+    <div className={sizeClassName} style={{ backgroundColor: bg, color: text }}>
+      {getProfileInitial(student.first_name)}
+    </div>
+  );
+};
+
 const StudentTable = ({ 
   searchTerm = '', 
   selectedSection = '', 
@@ -66,7 +89,7 @@ const StudentTable = ({
   onClearAllPages,
   currentPage = 1,
   onFilteredCountChange,
-  selectedStudents = [], // ← RECEIVE FROM PARENT
+  selectedStudents = [],
 }) => {
     
   const [students, setStudents] = useState([]);
@@ -188,7 +211,7 @@ const StudentTable = ({
     }
   }, [allUniqueSections, onSectionsUpdate]);
 
-  // No re-filtering or re-sorting needed — parent already handled it
+  // ===== DEFINE sortedStudents BEFORE the useEffect that uses it =====
   const sortedStudents = students;
 
   useEffect(() => {
@@ -197,13 +220,69 @@ const StudentTable = ({
     }
   }, [sortedStudents.length, onFilteredCountChange]);
 
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE (Cleaner version) =====
+  const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
+
+  // Effect 1: capture a snapshot whenever the CURRENT page becomes fully selected.
+  useEffect(() => {
+    const allVisibleSelectedNow = sortedStudents.length > 0 &&
+      sortedStudents.every(student => selectedStudents.includes(student.id));
+
+    if (!allVisibleSelectedNow) return;
+
+    const currentIds = sortedStudents.map(s => s.id);
+
+    setFullySelectedSnapshots(prev => {
+      const existing = prev.get(currentPage);
+      const isSame = existing &&
+        existing.length === currentIds.length &&
+        existing.every((id, i) => id === currentIds[i]);
+
+      if (isSame) return prev; // no-op, skip re-render
+
+      const next = new Map(prev);
+      next.set(currentPage, currentIds);
+      return next;
+    });
+  }, [sortedStudents, selectedStudents, currentPage]);
+
+  // Effect 2: prune any snapshot that's no longer fully selected.
+  useEffect(() => {
+    const selectedSet = new Set(selectedStudents);
+
+    setFullySelectedSnapshots(prev => {
+      let changed = false;
+      const next = new Map();
+
+      for (const [page, ids] of prev.entries()) {
+        const stillFull = ids.length > 0 && ids.every(id => selectedSet.has(id));
+        if (stillFull) {
+          next.set(page, ids);
+        } else {
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev; // no-op if nothing needed pruning
+    });
+  }, [selectedStudents]);
+
+  // Pure derived value: is any page's snapshot still fully intact?
+  const hasTriggeredSelectAll = useMemo(() => {
+    return fullySelectedSnapshots.size > 0;
+  }, [fullySelectedSnapshots]);
+
+  // ===== END SNAPSHOT LOGIC =====
+
   const handleClassChange = (className) => {
     setCurrentClass(className);
     toggleRow(null); 
     cancelEdit(); 
-    // Clear selection when changing grade
     if (onSelectedStudentsUpdate) onSelectedStudentsUpdate([]);
     if (onClearAllPages) onClearAllPages();
+    
+    // Clear snapshots when changing grade
+    setFullySelectedSnapshots(new Map());
     
     if (selectedSection && onSectionSelect) {
       onSectionSelect('');
@@ -409,11 +488,9 @@ const StudentTable = ({
     }
   };
 
-  // ===== UPDATED: Handle student selection with cross-page support =====
   const handleStudentSelect = (studentId, e) => {
     e.stopPropagation();
     
-    // If all pages are selected and we're unselecting one, clear the "all" state
     if (isAllPagesSelected && selectedStudents.includes(studentId)) {
       if (onClearAllPages) onClearAllPages();
       return;
@@ -426,18 +503,15 @@ const StudentTable = ({
     if (onSelectedStudentsUpdate) onSelectedStudentsUpdate(newSelected);
   };
 
-  // ===== UPDATED: Handle select all on current page with merge =====
   const handleSelectAll = () => {
     const allVisibleStudentIds = sortedStudents.map(student => student.id);
     const allSelected = allVisibleStudentIds.every(id => selectedStudents.includes(id));
     
     if (allSelected) {
-      // Deselect only current page, keep other pages
       const newSelected = selectedStudents.filter(id => !allVisibleStudentIds.includes(id));
       if (onSelectedStudentsUpdate) onSelectedStudentsUpdate(newSelected);
       if (newSelected.length === 0 && onClearAllPages) onClearAllPages();
     } else {
-      // Merge current page into existing cross-page selection
       const newSelected = [...new Set([...selectedStudents, ...allVisibleStudentIds])];
       if (onSelectedStudentsUpdate) onSelectedStudentsUpdate(newSelected);
     }
@@ -446,70 +520,74 @@ const StudentTable = ({
   const allVisibleSelected = sortedStudents.length > 0 && 
     sortedStudents.every(student => selectedStudents.includes(student.id));
 
-  const allOnPageSelected = allVisibleSelected;
-
-    // ===== UPDATED: Info text without page number =====
   const computedInfoText = (() => {
-    // All students selected (either via button or manually selecting every row)
     if (selectedStudents.length === totalStudentCount && totalStudentCount > 0) 
       return `All ${totalStudentCount} students selected`;
     if (selectedStudents.length > 0) return `${selectedStudents.length} student/s selected`;
     return '';
   })();
 
-  // ===== UPDATED: Select all banner with new constraints =====
+  // ===== UPDATED: selectAllBanner with snapshot-based logic =====
   const selectAllBanner = (() => {
-  // All records selected AND multiple pages exist — show Clear all
-  if (selectedStudents.length === totalStudentCount && totalStudentCount > 0 && totalStudentCount > sortedStudents.length) {
-    return (
-      <button
-        onClick={onClearAllPages}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
-        style={{ 
-          background: '#0F6B58', 
-          border: '1px solid #0F6B58', 
-          borderRadius: '999px', 
-          cursor: 'pointer', 
-          color: 'white', 
-          fontSize: '0.85rem', 
-          fontWeight: 600, 
-          padding: '6px 12px', 
-          textDecoration: 'none',
-          transition: 'background 0.2s ease'
-        }}
-      >
-        Clear all
-      </button>
-    );
-  }
-  // Some selected but not all, and more pages exist — show + Select all
-  if (selectedStudents.length > 0 && totalStudentCount > sortedStudents.length) {
-    return (
-      <button
-        onClick={onSelectAllPages}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
-        style={{ 
-          background: '#0F6B58', 
-          border: '1px solid #0F6B58', 
-          borderRadius: '999px', 
-          cursor: 'pointer', 
-          color: 'white', 
-          fontSize: '0.85rem', 
-          fontWeight: 600, 
-          padding: '6px 12px', 
-          textDecoration: 'none',
-          transition: 'background 0.2s ease'
-        }}
-      >
-        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-        Select all {totalStudentCount} students
-      </button>
-    );
-  }
-  return null;
-})();
+    // Check if any page has been fully selected (using snapshots)
+    const hasAnyPageFullySelected = hasTriggeredSelectAll;
+    
+    const allPagesSelected = selectedStudents.length === totalStudentCount && totalStudentCount > 0;
+    const hasMorePages = totalStudentCount > sortedStudents.length;
+
+    // If all pages are already selected, show "Clear all"
+    if (allPagesSelected && hasMorePages) {
+      return (
+        <button
+          onClick={onClearAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{ 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+
+    // Show "Select all" if ANY page has been fully selected AND there are more pages
+    if (hasAnyPageFullySelected && hasMorePages && !allPagesSelected) {
+      return (
+        <button
+          onClick={onSelectAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{ 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {totalStudentCount} students
+        </button>
+      );
+    }
+
+    return null;
+  })();
 
   const renderEditInput = (fieldName, type = 'text') => (
     <input
@@ -601,6 +679,7 @@ const StudentTable = ({
     return student[fieldName] || '';
   };
 
+  // ===== RENDER ACTION BUTTONS (Save/Cancel) =====
   const renderActionButtons = (student) => (
     <div className={`${styles.editActions} action-button`}>
       <button 
@@ -622,23 +701,7 @@ const StudentTable = ({
     </div>
   );
 
-  const renderEditCell = (student) => (
-    <div className={styles.editCell}>
-      {editingStudent === student.id ? (
-        renderActionButtons(student)
-      ) : (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faPenToSquare} 
-            onClick={(e) => handleEditClick(student, e)}
-            className="action-button"
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  // ===== UPDATED: renderExpandedContent with close button =====
+  // ===== RENDER EXPANDED CONTENT =====
   const renderExpandedContent = (student) => {
     const addedAt = formatDateTimeLocal(student.created_at);
     const updatedAt = student.updated_at ? formatDateTimeLocal(student.updated_at) : 'Never updated';
@@ -670,7 +733,6 @@ const StudentTable = ({
         className={`${styles.studentCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ✅ Close button - collapses the expanded row */}
         <button
           className={styles.closeExpandBtn}
           onClick={(e) => {
@@ -682,54 +744,59 @@ const StudentTable = ({
           ✕
         </button>
 
-        <div className={styles.studentHeader}>
-          {formatStudentName(student)}
-        </div>
-      
-        <div className={styles.details}>
-          <div>
-            <div className={styles.studentInfo}>
-              <strong>Student Details</strong>
-            </div>
-            <div className={styles.studentInfo}>LRN: {student.lrn}</div>
-            <div className={styles.studentInfo}>Grade & Section: {student.grade} - {student.section}</div>
-            <div className={styles.studentInfo}>Full Name: {formatStudentName(student)}</div>
-            <div className={styles.studentInfo}>Email: {formatNA(student.email)}</div>
-            <div className={styles.studentInfo}>Phone: {formatNA(student.phone_number)}</div>
-          </div>
+        <div className={styles.expandedLayout}>
+          {renderProfileCircle(student, styles.profileLarge)}
 
-          <div>
-            <div className={styles.studentInfo}>
-              <strong>Guardian Information</strong>
+          <div className={styles.cardBody}>
+            <div className={styles.studentHeader}>
+              {formatStudentName(student)}
             </div>
-            <div className={styles.studentInfo}>
-              Name: {formatNA(student.guardian_first_name)} {(student.guardian_middle_name)} {formatNA(student.guardian_last_name)}
-            </div>
-            <div className={styles.studentInfo}>
-              Phone: {formatNA(student.guardian_phone_number)}
-            </div>
-            <div className={styles.studentInfo}>
-              Email: {formatNA(student.guardian_email)}
-            </div>
-          </div>
+            <div className={styles.details}>
+              <div>
+                <div className={styles.studentInfo}>
+                  <strong>Student Details</strong>
+                </div>
+                <div className={styles.studentInfo}>LRN: {student.lrn}</div>
+                <div className={styles.studentInfo}>Grade & Section: {student.grade} - {student.section}</div>
+                <div className={styles.studentInfo}>Full Name: {formatStudentName(student)}</div>
+                <div className={styles.studentInfo}>Email: {formatNA(student.email)}</div>
+                <div className={styles.studentInfo}>Phone: {formatNA(student.phone_number)}</div>
+              </div>
 
-          <div>
-            <div className={styles.studentInfo}>
-              <strong>Record Information</strong>
-            </div>
-            <div className={styles.studentInfo}>
-              Added: {addedAt}
-            </div>
-            <div className={styles.studentInfo}>
-              Last Updated: {updatedAt}
-            </div>
-            <div className={styles.studentInfo}>
-              Last Updated By: {updatedByName}
-              {student.updated_by && student.updated_by_user && (
-                <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>
-                  ({student.updated_by_user.username || student.updated_by_user.email})
-                </span>
-              )}
+              <div>
+                <div className={styles.studentInfo}>
+                  <strong>Guardian Information</strong>
+                </div>
+                <div className={styles.studentInfo}>
+                  Name: {formatNA(student.guardian_first_name)} {(student.guardian_middle_name)} {formatNA(student.guardian_last_name)}
+                </div>
+                <div className={styles.studentInfo}>
+                  Phone: {formatNA(student.guardian_phone_number)}
+                </div>
+                <div className={styles.studentInfo}>
+                  Email: {formatNA(student.guardian_email)}
+                </div>
+              </div>
+
+              <div>
+                <div className={styles.studentInfo}>
+                  <strong>Record Information</strong>
+                </div>
+                <div className={styles.studentInfo}>
+                  Added: {addedAt}
+                </div>
+                <div className={styles.studentInfo}>
+                  Last Updated: {updatedAt}
+                </div>
+                <div className={styles.studentInfo}>
+                  Last Updated By: {updatedByName}
+                  {student.updated_by && student.updated_by_user && (
+                    <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>
+                      ({student.updated_by_user.username || student.updated_by_user.email})
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -787,6 +854,7 @@ const StudentTable = ({
     minWidth: `${minWidth}px`
   });
 
+  // ===== TABLE COLUMNS - SELECT COLUMN IS FIRST =====
   const tableColumns = useMemo(() => [
     {
       key: 'select',
@@ -794,13 +862,12 @@ const StudentTable = ({
       headerStyle: withColumnWidth('5%', 40),
       cellStyle: withColumnWidth('5%', 40),
       renderHeader: () => (
-        <div className={styles.icon} onClick={handleSelectAll}>
-          <FontAwesomeIcon 
-            icon={allVisibleSelected ? fasCircle : farCircle} 
-            style={{ 
-              cursor: 'pointer',
-              color: allVisibleSelected ? '#0f6b58' : '' 
-            }}
+        <div className={styles.checkboxWrapper}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={allVisibleSelected}
+            onChange={handleSelectAll}
           />
         </div>
       ),
@@ -808,23 +875,33 @@ const StudentTable = ({
         const isSelected = selectedStudents.includes(row.id);
 
         return (
-          <div className={styles.icon} onClick={(e) => handleStudentSelect(row.id, e)}>
-            <FontAwesomeIcon 
-              icon={isSelected ? fasCircle : farCircle} 
-              style={{ 
-                cursor: 'pointer', 
-                color: isSelected ? '#0f6b58' : '' 
-              }}
+          <div className={styles.checkboxWrapper}>
+            <input
+              type="checkbox"
+              className={styles.checkbox}
+              checked={isSelected}
+              onChange={(e) => handleStudentSelect(row.id, e)}
             />
           </div>
         );
       }
     },
     {
+      key: 'profile',
+      label: 'PROFILE',
+      headerStyle: withColumnWidth('5%', 56),
+      cellStyle: withColumnWidth('5%', 56),
+      renderCell: ({ row }) => (
+        <div className={styles.profileCellWrapper}>
+          {renderProfileCircle(row, styles.profileSmall)}
+        </div>
+      )
+    },
+    {
       key: 'lrn',
       label: 'LRN',
-      headerStyle: withColumnWidth('12%', 100),
-      cellStyle: withColumnWidth('12%', 100),
+      headerStyle: withColumnWidth('20%', 100),
+      cellStyle: withColumnWidth('20%', 100),
       renderCell: ({ row }) => renderField(row, 'lrn')
     },
     {
@@ -868,42 +945,40 @@ const StudentTable = ({
       renderCell: ({ row }) => renderField(row, 'section')
     },
     {
-      key: 'qr_code',
-      label: 'QR CODE',
+      key: 'actions',
+      label: 'ACTIONS',
       headerStyle: withColumnWidth('8%', 70),
       cellStyle: withColumnWidth('8%', 70),
-      renderCell: ({ row }) => (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faQrcode} 
-            onClick={(e) => handleQRCodeClickWithEvent(row, e)} 
-            className="action-button"
-            style={{ cursor: 'pointer' }}
+      renderCell: ({ row }) => {
+        // ===== IF EDITING THIS ROW, SHOW SAVE/CANCEL BUTTONS =====
+        if (editingStudent === row.id) {
+          return renderActionButtons(row);
+        }
+
+        // ===== OTHERWISE, SHOW THE KEbab MENU =====
+        return (
+          <ActionsMenu
+            actions={[
+              { 
+                label: 'QR Code', 
+                icon: faQrcode, 
+                onClick: (e) => handleQRCodeClickWithEvent(row, e) 
+              },
+              { 
+                label: 'Edit', 
+                icon: faPenToSquare, 
+                onClick: (e) => handleEditClick(row, e) 
+              },
+              { 
+                label: 'Delete', 
+                icon: faTrashCan, 
+                onClick: (e) => handleDeleteClickWithEvent(row, e), 
+                variant: 'danger' 
+              },
+            ]}
           />
-        </div>
-      )
-    },
-    {
-      key: 'edit',
-      label: 'EDIT',
-      headerStyle: withColumnWidth('8%', 70),
-      cellStyle: withColumnWidth('8%', 70),
-      renderCell: ({ row }) => renderEditCell(row)
-    },
-    {
-      key: 'delete',
-      label: 'DELETE',
-      headerStyle: withColumnWidth('8%', 70),
-      cellStyle: withColumnWidth('8%', 70),
-      renderCell: ({ row }) => (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faTrashCan} 
-            className="action-button"
-            onClick={(e) => handleDeleteClickWithEvent(row, e)}
-          />
-        </div>
-      )
+        );
+      }
     }
   ], [
     allVisibleSelected,
@@ -911,7 +986,10 @@ const StudentTable = ({
     sectionsToShowInDropdown,
     selectedSection,
     renderField,
-    renderEditCell
+    renderActionButtons,
+    editingStudent,
+    saving,
+    editFormData
   ]);
 
   return (

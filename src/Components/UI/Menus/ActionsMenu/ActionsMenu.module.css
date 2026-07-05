@@ -1,0 +1,73 @@
+.trigger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+  color: #6a7788;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.trigger:hover {
+  color: #0f6b58;
+  background-color: rgba(15, 107, 88, 0.08);
+}
+
+.menu {
+  position: fixed;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid #e0e6e3;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 35, 58, 0.15);
+  padding: 4px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #1a2332;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.menuItem:hover:not(:disabled) {
+  background-color: #edf7f3;
+}
+
+.menuItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menuItemIcon {
+  width: 14px;
+  color: #6a7788;
+}
+
+.danger {
+  color: #d32f2f;
+}
+
+.danger .menuItemIcon {
+  color: #d32f2f;
+}
+
+.danger:hover:not(:disabled) {
+  background-color: #ffebee;
+}

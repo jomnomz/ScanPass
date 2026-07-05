@@ -290,7 +290,7 @@ function Table({
 		});
 	};
 
-	// ===== UPDATED: getPaginationMargin with new constraints =====
+	// ===== UPDATED: getPaginationMargin with fixed logic =====
 	const getPaginationMargin = () => {
 		if (!paginationContent) return '0px';
 		
@@ -304,7 +304,7 @@ function Table({
 		if (visibleSelectedCount >= totalRowsOnPage && totalRowsOnPage > 0) return '103px';
 		
 		// 4. Some rows selected (partial — including cross-page selections)
-		return '313px';
+		return '305px';
 	};
 
 	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;

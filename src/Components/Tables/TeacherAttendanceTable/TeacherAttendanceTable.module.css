@@ -309,29 +309,29 @@
 }
 
 /* REPLACE the current statusPill block with this */
-.statusPill {
+
+.status {
   display: inline-block;
-  text-align: center;
-  min-width: 70px;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+  min-width: 70px;
+  text-align: center;
 }
 
 .statusPresent {
-  background-color: #28a745;
-  color: #fff;
+  background-color: #10b981; /* Green - matches Active status */
 }
 
 .statusLate {
-  background-color: #ffc107;
-  color: #000;
+  background-color: #f59e0b; /* Orange/Amber - matches Pending status */
 }
 
 .statusAbsent {
-  background-color: #dc3545;
-  color: #fff;
+  background-color: #ef4444; /* Red - matches Inactive status */
 }
 /* ── Responsive ── */
 @media (max-width: 1024px) {

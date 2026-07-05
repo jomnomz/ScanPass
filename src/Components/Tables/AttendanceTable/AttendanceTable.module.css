@@ -29,9 +29,9 @@
   margin-bottom: 5px;
 }
 
-/* ===== EXPANDED ROW STYLING - MATCHES STUDENTTABLE ===== */
+/* ===== EXPANDED ROW STYLING ===== */
 .attendanceCard {
-  position: relative;  /* ← ADD THIS LINE */
+  position: relative;
   background-color: #edf7f3;
   border: 1px solid #cae6dd;
   box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
@@ -109,6 +109,31 @@
   background-color: inherit;
 }
 
+/* ===== STATUS PILL STYLES - MATCHES TEACHER TABLE ===== */
+.status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+  min-width: 70px;
+  text-align: center;
+}
+
+.statusPresent {
+  background-color: #10b981; /* Green - matches Active status */
+}
+
+.statusLate {
+  background-color: #f59e0b; /* Orange/Amber - matches Pending status */
+}
+
+.statusAbsent {
+  background-color: #ef4444; /* Red - matches Inactive status */
+}
+
 /* ===== LOADING & ERROR STATES ===== */
 .loading,
 .error,
@@ -156,40 +181,6 @@
   font-style: italic;
   text-align: center;
   padding: 40px;
-}
-
-/* ===== STATUS BADGES ===== */
-.statusLate {
-  background-color: #ffc107;
-  color: #000;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.statusPresent {
-  background-color: #28a745;
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.statusAbsent {
-  background-color: #dc3545;
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.status {
-  display: inline-block;
-  text-align: center;
-  min-width: 70px;
 }
 
 /* ===== HEADER FILTERS ===== */
@@ -387,8 +378,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: #1a2332;  /* Dark navy/black circle */
-  color: #ffffff;              /* White X */
+  background-color: #1a2332;
+  color: #ffffff;
   border: none;
   font-size: 14px;
   font-weight: 600;
@@ -403,16 +394,13 @@
 }
 
 .closeExpandBtn:hover {
-  background-color: #2d3a4f;  /* Slightly lighter on hover */
+  background-color: #2d3a4f;
   transform: scale(1.05);
 }
 
 .closeExpandBtn:active {
   transform: scale(0.95);
 }
-
-
-
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1400px) {

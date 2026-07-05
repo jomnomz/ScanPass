@@ -425,7 +425,7 @@ function TeacherAttendanceTable({
         const statusMeta = getStatusMeta(row.status);
 
         return (
-          <span className={`${styles.statusPill} ${statusMeta.className}`}>
+          <span className={`${styles.status} ${statusMeta.className}`}>
             {statusMeta.text}
           </span>
         );
