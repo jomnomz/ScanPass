@@ -6,14 +6,14 @@ import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { TeacherService } from '../../../Utils/EntityService'; 
 import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
-import { apiClient } from '../../../config/api.js'; // Import apiClient
+import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
+import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
+import { apiClient } from '../../../config/api.js';
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
 import { 
   faPenToSquare, 
   faTrashCan, 
-  faCircle as fasCircle, 
   faPlus,
   faPaperPlane,
   faUserSlash,
@@ -26,7 +26,7 @@ import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 
-console.log('🔄 TeacherTable.jsx LOADED - Updated with cross-page selection');
+console.log('🔄 TeacherTable.jsx LOADED - Updated with profile column and checkboxes');
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -41,6 +41,28 @@ const formatDateTimeLocal = (dateString) => {
     console.error('Error formatting date:', dateString, error);
     return 'N/A';
   }
+};
+
+// ===== SHARED PROFILE CIRCLE RENDERER =====
+const renderProfileCircle = (teacher, sizeClassName) => {
+  const { bg, text } = getProfileColor(teacher.id ?? `${teacher.first_name}${teacher.last_name}`);
+
+  if (teacher.photo_url) {
+    return (
+      <img
+        src={teacher.photo_url}
+        alt={formatTeacherName(teacher)}
+        className={sizeClassName}
+        style={{ objectFit: 'cover' }}
+      />
+    );
+  }
+
+  return (
+    <div className={sizeClassName} style={{ backgroundColor: bg, color: text }}>
+      {getProfileInitial(teacher.first_name)}
+    </div>
+  );
 };
 
 const TeacherTable = ({ 
@@ -82,6 +104,9 @@ const TeacherTable = ({
   const teacherService = useMemo(() => new TeacherService(), []);
   const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
 
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
+  const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
+
   // Reset page when filters change
   useEffect(() => {
     const current = { selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter };
@@ -94,6 +119,8 @@ const TeacherTable = ({
     if (changed) {
       onPageChange(1);
       onClearAllPages();
+      // Clear snapshots when filters change
+      setFullySelectedSnapshots(new Map());
       filterRef.current = current;
     }
   }, [selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
@@ -229,6 +256,56 @@ const TeacherTable = ({
   const allOnPageSelected = paginatedTeachers.length > 0 &&
     paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
 
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE (mirroring StudentTable) =====
+  // Effect 1: capture a snapshot whenever the CURRENT page becomes fully selected.
+  useEffect(() => {
+    const allVisibleSelectedNow = paginatedTeachers.length > 0 &&
+      paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
+
+    if (!allVisibleSelectedNow) return;
+
+    const currentIds = paginatedTeachers.map(t => t.id);
+
+    setFullySelectedSnapshots(prev => {
+      const existing = prev.get(currentPage);
+      const isSame = existing &&
+        existing.length === currentIds.length &&
+        existing.every((id, i) => id === currentIds[i]);
+
+      if (isSame) return prev;
+
+      const next = new Map(prev);
+      next.set(currentPage, currentIds);
+      return next;
+    });
+  }, [paginatedTeachers, selectedTeachers, currentPage]);
+
+  // Effect 2: prune any snapshot that's no longer fully selected.
+  useEffect(() => {
+    const selectedSet = new Set(selectedTeachers);
+
+    setFullySelectedSnapshots(prev => {
+      let changed = false;
+      const next = new Map();
+
+      for (const [page, ids] of prev.entries()) {
+        const stillFull = ids.length > 0 && ids.every(id => selectedSet.has(id));
+        if (stillFull) {
+          next.set(page, ids);
+        } else {
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [selectedTeachers]);
+
+  // Pure derived value: is any page's snapshot still fully intact?
+  const hasTriggeredSelectAll = useMemo(() => {
+    return fullySelectedSnapshots.size > 0;
+  }, [fullySelectedSnapshots]);
+
   const computedInfoText = (() => {
     if (selectedTeachers.length === sortedTeachers.length && sortedTeachers.length > 0)
       return `All ${sortedTeachers.length} teachers selected`;
@@ -236,34 +313,67 @@ const TeacherTable = ({
     return '';
   })();
 
+  // ===== UPDATED: selectAllBanner with snapshot-based logic (mirroring StudentTable) =====
   const selectAllBanner = (() => {
-    if (selectedTeachers.length === sortedTeachers.length && sortedTeachers.length > 0 && sortedTeachers.length > paginatedTeachers.length) {
+    const hasAnyPageFullySelected = hasTriggeredSelectAll;
+    const allPagesSelected = selectedTeachers.length === sortedTeachers.length && sortedTeachers.length > 0;
+    const hasMorePages = sortedTeachers.length > paginatedTeachers.length;
+
+    // If all pages are already selected, show "Clear all"
+    if (allPagesSelected && hasMorePages) {
       return (
-        <button onClick={onClearAllPages}
+        <button
+          onClick={onClearAllPages}
           onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{ background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px', cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600, padding: '6px 12px', transition: 'background 0.2s ease' }}>
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{ 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
           Clear all
         </button>
       );
     }
-    if (selectedTeachers.length > 0 && sortedTeachers.length > paginatedTeachers.length) {
+
+    // Show "Select all" if ANY page has been fully selected AND there are more pages
+    if (hasAnyPageFullySelected && hasMorePages && !allPagesSelected) {
       return (
-        <button onClick={onSelectAllPages}
+        <button
+          onClick={onSelectAllPages}
           onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-          style={{ background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px', cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600, padding: '6px 12px', transition: 'background 0.2s ease' }}>
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{ 
+            background: '#0F6B58', 
+            border: '1px solid #0F6B58', 
+            borderRadius: '999px', 
+            cursor: 'pointer', 
+            color: 'white', 
+            fontSize: '0.85rem', 
+            fontWeight: 600, 
+            padding: '6px 12px', 
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
           <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
           Select all {sortedTeachers.length} teachers
         </button>
       );
     }
+
     return null;
   })();
 
-  const shouldHandleRowClick = (editingId, target) => {
-    return !editingId || target.closest('.action-button') || target.closest('input') || target.closest('select') || target.closest('button');
-  };
+  // ===== REMOVED: local broken shouldHandleRowClick - now imported from TableHelpers =====
 
   const handleRowClick = (teacherId, e) => {
     if (shouldHandleRowClick(editingTeacher, e.target)) toggleRow(teacherId);
@@ -297,19 +407,23 @@ const TeacherTable = ({
 
   const handleTeacherSelect = (teacherId, e) => {
     e.stopPropagation();
+    
     if (isAllPagesSelected && selectedTeachers.includes(teacherId)) {
       if (onClearAllPages) onClearAllPages();
       return;
     }
+    
     const newSelected = selectedTeachers.includes(teacherId)
       ? selectedTeachers.filter(id => id !== teacherId)
       : [...selectedTeachers, teacherId];
+    
     if (onSelectedTeachersUpdate) onSelectedTeachersUpdate(newSelected);
   };
 
   const handleSelectAll = () => {
     const allVisibleTeacherIds = paginatedTeachers.map(t => t.id);
     const allSelected = allVisibleTeacherIds.every(id => selectedTeachers.includes(id));
+    
     if (allSelected) {
       const newSelected = selectedTeachers.filter(id => !allVisibleTeacherIds.includes(id));
       if (onSelectedTeachersUpdate) onSelectedTeachersUpdate(newSelected);
@@ -511,8 +625,7 @@ const TeacherTable = ({
     return fieldName === 'email_address' || fieldName === 'phone_no' ? formatNA(teacher[fieldName]) : teacher[fieldName];
   };
 
-  // ===== REMOVED: renderEditCell - now using ActionsMenu =====
-
+  // ===== RENDER EXPANDED ROW WITH PROFILE =====
   const renderExpandedRow = (teacher) => {
     const addedAt = formatDateTimeLocal(teacher.created_at);
     const updatedAt = teacher.updated_at ? formatDateTimeLocal(teacher.updated_at) : 'Never updated';
@@ -562,34 +675,40 @@ const TeacherTable = ({
           ✕
         </button>
 
-        <div className={styles.teacherHeader}>{formatTeacherName(teacher)}</div>
-        <div className={styles.details}>
-          <div>
-            <div className={styles.teacherInfo}><strong>Teacher Details</strong></div>
-            <div className={styles.teacherInfo}>Employee ID: {teacher.employee_id}</div>
-            <div className={styles.teacherInfo}>Full Name: {formatTeacherName(teacher)}</div>
-            <div className={styles.teacherInfo}>Email: {formatNA(teacher.email_address)}</div>
-            <div className={styles.teacherInfo}>Phone: {formatNA(teacher.phone_no)}</div>
-            <div className={styles.teacherInfo}>Status: {formatStatusText(teacher.status)}</div>
-          </div>
-          <div>
-            <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
-            <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
-            <div className={styles.teacherInfo}>Teaching Sections: {assignments.teachingSections}</div>
-            <div className={styles.teacherInfo}>Adviser Section: {assignments.adviserDisplay}</div>
-          </div>
-          <div>
-            <div className={styles.teacherInfo}><strong>Record Information</strong></div>
-            {teacher.status === 'pending' && <div className={styles.teacherInfo}>Invitation Sent: {invitedAt}</div>}
-            <div className={styles.teacherInfo}>Added: {addedAt}</div>
-            <div className={styles.teacherInfo}>Last Updated: {updatedAt}</div>
-            <div className={styles.teacherInfo}>
-              Last Updated By: {updatedByName}
-              {teacher.updated_by && teacher.updated_by_user && (
-                <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>
-                  ({teacher.updated_by_user.username || teacher.updated_by_user.email})
-                </span>
-              )}
+        <div className={styles.expandedLayout}>
+          {renderProfileCircle(teacher, styles.profileLarge)}
+
+          <div className={styles.cardBody}>
+            <div className={styles.teacherHeader}>{formatTeacherName(teacher)}</div>
+            <div className={styles.details}>
+              <div>
+                <div className={styles.teacherInfo}><strong>Teacher Details</strong></div>
+                <div className={styles.teacherInfo}>Employee ID: {teacher.employee_id}</div>
+                <div className={styles.teacherInfo}>Full Name: {formatTeacherName(teacher)}</div>
+                <div className={styles.teacherInfo}>Email: {formatNA(teacher.email_address)}</div>
+                <div className={styles.teacherInfo}>Phone: {formatNA(teacher.phone_no)}</div>
+                <div className={styles.teacherInfo}>Status: {formatStatusText(teacher.status)}</div>
+              </div>
+              <div>
+                <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
+                <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
+                <div className={styles.teacherInfo}>Teaching Sections: {assignments.teachingSections}</div>
+                <div className={styles.teacherInfo}>Adviser Section: {assignments.adviserDisplay}</div>
+              </div>
+              <div>
+                <div className={styles.teacherInfo}><strong>Record Information</strong></div>
+                {teacher.status === 'pending' && <div className={styles.teacherInfo}>Invitation Sent: {invitedAt}</div>}
+                <div className={styles.teacherInfo}>Added: {addedAt}</div>
+                <div className={styles.teacherInfo}>Last Updated: {updatedAt}</div>
+                <div className={styles.teacherInfo}>
+                  Last Updated By: {updatedByName}
+                  {teacher.updated_by && teacher.updated_by_user && (
+                    <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '8px' }}>
+                      ({teacher.updated_by_user.username || teacher.updated_by_user.email})
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -601,21 +720,44 @@ const TeacherTable = ({
 
   const columns = [
     {
-      key: 'select', label: '',
-      headerStyle: withColumnWidth('5%', 40), cellStyle: withColumnWidth('5%', 40),
+      key: 'select', 
+      label: '',
+      headerStyle: withColumnWidth('5%', 40), 
+      cellStyle: withColumnWidth('5%', 40),
       renderHeader: () => (
-        <div className={styles.icon} onClick={handleSelectAll}>
-          <FontAwesomeIcon icon={allOnPageSelected ? fasCircle : farCircle} style={{ cursor: 'pointer', color: allOnPageSelected ? '#0f6b58' : '' }} />
+        <div className={styles.checkboxWrapper}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={allOnPageSelected}
+            onChange={handleSelectAll}
+          />
         </div>
       ),
       renderCell: ({ row }) => {
         const isSelected = selectedTeachers.includes(row.id);
         return (
-          <div className={styles.icon} onClick={(e) => handleTeacherSelect(row.id, e)}>
-            <FontAwesomeIcon icon={isSelected ? fasCircle : farCircle} style={{ cursor: 'pointer', color: isSelected ? '#0f6b58' : '' }} />
+          <div className={styles.checkboxWrapper}>
+            <input
+              type="checkbox"
+              className={styles.checkbox}
+              checked={isSelected}
+              onChange={(e) => handleTeacherSelect(row.id, e)}
+            />
           </div>
         );
       }
+    },
+    {
+      key: 'profile',
+      label: 'PROFILE',
+      headerStyle: withColumnWidth('5%', 56),
+      cellStyle: withColumnWidth('5%', 56),
+      renderCell: ({ row }) => (
+        <div className={styles.profileCellWrapper}>
+          {renderProfileCircle(row, styles.profileSmall)}
+        </div>
+      )
     },
     { key: 'employee_id', label: 'EMPLOYEE ID', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'employee_id') },
     { key: 'first_name', label: 'FIRST NAME', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'first_name') },

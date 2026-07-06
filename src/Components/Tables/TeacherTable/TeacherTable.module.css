@@ -364,6 +364,152 @@
   transform: scale(0.95);
 }
 
+/* Add these to your TeacherTable.module.css */
+
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.profileCellWrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.profileLarge {
+  aspect-ratio: 1 / 1;
+  height: 180px;
+  align-self: stretch;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 4rem;
+  flex-shrink: 0;
+  min-width: 180px;
+  max-width: 150px;
+}
+
+.expandedLayout {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ===== CHECKBOX STYLES ===== */
+.checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #c7d2dd;
+  border-radius: 5px;
+  background-color: #ffffff;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.checkbox:hover {
+  border-color: #0f6b58;
+}
+
+.checkbox:checked {
+  background-color: #0f6b58;
+  border-color: #0f6b58;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5L6.5 11.5L12.5 4.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid #0f6b58;
+  outline-offset: 2px;
+}
+
+/* ===== CLOSE BUTTON - matches modal X style ===== */
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
+}
+
+/* Make sure teacherCard has position relative for close button */
+.teacherCard {
+  position: relative;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .details {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .teacherTableContainer {
+    overflow-x: auto;
+  }
+}
+
+/* Add these to your TeacherTable.module.css */
+
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.profileCellWrapper {
+  display: flex;
+  justify-content: center;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1400px) {
   .details {
