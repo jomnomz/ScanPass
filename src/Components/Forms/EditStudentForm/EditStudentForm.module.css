@@ -1,0 +1,102 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  gap: 16px;
+}
+
+.formRow .formGroup {
+  flex: 1;
+  min-width: 0;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+  color: #222;
+  background-color: #ffffff;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.select {
+  cursor: pointer;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: #FF4930;
+}
+
+.inputError:focus {
+  border-color: #FF4930;
+  box-shadow: 0 0 0 3px rgba(255, 73, 48, 0.1);
+}
+
+.fieldError {
+  color: #FF4930;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.noSectionsMessage {
+  padding: 12px 15px;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #999;
+  background-color: #fafafa;
+}
+
+.readOnlySection {
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.readOnlyLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.readOnlyInput {
+  background-color: #f4f4f4;
+  color: #888;
+  border-color: #eee;
+  cursor: not-allowed;
+}
