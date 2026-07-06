@@ -6,6 +6,8 @@ import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelper
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import QRCodeModal from '../../Modals/QRCodeModal/QRCodeModal';
 import QRCodeUpdateWarningModal from '../../Modals/QRCodeUpdateWarningModal/QRCodeUpdateWarningModal';
+import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
+import EditStudentForm from '../../Forms/EditStudentForm/EditStudentForm.jsx';
 import styles from './StudentTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faQrcode, faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -97,6 +99,13 @@ const StudentTable = ({
   const [error, setError] = useState(null);
   const [currentClass, setCurrentClass] = useState('all');
   
+  // ===== MODAL STATE MACHINE =====
+  // 'closed' | 'editing' | 'confirming'
+  const [editModalState, setEditModalState] = useState('closed');
+  const [editingEntity, setEditingEntity] = useState(null);
+  const [pendingCriticalUpdate, setPendingCriticalUpdate] = useState(null);
+  const [saveError, setSaveError] = useState('');
+  
   const { editingId: editingStudent, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
     students, 
     setStudents,
@@ -112,8 +121,6 @@ const StudentTable = ({
 
   const { success } = useToast();
   const { user, profile, loading: authLoading } = useAuth();
-  const [updateWarningOpen, setUpdateWarningOpen] = useState(false);
-  const [pendingUpdate, setPendingUpdate] = useState(null);
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
 
   const studentService = useMemo(() => new StudentService(), []);
@@ -305,54 +312,51 @@ const StudentTable = ({
     }
   };
 
+  // ===== UPDATED: Open modal instead of inline edit =====
   const handleEditClick = (student, e) => {
     e.stopPropagation();
     
-    console.log('✏️ Editing student:', {
+    console.log('✏️ Opening edit modal for student:', {
       id: student.id,
       name: `${student.first_name} ${student.last_name}`,
       grade: student.grade,
       section: student.section
     });
     
-    const studentForEdit = {
-      ...student,
+    const studentForEdit = { 
+      ...student, 
       grade: student.grade, 
-      section: student.section
+      section: student.section 
     };
     
     startEdit(studentForEdit);
-    toggleRow(null); 
+    setEditingEntity(student);
+    setEditModalState('editing');
+    setSaveError('');
+    toggleRow(null);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    updateEditField(name, value);
+  // ===== CLOSE MODAL =====
+  const handleCloseModal = () => {
+    setEditModalState('closed');
+    setEditingEntity(null);
+    cancelEdit();
+    setSaveError('');
   };
 
-  const handleSelectChange = (e) => {
-    const { name, value } = e.target;
+  // ===== HANDLE SAVE FROM MODAL =====
+  const handleEditFormSave = () => {
+    const student = editingEntity;
+    if (!student) return;
     
-    if (name === 'grade') {
-      const gradeSections = gradeSectionsMap[value] || [];
-      
-      if (editFormData.section && gradeSections.includes(editFormData.section)) {
-        updateEditField(name, value);
-      } else {
-        const firstSection = gradeSections.length > 0 ? gradeSections[0] : '';
-        updateEditField('section', firstSection);
-        updateEditField(name, value);
-      }
-    } else {
-      updateEditField(name, value);
+    setSaveError('');
+    
+    // Validate required fields
+    if (!editFormData.grade || !editFormData.section) {
+      setSaveError('Please select both grade and section');
+      return;
     }
-  };
 
-  const handleSaveEdit = async (studentId, e) => {
-    if (e) e.stopPropagation();
-    
-    const student = students.find(s => s.id === studentId);
-    
     const criticalFieldsChanged = 
       editFormData.lrn !== student.lrn ||
       editFormData.first_name !== student.first_name ||
@@ -361,10 +365,11 @@ const StudentTable = ({
       editFormData.section !== student.section;
 
     if (criticalFieldsChanged) {
-      setPendingUpdate({ studentId, student });
-      setUpdateWarningOpen(true);
+      // Swap to the warning modal instead of stacking it on top
+      setPendingCriticalUpdate({ studentId: student.id, student });
+      setEditModalState('confirming');
     } else {
-      await performStudentUpdate(studentId);
+      performStudentUpdate(student.id);
     }
   };
 
@@ -456,20 +461,39 @@ const StudentTable = ({
         if (refreshStudents) {
           await refreshStudents();
         }
+        // Close everything on success
+        setEditModalState('closed');
+        setEditingEntity(null);
+        setPendingCriticalUpdate(null);
       }
       
     } catch (error) {
       console.error('Update error:', error);
-      alert(`Error: ${error.message}`);
+      setSaveError(error.message || 'Failed to update student');
+      // Stay in editing state so user can fix and retry
+      setEditModalState('editing');
+      throw error;
     }
   };
 
-  const handleConfirmUpdate = async () => {
-    if (pendingUpdate) {
-      await performStudentUpdate(pendingUpdate.studentId);
-      setPendingUpdate(null);
-      setUpdateWarningOpen(false);
+  // ===== HANDLE CONFIRM CRITICAL UPDATE =====
+  const handleConfirmCriticalUpdate = async () => {
+    if (pendingCriticalUpdate) {
+      try {
+        await performStudentUpdate(pendingCriticalUpdate.studentId);
+        // performStudentUpdate handles closing on success
+      } catch (error) {
+        // Error handled in performStudentUpdate, which sets state back to 'editing'
+        // Just clear pending state
+        setPendingCriticalUpdate(null);
+      }
     }
+  };
+
+  // ===== HANDLE CANCEL CRITICAL UPDATE =====
+  const handleCancelCriticalUpdate = () => {
+    setPendingCriticalUpdate(null);
+    setEditModalState('editing'); // Go BACK to the edit form, not fully closed
   };
 
   const handleInputClick = (e) => {
@@ -589,87 +613,14 @@ const StudentTable = ({
     return null;
   })();
 
-  const renderEditInput = (fieldName, type = 'text') => (
-    <input
-      type={type}
-      name={fieldName}
-      value={editFormData[fieldName] || ''}
-      onChange={handleInputChange}
-      onClick={handleInputClick}
-      className={`${styles.editInput} ${validationErrors[fieldName] ? styles.errorInput : ''} edit-input`}
-    />
-  );
+  // ===== REMOVED: inline edit render functions (now using modal) =====
+  // renderEditInput, renderGuardianEditInput, renderGradeDropdown, 
+  // renderSectionDropdown, renderField, renderActionButtons are no longer needed
 
-  const renderGuardianEditInput = (fieldName, type = 'text') => (
-    <input
-      type={type}
-      name={fieldName}
-      value={editFormData[fieldName] || ''}
-      onChange={handleInputChange}
-      onClick={handleInputClick}
-      className={`${styles.editInput} ${validationErrors[fieldName] ? styles.errorInput : ''} edit-input`}
-      placeholder={`Guardian ${fieldName.replace('guardian_', '').replace('_', ' ')}`}
-    />
-  );
-
-  const renderGradeDropdown = () => (
-    <select
-      name="grade"
-      value={editFormData.grade || ''}
-      onChange={handleSelectChange}
-      onClick={handleInputClick}
-      className={`${styles.editSelect} ${validationErrors.grade ? styles.errorInput : ''} edit-input`}
-    >
-      {grades.map(grade => (
-        <option key={grade} value={grade}>
-          Grade {grade}
-        </option>
-      ))}
-    </select>
-  );
-
-  const renderSectionDropdown = () => {
-    const sections = availableSectionsForCurrentGrade;
-    
-    if (!editFormData.grade || sections.length === 0) {
-      return (
-        <div className={styles.noSectionsMessage}>
-          {!editFormData.grade ? 'Select a grade first' : 'No sections available for this grade'}
-        </div>
-      );
-    }
-    
-    return (
-      <select
-        name="section"
-        value={editFormData.section || ''}
-        onChange={handleSelectChange}
-        onClick={handleInputClick}
-        className={`${styles.editSelect} ${validationErrors.section ? styles.errorInput : ''} edit-input`}
-      >
-        {sections.map(section => (
-          <option key={section} value={section}>
-            {section}
-          </option>
-        ))}
-      </select>
-    );
-  };
-
-  const renderField = (student, fieldName, isEditable = true) => {
-    if (editingStudent === student.id && isEditable) {
-      if (fieldName === 'grade') {
-        return renderGradeDropdown();
-      } else if (fieldName === 'section') {
-        return renderSectionDropdown();
-      } else if (fieldName.startsWith('guardian_')) {
-        return renderGuardianEditInput(fieldName, fieldName.includes('email') ? 'email' : 'text');
-      }
-      return renderEditInput(fieldName, fieldName === 'email' ? 'email' : 'text');
-    }
-    
+  // ===== UPDATED: renderField now only shows display values =====
+  const renderField = (student, fieldName) => {
     if (fieldName === 'email' || fieldName === 'phone_number') {
-      return ''; 
+      return '';
     }
     
     if (fieldName.startsWith('guardian_')) {
@@ -678,28 +629,6 @@ const StudentTable = ({
     
     return student[fieldName] || '';
   };
-
-  // ===== RENDER ACTION BUTTONS (Save/Cancel) =====
-  const renderActionButtons = (student) => (
-    <div className={`${styles.editActions} action-button`}>
-      <button 
-        onClick={(e) => handleSaveEdit(student.id, e)}
-        disabled={saving || !editFormData.grade || !editFormData.section}
-        className={styles.saveBtn}
-      >
-        {saving ? 'Saving...' : 'Save'}
-      </button>
-      <button 
-        onClick={() => {
-          cancelEdit();
-        }}
-        disabled={saving}
-        className={styles.cancelBtn}
-      >
-        Cancel
-      </button>
-    </div>
-  );
 
   // ===== RENDER EXPANDED CONTENT =====
   const renderExpandedContent = (student) => {
@@ -844,10 +773,10 @@ const StudentTable = ({
     return ({ row }) => {
       return [
         styles.studentRow,
-        editingStudent === row.id ? styles.editingRow : ''
+        // No more editingRow class since we use modal
       ].filter(Boolean).join(' ');
     };
-  }, [editingStudent]);
+  }, []);
 
   const withColumnWidth = (width, minWidth) => ({
     width,
@@ -950,12 +879,6 @@ const StudentTable = ({
       headerStyle: withColumnWidth('8%', 70),
       cellStyle: withColumnWidth('8%', 70),
       renderCell: ({ row }) => {
-        // ===== IF EDITING THIS ROW, SHOW SAVE/CANCEL BUTTONS =====
-        if (editingStudent === row.id) {
-          return renderActionButtons(row);
-        }
-
-        // ===== OTHERWISE, SHOW THE KEbab MENU =====
         return (
           <ActionsMenu
             actions={[
@@ -986,10 +909,6 @@ const StudentTable = ({
     sectionsToShowInDropdown,
     selectedSection,
     renderField,
-    renderActionButtons,
-    editingStudent,
-    saving,
-    editFormData
   ]);
 
   return (
@@ -1031,21 +950,41 @@ const StudentTable = ({
         totalRowsOnPage={sortedStudents.length}
       />
 
+      {/* ===== EDIT MODAL - only open when in 'editing' state ===== */}
+      <EditEntityFormModal
+        isOpen={editModalState === 'editing'}
+        onClose={handleCloseModal}
+        title="Edit Student"
+        onSave={handleEditFormSave}
+        saving={saving}
+        saveDisabled={!editFormData.grade || !editFormData.section}
+        errorMessage={saveError}
+      >
+        <EditStudentForm
+          student={editingEntity}
+          formData={editFormData}
+          onFieldChange={updateEditField}
+          validationErrors={validationErrors}
+          gradeSectionsMap={gradeSectionsMap}
+          disabled={saving}
+        />
+      </EditEntityFormModal>
+
+      {/* ===== WARNING MODAL - only open when in 'confirming' state ===== */}
+      <QRCodeUpdateWarningModal
+        isOpen={editModalState === 'confirming'}
+        onClose={handleCancelCriticalUpdate}
+        student={pendingCriticalUpdate?.student}
+        onConfirm={handleConfirmCriticalUpdate}
+      />
+
+      {/* ===== QR CODE MODAL ===== */}
       <QRCodeModal
         isOpen={qrModalOpen}
         onClose={() => setQrModalOpen(false)}
         student={selectedStudent}
       />
 
-      <QRCodeUpdateWarningModal
-        isOpen={updateWarningOpen}
-        onClose={() => {
-          setUpdateWarningOpen(false);
-          setPendingUpdate(null);
-        }}
-        student={pendingUpdate?.student}
-        onConfirm={handleConfirmUpdate}
-      />
     </>
   );
 };

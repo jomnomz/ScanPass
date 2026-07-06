@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { grades } from '../../../Utils/TableHelpers';
-import { formatNA } from '../../../Utils/Formatters';
+import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import styles from './EditStudentForm.module.css';
-import ReportGmailerrorredIcon from '@mui/icons-material/ReportGmailerrorred';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCamera } from '@fortawesome/free-solid-svg-icons';
 
 function EditStudentForm({
   student,
@@ -12,6 +13,10 @@ function EditStudentForm({
   gradeSectionsMap = {},
   disabled = false,
 }) {
+  const fileInputRef = useRef(null);
+  // Local-only preview — no upload logic yet, just UI/UX placeholder until buckets exist.
+  const [previewUrl, setPreviewUrl] = useState(null);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     onFieldChange(name, value);
@@ -21,8 +26,6 @@ function EditStudentForm({
     const { value } = e.target;
     const sectionsForGrade = gradeSectionsMap[value] || [];
 
-    // If the current section isn't valid for the newly picked grade, reset it —
-    // mirrors the inline-edit behavior in StudentTable so both stay consistent.
     if (formData.section && sectionsForGrade.includes(formData.section)) {
       onFieldChange('grade', value);
     } else {
@@ -31,10 +34,57 @@ function EditStudentForm({
     }
   };
 
+  const handlePhotoClick = () => {
+    if (disabled) return;
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Preview only — actual upload wiring comes later once storage is set up.
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
+
   const availableSections = gradeSectionsMap[formData.grade] || [];
+
+  const { bg, text } = getProfileColor(
+    student?.id ?? `${formData.first_name}${formData.last_name}`
+  );
 
   return (
     <div className={styles.form}>
+      <div className={styles.photoSection}>
+        <button
+          type="button"
+          className={styles.photoCircleButton}
+          onClick={handlePhotoClick}
+          disabled={disabled}
+          aria-label="Change profile photo"
+        >
+          {previewUrl ? (
+            <img src={previewUrl} alt="Profile preview" className={styles.photoImage} />
+          ) : (
+            <div className={styles.photoPlaceholder} style={{ backgroundColor: bg, color: text }}>
+              {getProfileInitial(formData.first_name)}
+            </div>
+          )}
+          <div className={styles.photoOverlay}>
+            <FontAwesomeIcon icon={faCamera} />
+          </div>
+        </button>
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handlePhotoChange}
+          className={styles.hiddenFileInput}
+        />
+        <span className={styles.photoHint}>Click to change photo</span>
+      </div>
+
       <div className={styles.formGroup}>
         <label>LRN</label>
         <input
@@ -131,31 +181,35 @@ function EditStudentForm({
         </div>
       </div>
 
-      <div className={styles.readOnlySection}>
-        <div className={styles.readOnlyLabel}>Not editable yet</div>
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email || ''}
+            onChange={handleInputChange}
+            className={`${styles.input} ${validationErrors.email ? styles.inputError : ''}`}
+            disabled={disabled}
+          />
+          {validationErrors.email && (
+            <div className={styles.fieldError}>{validationErrors.email}</div>
+          )}
+        </div>
 
-        <div className={styles.formRow}>
-          <div className={styles.formGroup}>
-            <label>Email</label>
-            <input
-              type="text"
-              value={formatNA(student?.email)}
-              className={`${styles.input} ${styles.readOnlyInput}`}
-              disabled
-              readOnly
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Phone</label>
-            <input
-              type="text"
-              value={formatNA(student?.phone_number)}
-              className={`${styles.input} ${styles.readOnlyInput}`}
-              disabled
-              readOnly
-            />
-          </div>
+        <div className={styles.formGroup}>
+          <label>Phone</label>
+          <input
+            type="text"
+            name="phone_number"
+            value={formData.phone_number || ''}
+            onChange={handleInputChange}
+            className={`${styles.input} ${validationErrors.phone_number ? styles.inputError : ''}`}
+            disabled={disabled}
+          />
+          {validationErrors.phone_number && (
+            <div className={styles.fieldError}>{validationErrors.phone_number}</div>
+          )}
         </div>
       </div>
     </div>
