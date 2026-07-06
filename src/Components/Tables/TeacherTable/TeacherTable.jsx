@@ -10,13 +10,21 @@ import { apiClient } from '../../../config/api.js'; // Import apiClient
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircle as farCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPenToSquare, faTrashCan, faCircle as fasCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
-import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
+import { 
+  faPenToSquare, 
+  faTrashCan, 
+  faCircle as fasCircle, 
+  faPlus,
+  faPaperPlane,
+  faUserSlash,
+  faUserCheck
+} from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 import Table from '../Table/Table';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
+import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 
 console.log('🔄 TeacherTable.jsx LOADED - Updated with cross-page selection');
 
@@ -424,6 +432,44 @@ const TeacherTable = ({
     if (onSingleDeleteClick) onSingleDeleteClick(teacher);
   };
 
+  // ===== HELPER: Get status-based action for ActionsMenu =====
+  const getStatusAction = (teacher) => {
+    const status = (teacher.status || '').toLowerCase();
+
+    if (status === 'pending') {
+      return {
+        label: 'Resend Invite',
+        icon: faPaperPlane,
+        onClick: () => handleResendInvitation(teacher),
+      };
+    }
+
+    if (status === 'active') {
+      return {
+        label: 'Deactivate',
+        icon: faUserSlash,
+        onClick: () => handleDeactivateClick(teacher),
+        variant: 'danger',
+      };
+    }
+
+    if (status === 'inactive') {
+      return {
+        label: 'Reactivate',
+        icon: faUserCheck,
+        onClick: () => handleReactivateClick(teacher),
+      };
+    }
+
+    // No status / anything else -> plain Invite
+    return {
+      label: 'Invite',
+      icon: faPaperPlane,
+      onClick: (e) => handleInviteClick(teacher, e),
+      disabled: !teacher.email_address,
+    };
+  };
+
   const renderEditInput = (fieldName, type = 'text') => (
     <input type={type} name={fieldName} value={editFormData[fieldName] || ''}
       onChange={handleInputChange} onClick={handleInputClick}
@@ -465,20 +511,7 @@ const TeacherTable = ({
     return fieldName === 'email_address' || fieldName === 'phone_no' ? formatNA(teacher[fieldName]) : teacher[fieldName];
   };
 
-  const renderEditCell = (teacher) => (
-    <div className={styles.editCell}>
-      {editingTeacher === teacher.id ? (
-        <div className={`${styles.editActions} action-button`}>
-          <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(teacher.id, e); }} disabled={saving} className={styles.saveBtn}>{saving ? 'Saving...' : 'Save'}</button>
-          <button onClick={(e) => { e.stopPropagation(); cancelEdit(); }} disabled={saving} className={styles.cancelBtn}>Cancel</button>
-        </div>
-      ) : (
-        <div className={styles.icon}>
-          <FontAwesomeIcon icon={faPenToSquare} onClick={(e) => handleEditClick(teacher, e)} className="action-button" />
-        </div>
-      )}
-    </div>
-  );
+  // ===== REMOVED: renderEditCell - now using ActionsMenu =====
 
   const renderExpandedRow = (teacher) => {
     const addedAt = formatDateTimeLocal(teacher.created_at);
@@ -658,31 +691,32 @@ const TeacherTable = ({
       renderCell: ({ row }) => renderField(row, 'status', false)
     },
     {
-      key: 'invite', label: 'INVITE', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100),
+      key: 'actions',
+      label: 'ACTIONS',
+      headerStyle: withColumnWidth('10%', 100),
+      cellStyle: withColumnWidth('10%', 100),
       renderCell: ({ row }) => {
-        const isInviteDisabled = !row.email_address || row.status === 'active' || row.status === 'pending' || row.status === 'inactive';
+        const statusAction = getStatusAction(row);
+
         return (
-          <div className={styles.icon}>
-            <ForwardToInboxIcon sx={{ fontSize: 37, mb: -0.7 }} className="action-button"
-              style={{
-                cursor: isInviteDisabled ? 'default' : 'pointer',
-                color: row.status === 'pending' ? '#f59e0b' : row.status === 'active' ? '#10b981' : row.status === 'inactive' ? '#ef4444' : '',
-                opacity: isInviteDisabled ? 0.6 : 1
-              }}
-              title={row.status === 'pending' ? 'Invitation sent - pending account creation' : row.status === 'active' ? 'Account active' : row.status === 'inactive' ? 'Account suspended' : !row.email_address ? 'No email address' : 'Send account invitation'}
-              onClick={(e) => handleInviteClick(row, e)} />
-          </div>
+          <ActionsMenu
+            actions={[
+              statusAction,
+              {
+                label: 'Edit',
+                icon: faPenToSquare,
+                onClick: (e) => handleEditClick(row, e),
+              },
+              {
+                label: 'Delete',
+                icon: faTrashCan,
+                onClick: (e) => handleDeleteClick(row, e),
+                variant: 'danger',
+              },
+            ]}
+          />
         );
       }
-    },
-    { key: 'edit', label: 'EDIT', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderEditCell(row) },
-    {
-      key: 'delete', label: 'DELETE', headerStyle: withColumnWidth('8%', 88), cellStyle: withColumnWidth('8%', 88),
-      renderCell: ({ row }) => (
-        <div className={styles.icon}>
-          <FontAwesomeIcon icon={faTrashCan} className="action-button" onClick={(e) => handleDeleteClick(row, e)} />
-        </div>
-      )
     }
   ];
 
