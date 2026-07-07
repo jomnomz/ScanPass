@@ -18,7 +18,8 @@ import { useAuth } from '../../../Components/Authentication/AuthProvider/AuthPro
 import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
-import { apiClient } from '../../../config/api.js'; // Import apiClient
+import { apiClient } from '../../../config/api.js';
+import { supabase } from '../../../lib/supabase'; // Import supabase
 
 function AdminTeachers() {
   const { success, error: toastError } = useToast();
@@ -41,6 +42,48 @@ function AdminTeachers() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // ===== GRADES & SECTIONS DATA =====
+  const [gradesData, setGradesData] = useState([]);
+  const [sectionsData, setSectionsData] = useState([]);
+
+  const fetchGrades = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .order('id');
+
+      if (error) throw error;
+      setGradesData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading grades:', err);
+      toastError('Failed to load grades data');
+    }
+  }, [toastError]);
+
+  const fetchSections = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sections')
+        .select(`
+          *,
+          grade:grades(grade_level)
+        `)
+        .order('id');
+
+      if (error) throw error;
+      setSectionsData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading sections:', err);
+      toastError('Failed to load sections data');
+    }
+  }, [toastError]);
+
+  useEffect(() => {
+    fetchGrades();
+    fetchSections();
+  }, [fetchGrades, fetchSections]);
 
   // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
@@ -541,6 +584,8 @@ function AdminTeachers() {
           onSelectAllPages={handleSelectAllPages}
           onClearAllPages={handleClearAllPages}
           onFilteredTeachersUpdate={handleFilteredTeachersUpdate}
+          gradesData={gradesData}
+          sectionsData={sectionsData}
       />
 
       <InviteModal

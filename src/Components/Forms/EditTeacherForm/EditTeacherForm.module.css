@@ -1,0 +1,307 @@
+/* src/components/Forms/EditTeacherForm/EditTeacherForm.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  gap: 16px;
+}
+
+.formRow .formGroup {
+  flex: 1;
+  min-width: 0;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+  color: #222;
+  background-color: #ffffff;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.select {
+  cursor: pointer;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: #FF4930;
+}
+
+.fieldError {
+  color: #FF4930;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.noSectionsMessage {
+  padding: 12px 15px;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #999;
+  background-color: #fafafa;
+  display: flex;
+  align-items: center;
+}
+
+.photoSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.photoCircleButton {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: none;
+}
+
+.photoCircleButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.photoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  font-weight: 700;
+}
+
+.photoOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.photoCircleButton:hover .photoOverlay,
+.photoCircleButton:focus-visible .photoOverlay {
+  opacity: 1;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.photoHint {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+/* ===== Two-column grid for assignments + subjects ===== */
+.twoColumnGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 20px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.twoColumnGrid .sectionBlock {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ===== Section blocks (Teaching Assignments / Subjects) ===== */
+
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.emptyHint {
+  font-size: 13px;
+  color: #999;
+  font-style: italic;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #3B82F6;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #3B82F6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.addButton:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Assignment rows ===== */
+
+.assignmentRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background-color: #fafbfc;
+  flex-wrap: wrap;
+}
+
+.assignmentGradeSelect {
+  flex: 0 0 130px;
+}
+
+.assignmentSectionSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+.adviserLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.removeRowButton {
+  background: none;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.removeRowButton:hover:not(:disabled) {
+  background-color: #ffebee;
+}
+
+.removeRowButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Subjects ===== */
+
+.subjectAddRow {
+  display: flex;
+  gap: 10px;
+}
+
+.subjectAddRow .input {
+  flex: 1;
+}
+
+.subjectChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subjectChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
+  font-size: 13px;
+  color: #1a2332;
+}
+
+.subjectChip button {
+  background: none;
+  border: none;
+  color: #6a7788;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+.subjectChip button:hover:not(:disabled) {
+  color: #d32f2f;
+}

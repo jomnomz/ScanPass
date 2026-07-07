@@ -49,7 +49,9 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
         middle_name: entity.middle_name || '',
         last_name: entity.last_name,
         phone_no: entity.phone_no || '',
-        email_address: entity.email_address || ''
+        email_address: entity.email_address || '',
+        assignments: entity.assignments || [],
+        subjects: entity.subjects || []
       });
     } else if (entityType === 'gradeSection') {
       setEditFormData({

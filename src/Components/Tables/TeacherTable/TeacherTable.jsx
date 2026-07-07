@@ -25,8 +25,10 @@ import Table from '../Table/Table';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
+import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
+import EditTeacherForm from '../../Forms/EditTeacherForm/EditTeacherForm.jsx';
 
-console.log('🔄 TeacherTable.jsx LOADED - Updated with profile column and checkboxes');
+console.log('🔄 TeacherTable.jsx LOADED - Updated with edit modal');
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -80,6 +82,8 @@ const TeacherTable = ({
   onClearAllPages = () => {},
   onFilteredTeachersUpdate = () => {},
   selectedTeachers = [],
+  gradesData = [],
+  sectionsData = [],
 }) => {
 
   const { entities: teachers, loading, error, setEntities } = useTeachers();
@@ -87,6 +91,14 @@ const TeacherTable = ({
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const fetchAbortRef = useRef(null);
   const fetchTimeoutRef = useRef(null);
+
+  // ===== MODAL STATE MACHINE =====
+  // 'closed' | 'editing' | 'confirming'
+  const [editModalState, setEditModalState] = useState('closed');
+  const [editingEntity, setEditingEntity] = useState(null);
+  const [saveError, setSaveError] = useState('');
+  const [gradeSectionsMap, setGradeSectionsMap] = useState({});
+  const [allSubjects, setAllSubjects] = useState([]);
 
   const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
     teachers, setEntities, 'teacher', refreshTeachers
@@ -103,6 +115,60 @@ const TeacherTable = ({
 
   const teacherService = useMemo(() => new TeacherService(), []);
   const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
+
+  // ===== FETCH ALL SUBJECTS CATALOG =====
+  useEffect(() => {
+    const fetchAllSubjects = async () => {
+      try {
+        const response = await apiClient.get('/api/subjects'); // adjust to your real endpoint
+        const list = (response.data || []).map((s) => ({
+          code: s.subject_code,
+          name: s.subject_name,
+        }));
+        setAllSubjects(list);
+      } catch (err) {
+        console.error('Error fetching subject catalog:', err);
+      }
+    };
+    fetchAllSubjects();
+  }, []);
+
+  // ===== BUILD GRADE-SECTIONS MAP =====
+  useEffect(() => {
+    if (sectionsData.length > 0 && gradesData.length > 0) {
+      console.log('📋 Building grade-sections map for teachers...');
+      const map = {};
+      
+      const gradeIdToLevel = {};
+      gradesData.forEach(grade => {
+        gradeIdToLevel[grade.id] = grade.grade_level;
+      });
+      
+      sectionsData.forEach(section => {
+        const gradeLevel = gradeIdToLevel[section.grade_id];
+        if (gradeLevel) {
+          if (!map[gradeLevel]) {
+            map[gradeLevel] = [];
+          }
+          map[gradeLevel].push(section.section_name);
+        }
+      });
+      
+      // Sort sections for each grade
+      Object.keys(map).forEach(grade => {
+        map[grade] = map[grade].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      });
+      
+      console.log('📋 Teacher grade-sections map:', map);
+      setGradeSectionsMap(map);
+    }
+  }, [gradesData, sectionsData]);
+
+  useEffect(() => {
+  console.log('🔍 DEBUG - gradesData:', gradesData);
+  console.log('🔍 DEBUG - sectionsData:', sectionsData);
+  console.log('🔍 DEBUG - gradeSectionsMap:', gradeSectionsMap);
+}, [gradesData, sectionsData, gradeSectionsMap]);
 
   // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
   const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
@@ -373,16 +439,114 @@ const TeacherTable = ({
     return null;
   })();
 
-  // ===== REMOVED: local broken shouldHandleRowClick - now imported from TableHelpers =====
-
   const handleRowClick = (teacherId, e) => {
     if (shouldHandleRowClick(editingTeacher, e.target)) toggleRow(teacherId);
   };
 
+  // ===== HELPER: Build teacher edit data with assignments/subjects =====
+  const buildTeacherEditData = (teacher) => {
+    const assignmentsData = teacherAssignments[teacher.id] || {};
+
+    const assignments = (assignmentsData.sections || [])
+      .map((s) => ({
+        id: `existing-${s.section_id ?? s.section?.id ?? Math.random()}`,
+        grade: String(s.section?.grade?.grade_level ?? ''),
+        section: s.section?.section_name || '',
+        isAdviser: Boolean(s.is_adviser),
+      }))
+      .filter((row) => row.grade && row.section);
+
+    const subjects = (assignmentsData.subjects || [])
+      .map((s) => s.subject?.subject_code)
+      .filter(Boolean);
+
+    return { ...teacher, assignments, subjects };
+  };
+
+  // ===== UPDATED: Open modal instead of inline edit =====
   const handleEditClick = (teacher, e) => {
     e.stopPropagation();
-    startEdit(teacher);
+    
+    console.log('✏️ Opening edit modal for teacher:', {
+      id: teacher.id,
+      name: `${teacher.first_name} ${teacher.last_name}`
+    });
+    
+    const teacherForEdit = buildTeacherEditData(teacher);
+    
+    startEdit(teacherForEdit);
+    setEditingEntity(teacher);
+    setEditModalState('editing');
+    setSaveError('');
     toggleRow(null);
+  };
+
+  // ===== CLOSE MODAL =====
+  const handleCloseModal = () => {
+    setEditModalState('closed');
+    setEditingEntity(null);
+    cancelEdit();
+    setSaveError('');
+  };
+
+  // ===== HANDLE SAVE FROM MODAL =====
+  const handleEditFormSave = () => {
+    const teacher = editingEntity;
+    if (!teacher) return;
+    
+    setSaveError('');
+    
+    // Validate required fields
+    if (!editFormData.first_name || !editFormData.last_name) {
+      setSaveError('First name and last name are required');
+      return;
+    }
+
+    // For teachers, we don't have the same critical fields check as students
+    // But we still want to update the teacher
+    performTeacherUpdate(teacher.id);
+  };
+
+  const performTeacherUpdate = async (teacherId) => {
+    try {
+      const result = await saveEdit(
+        teacherId, 
+        null, 
+        async (id, data) => {
+          const updateData = {
+            employee_id: data.employee_id,
+            first_name: data.first_name,
+            middle_name: data.middle_name,
+            last_name: data.last_name,
+            email_address: data.email_address,
+            phone_no: data.phone_no,
+            updated_by: user?.id,
+            updated_at: new Date().toISOString()
+          };
+          
+          console.log('💾 Updating teacher:', updateData);
+          
+          const result = await teacherService.update(id, updateData);
+          return result;
+        }
+      );
+      
+      if (result.success) {
+        success('Teacher updated successfully');
+        if (refreshTeachers) {
+          await refreshTeachers();
+        }
+        // Close everything on success
+        setEditModalState('closed');
+        setEditingEntity(null);
+      }
+      
+    } catch (error) {
+      console.error('Update error:', error);
+      setSaveError(error.message || 'Failed to update teacher');
+      // Stay in editing state so user can fix and retry
+      setEditModalState('editing');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -391,19 +555,6 @@ const TeacherTable = ({
   };
 
   const handleInputClick = (e) => e.stopPropagation();
-
-  const handleSaveEdit = async (teacherId, e) => {
-    if (e) e.stopPropagation();
-    const result = await saveEdit(teacherId, null, (id, data) => teacherService.update(id, {
-      ...data, updated_by: user?.id, updated_at: new Date().toISOString()
-    }));
-    if (result.success) {
-      success('Teacher information updated successfully');
-      if (refreshTeachers) refreshTeachers();
-    } else {
-      console.error(result.error);
-    }
-  };
 
   const handleTeacherSelect = (teacherId, e) => {
     e.stopPropagation();
@@ -901,6 +1052,27 @@ const TeacherTable = ({
           getOptionValue: (gradeLevel) => String(gradeLevel),
         }}
       />
+
+      {/* ===== EDIT MODAL - only open when in 'editing' state ===== */}
+      <EditEntityFormModal
+        isOpen={editModalState === 'editing'}
+        onClose={handleCloseModal}
+        title="Edit Teacher"
+        onSave={handleEditFormSave}
+        saving={saving}
+        size="xl"
+        errorMessage={saveError}
+      >
+        <EditTeacherForm
+          teacher={editingEntity}
+          formData={editFormData}
+          onFieldChange={updateEditField}
+          validationErrors={validationErrors}
+          gradeSectionsMap={gradeSectionsMap}
+          availableSubjects={allSubjects}
+          disabled={saving}
+        />
+      </EditEntityFormModal>
     </div>
   );
 };
