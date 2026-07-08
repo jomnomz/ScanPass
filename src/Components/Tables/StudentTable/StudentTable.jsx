@@ -950,7 +950,6 @@ const StudentTable = ({
         totalRowsOnPage={sortedStudents.length}
       />
 
-      {/* ===== EDIT MODAL - only open when in 'editing' state ===== */}
       <EditEntityFormModal
         isOpen={editModalState === 'editing'}
         onClose={handleCloseModal}

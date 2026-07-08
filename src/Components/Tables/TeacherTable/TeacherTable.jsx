@@ -8,7 +8,7 @@ import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
 import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
-import { apiClient } from '../../../config/api.js';
+import { supabase } from '../../../lib/supabase';
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -27,6 +27,7 @@ import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
 import EditTeacherForm from '../../Forms/EditTeacherForm/EditTeacherForm.jsx';
+import { apiClient } from '../../../config/api.js';
 
 console.log('🔄 TeacherTable.jsx LOADED - Updated with edit modal');
 
@@ -116,12 +117,18 @@ const TeacherTable = ({
   const teacherService = useMemo(() => new TeacherService(), []);
   const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
 
-  // ===== FETCH ALL SUBJECTS CATALOG =====
+  // ===== FETCH ALL SUBJECTS CATALOG DIRECTLY FROM SUPABASE =====
   useEffect(() => {
     const fetchAllSubjects = async () => {
       try {
-        const response = await apiClient.get('/api/subjects'); // adjust to your real endpoint
-        const list = (response.data || []).map((s) => ({
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('subject_code, subject_name')
+          .order('subject_name');
+
+        if (error) throw error;
+
+        const list = (data || []).map((s) => ({
           code: s.subject_code,
           name: s.subject_name,
         }));
@@ -456,9 +463,13 @@ const TeacherTable = ({
       }))
       .filter((row) => row.grade && row.section);
 
+    // Subjects are now row objects (matching assignment rows), not plain code strings.
     const subjects = (assignmentsData.subjects || [])
-      .map((s) => s.subject?.subject_code)
-      .filter(Boolean);
+      .map((s) => ({
+        id: `existing-${s.subject_id ?? Math.random()}`,
+        code: s.subject?.subject_code || '',
+      }))
+      .filter((row) => row.code);
 
     return { ...teacher, assignments, subjects };
   };
@@ -547,11 +558,6 @@ const TeacherTable = ({
       // Stay in editing state so user can fix and retry
       setEditModalState('editing');
     }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    updateEditField(name, value);
   };
 
   const handleInputClick = (e) => e.stopPropagation();
@@ -735,12 +741,6 @@ const TeacherTable = ({
     };
   };
 
-  const renderEditInput = (fieldName, type = 'text') => (
-    <input type={type} name={fieldName} value={editFormData[fieldName] || ''}
-      onChange={handleInputChange} onClick={handleInputClick}
-      className={`${styles.editInput} ${validationErrors[fieldName] ? styles.errorInput : ''} edit-input`} />
-  );
-
   const renderStatusBadge = (status) => {
     if (!status || status.trim() === '') {
       return <span className={styles.statusBadge} style={{ backgroundColor: '#6c757d' }}>No Status</span>;
@@ -755,25 +755,13 @@ const TeacherTable = ({
     return <span className={styles.statusBadge} style={{ backgroundColor: config.color }}>{config.label}</span>;
   };
 
-  const renderStatusField = (teacher) => {
-    if (editingTeacher !== teacher.id) return renderStatusBadge(teacher.status);
-    const currentStatus = editFormData.status || teacher.status;
-    if (currentStatus === 'active') {
-      return <button className={styles.deactivateButton} onClick={(e) => { e.stopPropagation(); handleDeactivateClick(teacher); }} title="Deactivate account">Deactivate</button>;
+  // ===== UPDATED: renderField now only shows display values (no inline editing) =====
+  const renderField = (teacher, fieldName) => {
+    if (fieldName === 'status') return renderStatusBadge(teacher.status);
+    if (fieldName === 'email_address' || fieldName === 'phone_no') {
+      return formatNA(teacher[fieldName]);
     }
-    if (currentStatus === 'pending') {
-      return <button className={styles.resendButton} onClick={(e) => { e.stopPropagation(); handleResendInvitation(teacher); }} title="Resend invitation">Resend</button>;
-    }
-    if (currentStatus === 'inactive') {
-      return <button className={styles.reactivateButton} onClick={(e) => { e.stopPropagation(); handleReactivateClick(teacher); }} title="Reactivate account">Reactivate</button>;
-    }
-    return renderStatusBadge(currentStatus);
-  };
-
-  const renderField = (teacher, fieldName, isEditable = true) => {
-    if (fieldName === 'status') return renderStatusField(teacher);
-    if (editingTeacher === teacher.id && isEditable) return renderEditInput(fieldName, fieldName === 'email_address' ? 'email' : 'text');
-    return fieldName === 'email_address' || fieldName === 'phone_no' ? formatNA(teacher[fieldName]) : teacher[fieldName];
+    return teacher[fieldName] || '';
   };
 
   // ===== RENDER EXPANDED ROW WITH PROFILE =====
@@ -981,7 +969,7 @@ const TeacherTable = ({
             getOptionLabel={(option) => option.label} getOptionValue={(option) => option.value} />
         </div>
       ),
-      renderCell: ({ row }) => renderField(row, 'status', false)
+      renderCell: ({ row }) => renderField(row, 'status')
     },
     {
       key: 'actions',
@@ -1026,7 +1014,7 @@ const TeacherTable = ({
         tableLabel="Teacher records"
         onRowClick={({ row, event }) => handleRowClick(row.id, event)}
         rowClassName={({ row }) => {
-          return `${styles.teacherRow} ${editingTeacher === row.id ? styles.editingRow : ''}`;
+          return `${styles.teacherRow}`;
         }}
         isRowSelected={({ row }) => selectedTeachers.includes(row.id)}
         expandedRowId={expandedRow}
@@ -1060,7 +1048,6 @@ const TeacherTable = ({
         title="Edit Teacher"
         onSave={handleEditFormSave}
         saving={saving}
-        size="xl"
         errorMessage={saveError}
       >
         <EditTeacherForm

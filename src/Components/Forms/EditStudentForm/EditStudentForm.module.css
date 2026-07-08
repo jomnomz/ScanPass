@@ -1,7 +1,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px; /* was 15px */
   width: 100%;
 }
 
@@ -105,14 +105,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
+  gap: 6px; /* was 8px */
+  padding-bottom: 4px; /* was 8px */
 }
 
 .photoCircleButton {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 76px; /* was 96px */
+  height: 76px; /* was 96px */
   border-radius: 50%;
   border: none;
   padding: 0;
@@ -121,25 +121,19 @@
   background: none;
 }
 
-.photoCircleButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.photoImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .photoPlaceholder {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.2rem;
+  font-size: 1.7rem; /* was 2.2rem, scaled down with the smaller circle */
   font-weight: 700;
+}
+
+.photoHint {
+  font-size: 0.75rem; /* was 0.8rem */
+  color: #999;
 }
 
 .photoOverlay {
@@ -164,7 +158,3 @@
   display: none;
 }
 
-.photoHint {
-  font-size: 0.8rem;
-  color: #999;
-}

@@ -1,15 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { grades } from '../../../Utils/TableHelpers';
-import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import styles from './EditTeacherForm.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCamera, faTrashCan, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faPlus } from '@fortawesome/free-solid-svg-icons';
 
 let rowIdCounter = 0;
-const nextRowId = () => `row-${Date.now()}-${rowIdCounter++}`;
+const nextRowId = (prefix) => `${prefix}-${Date.now()}-${rowIdCounter++}`;
 
 function EditTeacherForm({
-  teacher,
   formData,
   onFieldChange,
   validationErrors = {},
@@ -17,34 +15,18 @@ function EditTeacherForm({
   availableSubjects = [],      // [{ code, name }, ...] full catalog to choose from
   disabled = false,
 }) {
-  const fileInputRef = useRef(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [subjectToAdd, setSubjectToAdd] = useState('');
-
   const assignments = formData.assignments || [];
-  const subjects = formData.subjects || [];
+  const subjectRows = formData.subjects || []; // now [{ id, code }, ...]
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     onFieldChange(name, value);
   };
 
-  const handlePhotoClick = () => {
-    if (disabled) return;
-    fileInputRef.current?.click();
-  };
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Preview only — actual upload wiring comes later once storage is set up.
-    setPreviewUrl(URL.createObjectURL(file));
-  };
-
   // ===== TEACHING ASSIGNMENTS (grade + section pairs) =====
 
   const handleAddAssignment = () => {
-    const newRow = { id: nextRowId(), grade: '', section: '', isAdviser: false };
+    const newRow = { id: nextRowId('assign'), grade: '', section: '', isAdviser: false };
     onFieldChange('assignments', [...assignments, newRow]);
   };
 
@@ -72,71 +54,45 @@ function EditTeacherForm({
   };
 
   const handleSetAdviser = (rowId) => {
-    // Only one row can be adviser at a time — clear the rest.
     onFieldChange(
       'assignments',
       assignments.map((row) => ({ ...row, isAdviser: row.id === rowId }))
     );
   };
 
-  // ===== SUBJECTS (simple multi-select) =====
+  // ===== SUBJECTS (row-based, same interaction pattern as assignments) =====
 
-  const subjectsNotYetAdded = availableSubjects.filter(
-    (s) => !subjects.includes(s.code)
-  );
+  const formatSubjectLabel = (s) => `${s.name} (${s.code})`;
 
-  const handleAddSubject = () => {
-    if (!subjectToAdd) return;
-    onFieldChange('subjects', [...subjects, subjectToAdd]);
-    setSubjectToAdd('');
+  const getSubjectOptionsForRow = (currentCode) => {
+    const usedElsewhere = subjectRows
+      .filter((r) => r.code && r.code !== currentCode)
+      .map((r) => r.code);
+    return availableSubjects.filter((s) => !usedElsewhere.includes(s.code));
   };
 
-  const handleRemoveSubject = (code) => {
-    onFieldChange('subjects', subjects.filter((s) => s !== code));
+  const handleAddSubjectRow = () => {
+    const usedCodes = subjectRows.map((r) => r.code).filter(Boolean);
+    const firstAvailable = availableSubjects.find((s) => !usedCodes.includes(s.code));
+    const newRow = { id: nextRowId('subj'), code: firstAvailable?.code || '' };
+    onFieldChange('subjects', [...subjectRows, newRow]);
   };
 
-  const getSubjectLabel = (code) => {
-    const match = availableSubjects.find((s) => s.code === code);
-    return match ? match.name : code;
+  const handleSubjectRowChange = (rowId, newCode) => {
+    onFieldChange(
+      'subjects',
+      subjectRows.map((row) => (row.id === rowId ? { ...row, code: newCode } : row))
+    );
   };
 
-  const { bg, text } = getProfileColor(
-    teacher?.id ?? `${formData.first_name}${formData.last_name}`
-  );
+  const handleRemoveSubjectRow = (rowId) => {
+    onFieldChange('subjects', subjectRows.filter((row) => row.id !== rowId));
+  };
+
+  const allSubjectsUsed = subjectRows.length >= availableSubjects.length && availableSubjects.length > 0;
 
   return (
     <div className={styles.form}>
-      {/* ===== PROFILE PHOTO (UI only, no upload wiring yet) ===== */}
-      <div className={styles.photoSection}>
-        <button
-          type="button"
-          className={styles.photoCircleButton}
-          onClick={handlePhotoClick}
-          disabled={disabled}
-          aria-label="Change profile photo"
-        >
-          {previewUrl ? (
-            <img src={previewUrl} alt="Profile preview" className={styles.photoImage} />
-          ) : (
-            <div className={styles.photoPlaceholder} style={{ backgroundColor: bg, color: text }}>
-              {getProfileInitial(formData.first_name)}
-            </div>
-          )}
-          <div className={styles.photoOverlay}>
-            <FontAwesomeIcon icon={faCamera} />
-          </div>
-        </button>
-        <input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          onChange={handlePhotoChange}
-          className={styles.hiddenFileInput}
-        />
-        <span className={styles.photoHint}>Click to change photo</span>
-      </div>
-
-      {/* ===== BASIC INFO ===== */}
       <div className={styles.formGroup}>
         <label>Employee ID</label>
         <input
@@ -216,132 +172,134 @@ function EditTeacherForm({
         </div>
       </div>
 
-      {/* ===== TEACHING ASSIGNMENTS & SUBJECTS (side-by-side) ===== */}
-      <div className={styles.twoColumnGrid}>
-        <div className={styles.sectionBlock}>
-          <div className={styles.sectionHeaderRow}>
-            <div className={styles.sectionTitle}>Teaching Assignments</div>
-            <button
-              type="button"
-              className={styles.addButton}
-              onClick={handleAddAssignment}
-              disabled={disabled}
-            >
-              <FontAwesomeIcon icon={faPlus} /> Add
-            </button>
-          </div>
+      {/* ===== TEACHING ASSIGNMENTS ===== */}
+      <div className={styles.sectionBlock}>
+        <div className={styles.sectionHeaderRow}>
+          <div className={styles.sectionTitle}>Teaching Assignments</div>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={handleAddAssignment}
+            disabled={disabled}
+          >
+            <FontAwesomeIcon icon={faPlus} /> Add Grade & Section
+          </button>
+        </div>
 
-          {assignments.length === 0 && (
-            <div className={styles.emptyHint}>No grade/section assignments yet.</div>
-          )}
+        {assignments.length === 0 && (
+          <div className={styles.emptyHint}>No grade/section assignments yet.</div>
+        )}
 
-          {assignments.map((row) => {
-            const sectionsForRow = gradeSectionsMap[row.grade] || [];
-            return (
-              <div key={row.id} className={styles.assignmentRow}>
+        {assignments.map((row) => {
+          const sectionsForRow = gradeSectionsMap[row.grade] || [];
+          return (
+            <div key={row.id} className={styles.assignmentRow}>
+              <select
+                value={row.grade}
+                onChange={(e) => handleAssignmentGradeChange(row.id, e.target.value)}
+                className={`${styles.input} ${styles.select} ${styles.assignmentGradeSelect}`}
+                disabled={disabled}
+              >
+                <option value="" disabled>Grade</option>
+                {grades.map((grade) => (
+                  <option key={grade} value={grade}>Grade {grade}</option>
+                ))}
+              </select>
+
+              {!row.grade || sectionsForRow.length === 0 ? (
+                <div className={`${styles.noSectionsMessage} ${styles.assignmentSectionSelect}`}>
+                  {!row.grade ? 'Select grade' : 'No sections'}
+                </div>
+              ) : (
                 <select
-                  value={row.grade}
-                  onChange={(e) => handleAssignmentGradeChange(row.id, e.target.value)}
-                  className={`${styles.input} ${styles.select} ${styles.assignmentGradeSelect}`}
+                  value={row.section}
+                  onChange={(e) => handleAssignmentSectionChange(row.id, e.target.value)}
+                  className={`${styles.input} ${styles.select} ${styles.assignmentSectionSelect}`}
                   disabled={disabled}
                 >
-                  <option value="" disabled>Grade</option>
-                  {grades.map((grade) => (
-                    <option key={grade} value={grade}>Grade {grade}</option>
+                  {sectionsForRow.map((section) => (
+                    <option key={section} value={section}>{section}</option>
                   ))}
                 </select>
+              )}
 
-                {!row.grade || sectionsForRow.length === 0 ? (
-                  <div className={`${styles.noSectionsMessage} ${styles.assignmentSectionSelect}`}>
-                    {!row.grade ? 'Select grade' : 'No sections'}
-                  </div>
-                ) : (
-                  <select
-                    value={row.section}
-                    onChange={(e) => handleAssignmentSectionChange(row.id, e.target.value)}
-                    className={`${styles.input} ${styles.select} ${styles.assignmentSectionSelect}`}
-                    disabled={disabled}
-                  >
-                    {sectionsForRow.map((section) => (
-                      <option key={section} value={section}>{section}</option>
-                    ))}
-                  </select>
-                )}
-
-                <label className={styles.adviserLabel}>
-                  <input
-                    type="radio"
-                    name="adviser-section"
-                    checked={row.isAdviser}
-                    onChange={() => handleSetAdviser(row.id)}
-                    disabled={disabled}
-                  />
-                  Adviser
-                </label>
-
-                <button
-                  type="button"
-                  className={styles.removeRowButton}
-                  onClick={() => handleRemoveAssignment(row.id)}
+              <label className={styles.adviserLabel}>
+                <input
+                  type="radio"
+                  name="adviser-section"
+                  checked={row.isAdviser}
+                  onChange={() => handleSetAdviser(row.id)}
                   disabled={disabled}
-                  aria-label="Remove assignment"
-                >
-                  <FontAwesomeIcon icon={faTrashCan} />
-                </button>
-              </div>
-            );
-          })}
-          {validationErrors.assignments && (
-            <div className={styles.fieldError}>{validationErrors.assignments}</div>
-          )}
-        </div>
+                />
+                Adviser
+              </label>
 
-        <div className={styles.sectionBlock}>
+              <button
+                type="button"
+                className={styles.removeRowButton}
+                onClick={() => handleRemoveAssignment(row.id)}
+                disabled={disabled}
+                aria-label="Remove assignment"
+              >
+                <FontAwesomeIcon icon={faTrashCan} />
+              </button>
+            </div>
+          );
+        })}
+        {validationErrors.assignments && (
+          <div className={styles.fieldError}>{validationErrors.assignments}</div>
+        )}
+      </div>
+
+      {/* ===== SUBJECTS — mirrors Teaching Assignments layout ===== */}
+      <div className={styles.sectionBlock}>
+        <div className={styles.sectionHeaderRow}>
           <div className={styles.sectionTitle}>Subjects</div>
-
-          <div className={styles.subjectAddRow}>
-            <select
-              value={subjectToAdd}
-              onChange={(e) => setSubjectToAdd(e.target.value)}
-              className={`${styles.input} ${styles.select}`}
-              disabled={disabled || subjectsNotYetAdded.length === 0}
-            >
-              <option value="">
-                {subjectsNotYetAdded.length === 0 ? 'All subjects added' : 'Select a subject'}
-              </option>
-              {subjectsNotYetAdded.map((s) => (
-                <option key={s.code} value={s.code}>{s.name}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className={styles.addButton}
-              onClick={handleAddSubject}
-              disabled={disabled || !subjectToAdd}
-            >
-              <FontAwesomeIcon icon={faPlus} /> Add
-            </button>
-          </div>
-
-          <div className={styles.subjectChipList}>
-            {subjects.length === 0 && (
-              <div className={styles.emptyHint}>No subjects assigned yet.</div>
-            )}
-            {subjects.map((code) => (
-              <div key={code} className={styles.subjectChip}>
-                <span>{getSubjectLabel(code)}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSubject(code)}
-                  disabled={disabled}
-                  aria-label={`Remove ${getSubjectLabel(code)}`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={handleAddSubjectRow}
+            disabled={disabled || allSubjectsUsed}
+          >
+            <FontAwesomeIcon icon={faPlus} /> Add Subject
+          </button>
         </div>
+
+        {subjectRows.length === 0 && (
+          <div className={styles.emptyHint}>No subjects assigned yet.</div>
+        )}
+
+        {subjectRows.map((row) => {
+          const optionsForRow = getSubjectOptionsForRow(row.code);
+          return (
+            <div key={row.id} className={styles.assignmentRow}>
+              <select
+                value={row.code}
+                onChange={(e) => handleSubjectRowChange(row.id, e.target.value)}
+                className={`${styles.input} ${styles.select} ${styles.subjectSelect}`}
+                disabled={disabled}
+              >
+                <option value="" disabled>Select subject</option>
+                {optionsForRow.map((s) => (
+                  <option key={s.code} value={s.code}>{formatSubjectLabel(s)}</option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                className={styles.removeRowButton}
+                onClick={() => handleRemoveSubjectRow(row.id)}
+                disabled={disabled}
+                aria-label="Remove subject"
+              >
+                <FontAwesomeIcon icon={faTrashCan} />
+              </button>
+            </div>
+          );
+        })}
+        {validationErrors.subjects && (
+          <div className={styles.fieldError}>{validationErrors.subjects}</div>
+        )}
       </div>
     </div>
   );

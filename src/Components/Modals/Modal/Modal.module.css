@@ -17,6 +17,18 @@
   padding: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform-origin: center;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* clips content to the rounded-corner box instead of spilling out */
+}
+
+.modalContent {
+  flex: 1;
+  min-height: 0; /* critical: lets a flex child shrink below its content size so overflow can kick in */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0 !important;
 }
 
 .modalHeader {
@@ -38,15 +50,6 @@
 
 .modalExit {
   animation: scaleOut 0.2s ease-in forwards;
-}
-
-.modalContent {
-  height: 100% !important;
-  max-height: 100% !important;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden !important;
-  padding: 0 !important; 
 }
 @keyframes fadeIn {
   from {
