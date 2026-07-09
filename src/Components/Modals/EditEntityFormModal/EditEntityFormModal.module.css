@@ -1,15 +1,16 @@
+/* src/components/Modals/EditEntityFormModal/EditEntityFormModal.module.css */
 .wrapper {
   display: flex;
   flex-direction: column;
-  height: 570px;
-  min-height: 0; 
+  min-height: 0;
+  /* height is now set inline via the style prop */
 }
 
 .body {
   padding: 14px 24px;
   overflow-y: auto;
   flex: 1;
-  min-height: 0; 
+  min-height: 0;
 }
 
 .header {

@@ -14,11 +14,12 @@ function EditEntityFormModal({
   saving = false,
   saveDisabled = false,
   errorMessage = '',
-  size = 'md',
+  size = 'md',     // width size (sm, md, lg, xl)
+  height = '570px', // default height, can be overridden by parent
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size={size}>
-      <div className={styles.wrapper}>
+      <div className={styles.wrapper} style={{ height: height }}>
         <div className={styles.header}>
           <h2 className={styles.title}>{title}</h2>
         </div>

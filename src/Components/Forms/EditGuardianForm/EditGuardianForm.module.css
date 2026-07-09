@@ -1,0 +1,88 @@
+/* src/components/Forms/EditGuardianForm/EditGuardianForm.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  gap: 16px;
+}
+
+.formRow .formGroup {
+  flex: 1;
+  min-width: 0;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+  color: #222;
+  background-color: #ffffff;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: #FF4930;
+}
+
+.inputError:focus {
+  border-color: #FF4930;
+  box-shadow: 0 0 0 3px rgba(255, 73, 48, 0.1);
+}
+
+.fieldError {
+  color: #FF4930;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.contextRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 10px;
+  /* border-bottom removed */
+}
+
+.contextLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.contextValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}

@@ -4,12 +4,14 @@ import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { grades } from '../../../Utils/TableHelpers';
 import { formatNA } from '../../../Utils/Formatters';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
+import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
+import EditGuardianForm from '../../Forms/EditGuardianForm/EditGuardianForm.jsx';
 import styles from './GuardianTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
-import { supabase } from '../../../lib/supabase'; 
+import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
-import { useAuth } from '../../Authentication/AuthProvider/AuthProvider'; 
+import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -56,16 +58,22 @@ const GuardianTable = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ===== MODAL STATE MACHINE =====
+  // 'closed' | 'editing'
+  const [editModalState, setEditModalState] = useState('closed');
+  const [editingEntity, setEditingEntity] = useState(null);
+  const [saveError, setSaveError] = useState('');
+
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
-  const { 
-    editingId, 
-    editFormData, 
-    saving, 
+  const {
+    editingId,
+    editFormData,
+    saving,
     validationErrors,
-    startEdit, 
-    cancelEdit, 
-    updateEditField, 
-    saveEdit 
+    startEdit,
+    cancelEdit,
+    updateEditField,
+    saveEdit
   } = useEntityEdit(guardians, setGuardians, 'guardian');
   const [localGuardians, setLocalGuardians] = useState([]);
 
@@ -166,7 +174,7 @@ const GuardianTable = ({
     setCurrentClass(className);
     setLoading(true);
     toggleRow(null);
-    cancelEdit();
+    handleCloseModal();
 
     if (selectedSection && onSectionSelect) {
       onSectionSelect('');
@@ -185,18 +193,39 @@ const GuardianTable = ({
     }
   };
 
+  // ===== OPEN MODAL instead of inline edit =====
   const handleEditClick = (guardian, e) => {
     e.stopPropagation();
     startEdit(guardian);
+    setEditingEntity(guardian);
+    setEditModalState('editing');
+    setSaveError('');
     toggleRow(null);
   };
 
-  const handleSaveEdit = async (guardianId, e) => {
-    if (e) e.stopPropagation();
+  // ===== CLOSE MODAL =====
+  const handleCloseModal = () => {
+    setEditModalState('closed');
+    setEditingEntity(null);
+    cancelEdit();
+    setSaveError('');
+  };
+
+  // ===== SAVE FROM MODAL =====
+  const handleEditFormSave = async () => {
+    const guardian = editingEntity;
+    if (!guardian) return;
+
+    setSaveError('');
+
+    if (!editFormData.first_name?.trim() || !editFormData.last_name?.trim()) {
+      setSaveError('First name and last name are required');
+      return;
+    }
 
     const result = await saveEdit(
-      guardianId, 
-      currentClass, 
+      guardian.id,
+      currentClass,
       async (id, data) => {
         const updateData = {
           guardian_first_name: data.first_name,
@@ -218,71 +247,21 @@ const GuardianTable = ({
     );
 
     if (result.success) {
+      setEditModalState('closed');
+      setEditingEntity(null);
+    } else {
+      setSaveError(result.error || 'Failed to update guardian');
     }
   };
 
   const handleRowClick = (guardianId, e) => {
-    const isEditing = editingId === guardianId;
-    const isInteractiveElement = e.target.closest('.edit-input') || 
-                                 e.target.closest('.action-button') ||
+    const isInteractiveElement = e.target.closest('.action-button') ||
                                  e.target.closest('button') ||
                                  e.target.closest('input');
 
-    if (!isEditing && !isInteractiveElement) {
+    if (!isInteractiveElement) {
       toggleRow(guardianId);
     }
-  };
-
-  const renderEditField = (guardian, fieldName) => {
-    if (editingId === guardian.id) {
-      const error = validationErrors[fieldName];
-
-      return (
-        <div className={styles.editFieldContainer}>
-          <input
-            type={fieldName === 'email' ? 'email' : 'text'}
-            name={fieldName}
-            value={editFormData[fieldName] || ''}
-            onChange={(e) => updateEditField(fieldName, e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            className={`${styles.editInput} ${error ? styles.errorInput : ''} edit-input`}
-            placeholder={fieldName.replace('_', ' ')}
-          />
-          {error && <div className={styles.errorMessage}>{error}</div>}
-        </div>
-      );
-    }
-    return fieldName === 'email' || fieldName === 'phone_number'
-      ? formatNA(guardian[fieldName])
-      : guardian[fieldName] || '';
-  };
-
-  const renderActionButtons = (guardian) => {
-    if (editingId === guardian.id) {
-      return (
-        <div className={`${styles.editActions} action-button`}>
-          <button 
-            onClick={(e) => handleSaveEdit(guardian.id, e)}
-            disabled={saving}
-            className={styles.saveBtn}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button 
-            onClick={() => cancelEdit()}
-            disabled={saving}
-            className={styles.cancelBtn}
-          >
-            Cancel
-          </button>
-        </div>
-      );
-    }
-    return (
-      <div className={styles.icon} onClick={(e) => handleEditClick(guardian, e)}>
-        <FontAwesomeIcon icon={faPenToSquare} className="action-button" />
-      </div>
-    );
   };
 
   const renderExpandedContent = (guardian) => {
@@ -301,22 +280,21 @@ const GuardianTable = ({
     const currentUserName = getCurrentUserName();
     const currentUserId = user?.id;
 
-    const updatedByName = guardian.updated_by 
-      ? (guardian.updated_by_user 
-          ? `${guardian.updated_by_user.first_name || ''} ${guardian.updated_by_user.last_name || ''}`.trim() || 
-            guardian.updated_by_user.username || 
-            guardian.updated_by_user.email || 
+    const updatedByName = guardian.updated_by
+      ? (guardian.updated_by_user
+          ? `${guardian.updated_by_user.first_name || ''} ${guardian.updated_by_user.last_name || ''}`.trim() ||
+            guardian.updated_by_user.username ||
+            guardian.updated_by_user.email ||
             'User'
           : (currentUserId && guardian.updated_by === currentUserId ? currentUserName : 'User')
         )
       : 'Not yet updated';
 
     return (
-      <div 
+      <div
         className={`${styles.guardianCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button - collapses the expanded row */}
         <button
           className={styles.closeExpandBtn}
           onClick={(e) => {
@@ -333,7 +311,6 @@ const GuardianTable = ({
         </div>
 
         <div className={styles.details}>
-          {/* Guardian Details Section */}
           <div>
             <div className={styles.guardianInfo}>
               <strong>Guardian Details</strong>
@@ -349,7 +326,6 @@ const GuardianTable = ({
             </div>
           </div>
 
-          {/* Children/Student Details Section */}
           <div>
             <div className={styles.guardianInfo}>
               <strong>Children/Student Details</strong>
@@ -365,7 +341,6 @@ const GuardianTable = ({
             </div>
           </div>
 
-          {/* Record Information Section */}
           <div>
             <div className={styles.guardianInfo}>
               <strong>Record Information</strong>
@@ -389,22 +364,6 @@ const GuardianTable = ({
       </div>
     );
   };
-
-  const renderEditCell = (guardian) => (
-    <div className={styles.editCell}>
-      {editingId === guardian.id ? (
-        renderActionButtons(guardian)
-      ) : (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faPenToSquare} 
-            onClick={(e) => handleEditClick(guardian, e)}
-            className="action-button"
-          />
-        </div>
-      )}
-    </div>
-  );
 
   const getTableInfoMessage = () => {
     const guardianCount = sortedGuardians.length;
@@ -446,10 +405,9 @@ const GuardianTable = ({
     return ({ row }) => {
       return [
         styles.guardianRow,
-        editingId === row.id ? styles.editingRow : ''
       ].filter(Boolean).join(' ');
     };
-  }, [editingId]);
+  }, []);
 
   const withColumnWidth = (width, minWidth) => ({
     width,
@@ -460,16 +418,16 @@ const GuardianTable = ({
     {
       key: 'first_name',
       label: 'FIRST NAME',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => renderEditField(row, 'first_name')
+      headerStyle: withColumnWidth('18%', 120),
+      cellStyle: withColumnWidth('18%', 120),
+      renderCell: ({ row }) => row.first_name || ''
     },
     {
       key: 'last_name',
       label: 'LAST NAME',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => renderEditField(row, 'last_name')
+      headerStyle: withColumnWidth('18%', 120),
+      cellStyle: withColumnWidth('18%', 120),
+      renderCell: ({ row }) => row.last_name || ''
     },
     {
       key: 'guardian_of',
@@ -494,7 +452,7 @@ const GuardianTable = ({
         <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderRow}>
             <span>SECTION</span>
-            <SectionDropdown 
+            <SectionDropdown
               availableSections={sectionsToShowInDropdown}
               selectedValue={selectedSection}
               onSelect={handleSectionFilter}
@@ -509,52 +467,80 @@ const GuardianTable = ({
       label: 'PHONE NO.',
       headerStyle: withColumnWidth('15%', 120),
       cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => renderEditField(row, 'phone_number')
+      renderCell: ({ row }) => formatNA(row.phone_number)
     },
     {
       key: 'edit',
       label: 'EDIT',
-      headerStyle: withColumnWidth('10%', 80),
-      cellStyle: withColumnWidth('10%', 80),
-      renderCell: ({ row }) => renderEditCell(row)
+      headerStyle: withColumnWidth('9%', 70),
+      cellStyle: withColumnWidth('9%', 70),
+      renderCell: ({ row }) => (
+        <div className={styles.icon}>
+          <FontAwesomeIcon
+            icon={faPenToSquare}
+            onClick={(e) => handleEditClick(row, e)}
+            className="action-button"
+          />
+        </div>
+      )
     }
-  ], [sectionsToShowInDropdown, selectedSection, renderEditCell, renderEditField]);
+  ], [sectionsToShowInDropdown, selectedSection]);
 
   return (
-    <Table
-      columns={tableColumns}
-      rows={sortedGuardians}
-      getRowId={(row) => row.id}
-      loading={parentLoading || loading}
-      error={error ? `Error: ${error}` : ''}
-      emptyMessage={getTableInfoMessage()}
-      containerRef={tableRef}
-      gradeTabs={{
-        options: grades,
-        currentValue: currentClass,
-        onChange: handleClassChange,
-        showAll: true,
-        allLabel: 'All',
-        renderLabel: (grade) => `Grade ${grade}`
-      }}
-      infoText=""
-      selectedInfoText=""
-      paginationContent={paginationContent}
-      tableLabel="Guardians"
-      onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
-      rowClassName={getVisibleRowClassName}
-      expandedRowId={expandedRow}
-      renderExpandedRow={({ row }) => renderExpandedContent(row)}
-      persistExpandedRows={true}
-      hideMainRowWhenExpanded={true}
-      getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
-      className={styles.guardianTableContainer}
-      wrapperClassName={styles.tableWrapper}
-      isAllPagesSelected={false}
-      visibleSelectedCount={0}
-      totalRowsOnPage={sortedGuardians.length}
-      currentPage={currentPage}
-    />
+    <>
+      <Table
+        columns={tableColumns}
+        rows={sortedGuardians}
+        getRowId={(row) => row.id}
+        loading={parentLoading || loading}
+        error={error ? `Error: ${error}` : ''}
+        emptyMessage={getTableInfoMessage()}
+        containerRef={tableRef}
+        gradeTabs={{
+          options: grades,
+          currentValue: currentClass,
+          onChange: handleClassChange,
+          showAll: true,
+          allLabel: 'All',
+          renderLabel: (grade) => `Grade ${grade}`
+        }}
+        infoText=""
+        selectedInfoText=""
+        paginationContent={paginationContent}
+        tableLabel="Guardians"
+        onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
+        rowClassName={getVisibleRowClassName}
+        expandedRowId={expandedRow}
+        renderExpandedRow={({ row }) => renderExpandedContent(row)}
+        persistExpandedRows={true}
+        hideMainRowWhenExpanded={true}
+        getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
+        className={styles.guardianTableContainer}
+        wrapperClassName={styles.tableWrapper}
+        isAllPagesSelected={false}
+        visibleSelectedCount={0}
+        totalRowsOnPage={sortedGuardians.length}
+        currentPage={currentPage}
+      />
+
+      <EditEntityFormModal
+        isOpen={editModalState === 'editing'}
+        onClose={handleCloseModal}
+        title="Edit Guardian"
+        onSave={handleEditFormSave}
+        saving={saving}
+        errorMessage={saveError}
+        height="350px"
+      >
+        <EditGuardianForm
+          guardian={editingEntity}
+          formData={editFormData}
+          onFieldChange={updateEditField}
+          validationErrors={validationErrors}
+          disabled={saving}
+        />
+      </EditEntityFormModal>
+    </>
   );
 };
 
