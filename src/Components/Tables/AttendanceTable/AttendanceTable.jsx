@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
@@ -510,6 +510,36 @@ const AttendanceTable = ({
       onPageChange={onPageChange}
     />
   ) : null;
+
+  // SETUP REALTIME SUBSCRIPTION FOR AUTO-UPDATE
+  useEffect(() => {
+    // Only set up subscription if we have a selected date and current class
+    if (!selectedDate) return undefined;
+
+    // Create a unique channel name based on current filters
+    const channelName = `attendance-admin-${selectedDate}-${currentClass}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance'
+        },
+        () => {
+          // Refresh attendance data when any change occurs
+          fetchAttendanceForDate(selectedDate, currentClass);
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount or when dependencies change
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDate, currentClass, fetchAttendanceForDate]);
 
   useEffect(() => {
     if (selectedSection && currentClass !== 'all') {
