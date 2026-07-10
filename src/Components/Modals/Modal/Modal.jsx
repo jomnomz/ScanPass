@@ -7,7 +7,8 @@ function Modal({
   isOpen, 
   onClose, 
   children, 
-  size = "md" 
+  size = "md",
+  onExited // NEW: callback fired after exit animation completes
 }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
 
@@ -20,6 +21,10 @@ function Modal({
   const handleAnimationEnd = () => {
     if (!isOpen) {
       setShouldRender(false);
+      // NEW: call onExited after the exit animation finishes
+      if (onExited) {
+        onExited();
+      }
     }
   };
 
@@ -32,12 +37,12 @@ function Modal({
     lg: { width: "700px", maxWidth: "90vw", height: "auto", maxHeight: "90vh" },
     xl: { width: "900px", maxWidth: "90vw", height: "auto", maxHeight: "90vh" },
     xxl: { width: "1100px", maxWidth: "95vw", height: "85vh", maxHeight: "85vh" },
-      xxxl: { 
-    width: "1300px", 
-    maxWidth: "95vw", 
-    height: "90vh",  
-    maxHeight: "90vh" 
-  },
+    xxxl: { 
+      width: "1300px", 
+      maxWidth: "95vw", 
+      height: "90vh",  
+      maxHeight: "90vh" 
+    },
     full: { width: "95vw", maxWidth: "95vw", height: "90vh", maxHeight: "90vh" }
   };
 

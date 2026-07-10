@@ -60,7 +60,7 @@ export const useGradeAttendanceStats = (teacherId, teacherSections) => {
       for (const grade of sortedGrades) {
         let studentsQuery = supabase
           .from('students')
-          .select('lrn, grade_id, section_id')
+          .select('id, grade_id, section_id')
           .eq('grade_id', grade.id);
 
         if (teacherSections && teacherSections.length > 0) {
@@ -83,13 +83,13 @@ export const useGradeAttendanceStats = (teacherId, teacherSections) => {
           continue;
         }
 
-        const studentLRNs = students.map(s => s.lrn);
+        const studentIds = students.map(s => s.id);
 
         const { data: attendanceRecords, error: attendanceError } = await supabase
           .from('attendance')
-          .select('student_lrn, status')
+          .select('student_id, status')
           .eq('date', today)
-          .in('student_lrn', studentLRNs);
+          .in('student_id', studentIds);
 
         if (attendanceError) throw attendanceError;
 

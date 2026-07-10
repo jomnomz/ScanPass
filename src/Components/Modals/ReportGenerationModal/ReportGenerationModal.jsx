@@ -115,29 +115,28 @@ const ReportGenerationModal = ({ isOpen, onClose, currentClass }) => {
       if (!gradeData) throw new Error(`Grade ${gradeLevel} not found`);
       
       const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('id, lrn')
-        .eq('grade_id', gradeData.id);
-      
-      if (studentsError) throw studentsError;
-      
-      const studentIds = students?.map(s => s.id) || [];
-      const studentLrns = students?.map(s => s.lrn) || [];
-      
-      if (studentIds.length === 0) {
-        console.log('No students found for this grade');
-        setAttendanceDates([]);
-        setSelectedDates({});
-        setLoading(false);
-        return;
-      }
-      
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('date, student_id, student_lrn')
-        .gte('date', formatDate(start))
-        .lte('date', formatDate(end))
-        .or(`student_id.in.(${studentIds.join(',')}),student_lrn.in.(${studentLrns.map(lrn => `"${lrn}"`).join(',')})`);
+          .from('students')
+          .select('id, lrn')  // lrn no longer needed here either, but harmless to keep
+          .eq('grade_id', gradeData.id);
+
+        if (studentsError) throw studentsError;
+
+        const studentIds = students?.map(s => s.id) || [];
+
+        if (studentIds.length === 0) {
+          console.log('No students found for this grade');
+          setAttendanceDates([]);
+          setSelectedDates({});
+          setLoading(false);
+          return;
+        }
+
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from('attendance')
+          .select('date, student_id')
+          .gte('date', formatDate(start))
+          .lte('date', formatDate(end))
+          .in('student_id', studentIds);
       
       if (attendanceError) throw attendanceError;
       

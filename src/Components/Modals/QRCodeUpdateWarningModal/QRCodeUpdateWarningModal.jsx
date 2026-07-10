@@ -6,15 +6,16 @@ import EntityList from '../../List/EntityList/EntityList.jsx';
 import TitleModalLabel from '../../UI/Labels/TitleModalLabel/TitleModalLabel.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
 
-function QRCodeUpdateWarningModal({ isOpen, onClose, student, onConfirm }) {
+function QRCodeUpdateWarningModal({ isOpen, onClose, student, onConfirm, saving = false }) {
   if (!student) return null;
 
   const handleConfirm = () => {
+    if (saving) return; // guard against double-clicks
     onConfirm();
   };
 
   return (
-    <Modal size="md" isOpen={isOpen} onClose={onClose}>
+    <Modal size="md" isOpen={isOpen} onClose={saving ? undefined : onClose}>
       <div className={styles.modalContainer}>
         <TitleModalLabel>Update Student Information</TitleModalLabel>
         
@@ -35,9 +36,10 @@ function QRCodeUpdateWarningModal({ isOpen, onClose, student, onConfirm }) {
 
         <div className={styles.buttonGroup}>
           <Button
-            label="Yes, Update Student"
+            label={saving ? 'Updating...' : 'Yes, Update Student'}
             color="warning"
             onClick={handleConfirm}
+            disabled={saving}
             width="lg"
             height="sm"
           />
@@ -45,6 +47,7 @@ function QRCodeUpdateWarningModal({ isOpen, onClose, student, onConfirm }) {
             label="Cancel"
             color="ghost"
             onClick={onClose}
+            disabled={saving}
             width="sm"
             height="sm"
           />

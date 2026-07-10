@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { compareSections } from '../../../Utils/CompareHelpers';
@@ -105,6 +105,15 @@ const StudentTable = ({
   const [editingEntity, setEditingEntity] = useState(null);
   const [pendingCriticalUpdate, setPendingCriticalUpdate] = useState(null);
   const [saveError, setSaveError] = useState('');
+  
+  // NEW: ref to track the latest modal state for deferred cleanup
+  const editModalStateRef = useRef(editModalState);
+  useEffect(() => {
+    editModalStateRef.current = editModalState;
+  }, [editModalState]);
+  
+  // NEW: ref-based reentry guard for confirmation flow
+  const confirmingRef = useRef(false);
   
   const { editingId: editingStudent, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
     students, 
@@ -336,12 +345,21 @@ const StudentTable = ({
     toggleRow(null);
   };
 
-  // ===== CLOSE MODAL =====
+  // ===== UPDATED: CLOSE MODAL =====
   const handleCloseModal = () => {
     setEditModalState('closed');
+    setSaveError('');
+    // editingEntity and form data are cleared in handleModalExited
+    // after the exit animation finishes
+  };
+
+  // ===== NEW: Fires only when the edit modal has fully finished animating out =====
+  const handleModalExited = () => {
+    // Skip if we transitioned into the confirmation modal instead of
+    // fully closing — that flow still needs editFormData intact.
+    if (editModalStateRef.current !== 'closed') return;
     setEditingEntity(null);
     cancelEdit();
-    setSaveError('');
   };
 
   // ===== HANDLE SAVE FROM MODAL =====
@@ -461,6 +479,7 @@ const StudentTable = ({
         setEditModalState('closed');
         setEditingEntity(null);
         setPendingCriticalUpdate(null);
+        cancelEdit(); // clear form data now that the modal is fully gone
       }
       
     } catch (error) {
@@ -474,15 +493,20 @@ const StudentTable = ({
 
   // ===== HANDLE CONFIRM CRITICAL UPDATE =====
   const handleConfirmCriticalUpdate = async () => {
-    if (pendingCriticalUpdate) {
-      try {
-        await performStudentUpdate(pendingCriticalUpdate.studentId);
-        // performStudentUpdate handles closing on success
-      } catch (error) {
-        // Error handled in performStudentUpdate, which sets state back to 'editing'
-        // Just clear pending state
-        setPendingCriticalUpdate(null);
-      }
+    // Guard against double-clicks using the ref
+    if (!pendingCriticalUpdate || confirmingRef.current) return;
+    
+    confirmingRef.current = true;
+    
+    try {
+      await performStudentUpdate(pendingCriticalUpdate.studentId);
+      // performStudentUpdate handles closing on success
+    } catch (error) {
+      // Error handled in performStudentUpdate, which sets state back to 'editing'
+      // Just clear pending state
+      setPendingCriticalUpdate(null);
+    } finally {
+      confirmingRef.current = false;
     }
   };
 
@@ -949,6 +973,7 @@ const StudentTable = ({
       <EditEntityFormModal
         isOpen={editModalState === 'editing'}
         onClose={handleCloseModal}
+        onExited={handleModalExited}
         title="Edit Student"
         onSave={handleEditFormSave}
         saving={saving}
@@ -971,6 +996,7 @@ const StudentTable = ({
         onClose={handleCancelCriticalUpdate}
         student={pendingCriticalUpdate?.student}
         onConfirm={handleConfirmCriticalUpdate}
+        saving={saving}
       />
 
       {/* ===== QR CODE MODAL ===== */}

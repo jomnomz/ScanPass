@@ -39,7 +39,7 @@ export const useWeeklyAttendanceStats = (teacherId, teacherSections) => {
 
       let studentsQuery = supabase
         .from('students')
-        .select('lrn');
+        .select('id');
       
       if (teacherSections && teacherSections.length > 0) {
         const sectionIds = teacherSections.map(s => s.section_id);
@@ -64,13 +64,13 @@ export const useWeeklyAttendanceStats = (teacherId, teacherSections) => {
         return;
       }
       
-      const studentLRNs = students.map(student => student.lrn);
+      const studentIds = students.map(student => student.id);
       
       const { data: attendanceRecords, error: attendanceError } = await supabase
         .from('attendance')
         .select('date, status')
         .in('date', dates)
-        .in('student_lrn', studentLRNs)
+        .in('student_id', studentIds)
         .order('date', { ascending: false });
 
       if (attendanceError) throw attendanceError;

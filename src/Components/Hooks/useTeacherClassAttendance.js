@@ -89,14 +89,13 @@ export const useTeacherClassAttendance = (teacherId, teacherClasses) => {
       for (const teacherClass of teacherClasses) {
         const { data: students, error: studentsError } = await supabase
           .from('students')
-          .select('id, lrn')
+          .select('id')
           .eq('section_id', teacherClass.section_id);
 
         if (studentsError) throw studentsError;
 
         const studentCount = students?.length || 0;
         const studentIds = students?.map(s => s.id) || [];
-        const studentLRNs = students?.map(s => s.lrn) || [];
 
         let presentCount = 0;
         let lateCount = 0;
@@ -105,7 +104,7 @@ export const useTeacherClassAttendance = (teacherId, teacherClasses) => {
         if (studentIds.length > 0) {
           const { data: todayAttendance, error: todayError } = await supabase
             .from('attendance')
-            .select('student_id, student_lrn, status')
+            .select('student_id, status')
             .eq('date', today)
             .in('student_id', studentIds);
 
@@ -140,7 +139,7 @@ export const useTeacherClassAttendance = (teacherId, teacherClasses) => {
         if (studentIds.length > 0) {
           const { data: weeklyAttendance, error: weeklyError } = await supabase
             .from('attendance')
-            .select('date, student_id, student_lrn, status')
+            .select('date, student_id, status')
             .in('date', last5Days)
             .in('student_id', studentIds);
 

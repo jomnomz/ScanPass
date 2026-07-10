@@ -168,7 +168,7 @@ const AttendanceReportTable = ({ student, currentClass }) => {
       const { data: attendance, error: attendanceError } = await supabase
         .from('attendance')
         .select('*')
-        .eq('student_lrn', student.lrn)
+        .eq('student_id', student.id)
         .gte('date', formatDate(startDate, dateFormat))
         .lte('date', formatDate(endDate, dateFormat))
         .order('date', { ascending: true });

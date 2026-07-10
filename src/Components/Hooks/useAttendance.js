@@ -25,7 +25,7 @@ export const useAttendance = () => {
       
       const { data: existingAttendance, error: checkError } = await supabase
         .from('attendance')
-        .select('student_lrn')
+        .select('id')
         .eq('date', date)
         .limit(1);
       
@@ -56,7 +56,6 @@ export const useAttendance = () => {
       }
       
       const defaultRecords = allStudents.map(student => ({
-        student_lrn: student.lrn,
         student_id: student.id,
         status: 'absent',
         date: date,
@@ -91,7 +90,7 @@ export const useAttendance = () => {
   const processAttendanceData = useCallback((students, attendanceRecords, targetDate) => {
     const combinedData = students.map(student => {
       const studentRecord = attendanceRecords?.find(record => 
-        record.student_lrn === student.lrn || record.student_id === student.id
+        record.student_id === student.id
       );
 
       if (!studentRecord) {
