@@ -12,6 +12,7 @@ import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
+import { useToast } from '../../Toast/ToastContext/ToastContext';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -78,6 +79,7 @@ const GuardianTable = ({
   const [localGuardians, setLocalGuardians] = useState([]);
 
   const { user, profile } = useAuth();
+  const { success } = useToast();
 
   useEffect(() => {
     setCurrentClass(currentGrade);
@@ -211,7 +213,7 @@ const GuardianTable = ({
     setSaveError('');
   };
 
-  // ===== SAVE FROM MODAL =====
+  // ===== FIXED: SAVE FROM MODAL =====
   const handleEditFormSave = async () => {
     const guardian = editingEntity;
     if (!guardian) return;
@@ -223,34 +225,68 @@ const GuardianTable = ({
       return;
     }
 
-    const result = await saveEdit(
-      guardian.id,
-      currentClass,
-      async (id, data) => {
-        const updateData = {
-          guardian_first_name: data.first_name,
-          guardian_middle_name: data.middle_name,
-          guardian_last_name: data.last_name,
-          guardian_email: data.email,
-          guardian_phone_number: data.phone_number,
-          updated_at: new Date().toISOString()
-        };
+    try {
+      // Prepare the update data
+      const updateData = {
+        guardian_first_name: editFormData.first_name,
+        guardian_middle_name: editFormData.middle_name || '',
+        guardian_last_name: editFormData.last_name,
+        guardian_email: editFormData.email || '',
+        guardian_phone_number: editFormData.phone_number || '',
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id
+      };
 
-        const { error } = await supabase
-          .from('students')
-          .update(updateData)
-          .eq('id', id);
+      // Update in database
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .eq('id', guardian.id)
+        .select('*');
 
-        if (error) throw error;
-        return { success: true };
-      }
-    );
+      if (error) throw error;
 
-    if (result.success) {
+      // Get the updated record with all fields
+      const updatedGuardian = data[0];
+
+      // Format the updated guardian for the local state
+      const formattedGuardian = {
+        ...updatedGuardian,
+        // Map the guardian fields back to what the table expects
+        first_name: updatedGuardian.guardian_first_name,
+        middle_name: updatedGuardian.guardian_middle_name,
+        last_name: updatedGuardian.guardian_last_name,
+        email: updatedGuardian.guardian_email,
+        phone_number: updatedGuardian.guardian_phone_number,
+        // Keep student info
+        guardian_of: updatedGuardian.guardian_of || `${updatedGuardian.first_name} ${updatedGuardian.last_name}`,
+        student_lrn: updatedGuardian.lrn,
+        grade: updatedGuardian.grade,
+        section: updatedGuardian.section
+      };
+
+      // Update local state with the formatted guardian
+      setGuardians(prevGuardians => {
+        return prevGuardians.map(g => 
+          g.id === guardian.id ? formattedGuardian : g
+        );
+      });
+
+      // Update localGuardians as well to keep sync
+      setLocalGuardians(prev => {
+        return prev.map(g => 
+          g.id === guardian.id ? formattedGuardian : g
+        );
+      });
+
+      success('Guardian updated successfully');
       setEditModalState('closed');
       setEditingEntity(null);
-    } else {
-      setSaveError(result.error || 'Failed to update guardian');
+      cancelEdit();
+
+    } catch (error) {
+      console.error('Update error:', error);
+      setSaveError(error.message || 'Failed to update guardian');
     }
   };
 

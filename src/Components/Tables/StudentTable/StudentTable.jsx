@@ -357,14 +357,10 @@ const StudentTable = ({
       return;
     }
 
-    const criticalFieldsChanged = 
-      editFormData.lrn !== student.lrn ||
-      editFormData.first_name !== student.first_name ||
-      editFormData.last_name !== student.last_name ||
-      editFormData.grade !== student.grade ||
-      editFormData.section !== student.section;
+    // Only check for LRN changes - QR code is tied to LRN
+    const lrnChanged = editFormData.lrn !== student.lrn;
 
-    if (criticalFieldsChanged) {
+    if (lrnChanged) {
       // Swap to the warning modal instead of stacking it on top
       setPendingCriticalUpdate({ studentId: student.id, student });
       setEditModalState('confirming');

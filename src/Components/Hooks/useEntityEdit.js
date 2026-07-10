@@ -36,11 +36,11 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
       });
     } else if (entityType === 'guardian') {
       setEditFormData({
-        first_name: entity.first_name,
-        middle_name: entity.middle_name,
-        last_name: entity.last_name,
-        phone_number: entity.phone_number,
-        email: entity.email
+        first_name: entity.first_name || '',
+        middle_name: entity.middle_name || '',
+        last_name: entity.last_name || '',
+        phone_number: entity.phone_number || '',
+        email: entity.email || ''
       });
     } else if (entityType === 'teacher') {
       setEditFormData({

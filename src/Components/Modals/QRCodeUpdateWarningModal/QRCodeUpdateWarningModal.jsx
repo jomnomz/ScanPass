@@ -11,7 +11,6 @@ function QRCodeUpdateWarningModal({ isOpen, onClose, student, onConfirm }) {
 
   const handleConfirm = () => {
     onConfirm();
-    onClose();
   };
 
   return (
