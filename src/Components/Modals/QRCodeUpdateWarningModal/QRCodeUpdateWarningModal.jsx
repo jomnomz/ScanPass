@@ -1,4 +1,4 @@
-import Modal from '../Modal/Modal.jsx';
+ import Modal from '../Modal/Modal.jsx';
 import styles from './QRCodeUpdateWarningModal.module.css';
 import Button from '../../UI/Buttons/Button/Button.jsx';
 import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';

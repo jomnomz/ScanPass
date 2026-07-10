@@ -50,7 +50,6 @@ const AttendanceChangeReasonModal = ({
         .insert({
           attendance_id: attendanceData.id,
           student_id: attendanceData.student_id,
-          student_lrn: attendanceData.lrn,
           date: attendanceData.date,
           
           original_time_in: attendanceData.time_in,

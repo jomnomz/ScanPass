@@ -190,7 +190,6 @@ export const sendAttendanceSMS = async (studentId, scanType) => {
         
         await supabase.from('sms_logs').insert({
           student_id: student.id,
-          student_lrn: student.lrn,
           guardian_name: student.guardian_first_name,
           phone_number: student.guardian_phone_number,
           message: message,
@@ -243,7 +242,6 @@ export const sendAttendanceSMS = async (studentId, scanType) => {
     
     const logData = {
       student_id: student.id,
-      student_lrn: student.lrn,
       guardian_name: student.guardian_first_name,
       phone_number: student.guardian_phone_number,
       formatted_phone: formatPhoneForIprog(student.guardian_phone_number),
