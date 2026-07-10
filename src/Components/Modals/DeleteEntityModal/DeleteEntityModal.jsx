@@ -157,6 +157,13 @@ function DeleteEntityModal({
         />
 
         <div className={styles.buttonGroup}>
+          <Button 
+            label="Cancel"
+            color="ghost"
+            onClick={onClose}
+            width="sm"
+            height="sm"
+          />
           <Button
             label="Delete"
             color="danger"
@@ -164,13 +171,6 @@ function DeleteEntityModal({
             width="xs"
             height="sm"
             disabled={isBulkDelete && selectedEntities.length === 0}
-          />
-          <Button 
-            label="Cancel"
-            color="ghost"
-            onClick={onClose}
-            width="sm"
-            height="sm"
           />
         </div>
       </div>

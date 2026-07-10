@@ -122,14 +122,6 @@ function InviteModal({
         </InfoBox>
 
         <div className={styles.buttonGroup}>
-          <Button
-            label={loading ? "Sending..." : isBulkInvite ? `Send ${eligibleTeachers.length} Invitation${eligibleTeachers.length !== 1 ? 's' : ''}` : "Send Invitation"}
-            color="ocean"
-            onClick={handleConfirm}
-            width="auto"
-            height="sm"
-            disabled={loading || eligibleTeachers.length === 0}
-          />
           <Button 
             label="Cancel"
             color="ghost"
@@ -137,6 +129,14 @@ function InviteModal({
             width="sm"
             height="sm"
             disabled={loading}
+          />
+          <Button
+            label={loading ? "Sending..." : isBulkInvite ? `Send ${eligibleTeachers.length} Invitation${eligibleTeachers.length !== 1 ? 's' : ''}` : "Send Invitation"}
+            color="ocean"
+            onClick={handleConfirm}
+            width="auto"
+            height="sm"
+            disabled={loading || eligibleTeachers.length === 0}
           />
         </div>
       </div>

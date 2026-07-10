@@ -260,6 +260,13 @@ function DownloadQRModal({
         
         <div className={styles.buttonGroup}>
           <Button
+            label="Cancel"
+            color="ghost"
+            onClick={onClose}
+            width="xs"
+            height="sm"
+          />
+          <Button
             label={isProcessing ? 'Processing...' : 'ZIP'}
             color="nav"
             onClick={handleDownloadZIP}
@@ -273,13 +280,6 @@ function DownloadQRModal({
             onClick={handleDownloadIndividual}
             disabled={isProcessing || selectedCount === 0}
             width="md"
-            height="sm"
-          />
-          <Button
-            label="Cancel"
-            color="ghost"
-            onClick={onClose}
-            width="xs"
             height="sm"
           />
         </div>
