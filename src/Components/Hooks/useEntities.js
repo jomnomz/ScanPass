@@ -177,11 +177,21 @@ export const useGuardians = () => {
   };
 };
 
+// ===== HELPER: Normalize teacher assignments to match expected shape =====
+// The service returns { subjects, sections, assignments }
+// The UI expects { subjects, sections, teachingAssignments }
+const normalizeTeacherAssignments = (result) => ({
+  subjects: result.subjects || [],
+  sections: result.sections || [],
+  teachingAssignments: result.assignments || []
+});
+
 export const useTeachers = () => {
   const [currentFilter, setCurrentFilter] = useState(() => getStoredFilter('teacher'));
   const [teachers, setTeachers] = useState([]);
   const [teacherAssignments, setTeacherAssignments] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [error, setError] = useState(null);
 
   const teacherService = new TeacherService();
@@ -196,14 +206,17 @@ export const useTeachers = () => {
       console.log(`✅ Fetched ${data.length} teachers`);
       setTeachers(data);
       
-      // Fetch assignments for all teachers
+      // Fetch assignments for all teachers (bulk background sync — used for table display only)
+      setLoadingAssignments(true);
       console.log('🔄 Fetching teacher assignments...');
       const assignments = {};
       for (const teacher of data) {
         const result = await teacherService.getTeacherAssignments(teacher.id);
-        assignments[teacher.id] = result;
+        // Normalize the shape: assignments -> teachingAssignments
+        assignments[teacher.id] = normalizeTeacherAssignments(result);
       }
       setTeacherAssignments(assignments);
+      setLoadingAssignments(false);
       
     } catch (err) {
       console.error('❌ Error fetching teachers:', err);
@@ -277,7 +290,21 @@ export const useTeachers = () => {
   };
 
   const getTeacherAssignments = (teacherId) => {
-    return teacherAssignments[teacherId] || { subjects: [], sections: [], assignments: [] };
+    return teacherAssignments[teacherId] || { subjects: [], sections: [], teachingAssignments: [] };
+  };
+
+  // ===== fetch ONE teacher's assignments fresh from the DB, on demand =====
+  // Use this right before opening the edit modal so the form is never built
+  // from stale/in-flight background-sync data.
+  const fetchTeacherAssignmentsFresh = async (teacherId) => {
+    const result = await teacherService.getTeacherAssignments(teacherId);
+    // Normalize the shape: assignments -> teachingAssignments
+    const normalized = normalizeTeacherAssignments(result);
+    setTeacherAssignments(prev => ({
+      ...prev,
+      [teacherId]: normalized
+    }));
+    return normalized; // return the normalized shape, not raw result
   };
 
   const updateTeacherAssignments = async (teacherId, assignments) => {
@@ -286,9 +313,10 @@ export const useTeachers = () => {
       if (result.success) {
         // Refresh assignments for this teacher
         const updatedAssignments = await teacherService.getTeacherAssignments(teacherId);
+        // Normalize the shape: assignments -> teachingAssignments
         setTeacherAssignments(prev => ({
           ...prev,
-          [teacherId]: updatedAssignments
+          [teacherId]: normalizeTeacherAssignments(updatedAssignments)
         }));
       }
       return result;
@@ -302,12 +330,14 @@ export const useTeachers = () => {
     currentFilter,
     entities: teachers,
     teacherAssignments,
+    loadingAssignments,
     loading,
     error,
     changeFilter,
     refetch,
     setEntities: setTeachers,
     getTeacherAssignments,
+    fetchTeacherAssignmentsFresh,
     updateTeacherAssignments
   };
 };

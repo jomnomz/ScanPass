@@ -89,7 +89,9 @@ function EditTeacherForm({
     onFieldChange('subjects', subjectRows.filter((row) => row.id !== rowId));
   };
 
-  const allSubjectsUsed = subjectRows.length >= availableSubjects.length && availableSubjects.length > 0;
+  // ===== CAP SUBJECTS AT 1 =====
+  const MAX_SUBJECTS_PER_TEACHER = 1;
+  const subjectLimitReached = subjectRows.length >= MAX_SUBJECTS_PER_TEACHER;
 
   return (
     <div className={styles.form}>
@@ -259,7 +261,7 @@ function EditTeacherForm({
             type="button"
             className={styles.addButton}
             onClick={handleAddSubjectRow}
-            disabled={disabled || allSubjectsUsed}
+            disabled={disabled || subjectLimitReached}
           >
             <FontAwesomeIcon icon={faPlus} /> Add Subject
           </button>

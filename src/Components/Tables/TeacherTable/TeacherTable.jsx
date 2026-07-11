@@ -3,7 +3,6 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTeachers } from '../../Hooks/useEntities'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
-import { TeacherService } from '../../../Utils/EntityService'; 
 import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
 import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
@@ -87,19 +86,26 @@ const TeacherTable = ({
   sectionsData = [],
 }) => {
 
-  const { entities: teachers, loading, error, setEntities } = useTeachers();
-  const [teacherAssignments, setTeacherAssignments] = useState({});
-  const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const fetchAbortRef = useRef(null);
-  const fetchTimeoutRef = useRef(null);
+  // ===== USE TEACHERS HOOK (single source of truth) =====
+  const {
+    entities: teachers,
+    teacherAssignments,
+    loadingAssignments,
+    loading,
+    error,
+    setEntities,
+    fetchTeacherAssignmentsFresh,
+    updateTeacherAssignments: updateTeacherAssignmentsViaHook,
+  } = useTeachers();
 
   // ===== MODAL STATE MACHINE =====
-  // 'closed' | 'editing' | 'confirming'
   const [editModalState, setEditModalState] = useState('closed');
   const [editingEntity, setEditingEntity] = useState(null);
   const [saveError, setSaveError] = useState('');
+  const [editLoadingId, setEditLoadingId] = useState(null); // disable Edit while fetching
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
   const [allSubjects, setAllSubjects] = useState([]);
+  const [sectionIdMap, setSectionIdMap] = useState({}); // key: `${gradeLevel}|${sectionName}` -> section.id
 
   const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
     teachers, setEntities, 'teacher', refreshTeachers
@@ -114,25 +120,26 @@ const TeacherTable = ({
   const [selectedSectionFilter, setSelectedSectionFilter] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
 
-  const teacherService = useMemo(() => new TeacherService(), []);
   const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
 
-  // ===== FETCH ALL SUBJECTS CATALOG DIRECTLY FROM SUPABASE =====
+  // ===== FETCH ALL SUBJECTS CATALOG DIRECTLY FROM SUPABASE (including IDs) =====
   useEffect(() => {
     const fetchAllSubjects = async () => {
       try {
         const { data, error } = await supabase
           .from('subjects')
-          .select('subject_code, subject_name')
+          .select('id, subject_code, subject_name')
           .order('subject_name');
 
         if (error) throw error;
 
         const list = (data || []).map((s) => ({
+          id: s.id,
           code: s.subject_code,
           name: s.subject_name,
         }));
         setAllSubjects(list);
+        console.log('📚 Subject catalog loaded with IDs:', list);
       } catch (err) {
         console.error('Error fetching subject catalog:', err);
       }
@@ -140,11 +147,12 @@ const TeacherTable = ({
     fetchAllSubjects();
   }, []);
 
-  // ===== BUILD GRADE-SECTIONS MAP =====
+  // ===== BUILD GRADE-SECTIONS MAP AND SECTION ID MAP =====
   useEffect(() => {
     if (sectionsData.length > 0 && gradesData.length > 0) {
       console.log('📋 Building grade-sections map for teachers...');
       const map = {};
+      const idMap = {};
       
       const gradeIdToLevel = {};
       gradesData.forEach(grade => {
@@ -154,10 +162,15 @@ const TeacherTable = ({
       sectionsData.forEach(section => {
         const gradeLevel = gradeIdToLevel[section.grade_id];
         if (gradeLevel) {
+          // For the dropdown UI
           if (!map[gradeLevel]) {
             map[gradeLevel] = [];
           }
           map[gradeLevel].push(section.section_name);
+          
+          // For ID resolution
+          const key = `${gradeLevel}|${section.section_name}`;
+          idMap[key] = section.id;
         }
       });
       
@@ -167,15 +180,11 @@ const TeacherTable = ({
       });
       
       console.log('📋 Teacher grade-sections map:', map);
+      console.log('🗺️ Section ID map:', idMap);
       setGradeSectionsMap(map);
+      setSectionIdMap(idMap);
     }
   }, [gradesData, sectionsData]);
-
-  useEffect(() => {
-  console.log('🔍 DEBUG - gradesData:', gradesData);
-  console.log('🔍 DEBUG - sectionsData:', sectionsData);
-  console.log('🔍 DEBUG - gradeSectionsMap:', gradeSectionsMap);
-}, [gradesData, sectionsData, gradeSectionsMap]);
 
   // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
   const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
@@ -192,46 +201,10 @@ const TeacherTable = ({
     if (changed) {
       onPageChange(1);
       onClearAllPages();
-      // Clear snapshots when filters change
       setFullySelectedSnapshots(new Map());
       filterRef.current = current;
     }
   }, [selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
-
-  // Debounced fetch assignments
-  useEffect(() => {
-    if (teachers.length > 0) {
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-      fetchTimeoutRef.current = setTimeout(() => fetchTeacherAssignments(), 300);
-    }
-    return () => { if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current); };
-  }, [teachers]);
-
-  const fetchTeacherAssignments = async () => {
-    const currentRun = {};
-    fetchAbortRef.current = currentRun;
-    setLoadingAssignments(true);
-
-    try {
-      const assignments = {};
-      for (const teacher of teachers) {
-        if (fetchAbortRef.current !== currentRun) return;
-        const result = await teacherService.getTeacherAssignments(teacher.id);
-        assignments[teacher.id] = {
-          subjects: result.subjects || [],
-          sections: result.sections || [],
-          teachingAssignments: result.assignments || []
-        };
-      }
-      if (fetchAbortRef.current === currentRun) {
-        setTeacherAssignments(assignments);
-      }
-    } catch (error) {
-      console.error('Error fetching teacher assignments:', error);
-    } finally {
-      if (fetchAbortRef.current === currentRun) setLoadingAssignments(false);
-    }
-  };
 
   useEffect(() => {
     if (onTeacherDataUpdate) onTeacherDataUpdate(teachers);
@@ -315,22 +288,10 @@ const TeacherTable = ({
     <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
   ) : null;
 
-  const recordCountMessage = useMemo(() => {
-    const count = sortedTeachers.length;
-    const phrases = [];
-    if (selectedSectionFilter) phrases.push(`in Section ${selectedSectionFilter}`);
-    if (selectedSubjectFilter) phrases.push(`teaching ${selectedSubjectFilter}`);
-    if (selectedStatusFilter) phrases.push(`with ${selectedStatusFilter.charAt(0).toUpperCase() + selectedStatusFilter.slice(1).toLowerCase()} status`);
-    if (selectedGrade !== 'all') phrases.push(`in Grade ${selectedGrade}`);
-    else phrases.push('across all grades');
-    return `Showing ${count} teacher/s ${phrases.join(' ')}`;
-  }, [sortedTeachers.length, selectedSectionFilter, selectedSubjectFilter, selectedStatusFilter, selectedGrade]);
-
   const allOnPageSelected = paginatedTeachers.length > 0 &&
     paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
 
-  // ===== SNAPSHOT-BASED BANNER PERSISTENCE (mirroring StudentTable) =====
-  // Effect 1: capture a snapshot whenever the CURRENT page becomes fully selected.
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
   useEffect(() => {
     const allVisibleSelectedNow = paginatedTeachers.length > 0 &&
       paginatedTeachers.every(teacher => selectedTeachers.includes(teacher.id));
@@ -353,7 +314,6 @@ const TeacherTable = ({
     });
   }, [paginatedTeachers, selectedTeachers, currentPage]);
 
-  // Effect 2: prune any snapshot that's no longer fully selected.
   useEffect(() => {
     const selectedSet = new Set(selectedTeachers);
 
@@ -374,7 +334,6 @@ const TeacherTable = ({
     });
   }, [selectedTeachers]);
 
-  // Pure derived value: is any page's snapshot still fully intact?
   const hasTriggeredSelectAll = useMemo(() => {
     return fullySelectedSnapshots.size > 0;
   }, [fullySelectedSnapshots]);
@@ -386,13 +345,11 @@ const TeacherTable = ({
     return '';
   })();
 
-  // ===== UPDATED: selectAllBanner with snapshot-based logic (mirroring StudentTable) =====
   const selectAllBanner = (() => {
     const hasAnyPageFullySelected = hasTriggeredSelectAll;
     const allPagesSelected = selectedTeachers.length === sortedTeachers.length && sortedTeachers.length > 0;
     const hasMorePages = sortedTeachers.length > paginatedTeachers.length;
 
-    // If all pages are already selected, show "Clear all"
     if (allPagesSelected && hasMorePages) {
       return (
         <button
@@ -417,7 +374,6 @@ const TeacherTable = ({
       );
     }
 
-    // Show "Select all" if ANY page has been fully selected AND there are more pages
     if (hasAnyPageFullySelected && hasMorePages && !allPagesSelected) {
       return (
         <button
@@ -451,8 +407,8 @@ const TeacherTable = ({
   };
 
   // ===== HELPER: Build teacher edit data with assignments/subjects =====
-  const buildTeacherEditData = (teacher) => {
-    const assignmentsData = teacherAssignments[teacher.id] || {};
+  const buildTeacherEditData = (teacher, assignmentsDataOverride) => {
+    const assignmentsData = assignmentsDataOverride || teacherAssignments[teacher.id] || {};
 
     const assignments = (assignmentsData.sections || [])
       .map((s) => ({
@@ -463,7 +419,6 @@ const TeacherTable = ({
       }))
       .filter((row) => row.grade && row.section);
 
-    // Subjects are now row objects (matching assignment rows), not plain code strings.
     const subjects = (assignmentsData.subjects || [])
       .map((s) => ({
         id: `existing-${s.subject_id ?? Math.random()}`,
@@ -474,22 +429,29 @@ const TeacherTable = ({
     return { ...teacher, assignments, subjects };
   };
 
-  // ===== UPDATED: Open modal instead of inline edit =====
-  const handleEditClick = (teacher, e) => {
+  // ===== UPDATED: Open modal with fresh data =====
+  const handleEditClick = async (teacher, e) => {
     e.stopPropagation();
-    
-    console.log('✏️ Opening edit modal for teacher:', {
-      id: teacher.id,
-      name: `${teacher.first_name} ${teacher.last_name}`
-    });
-    
-    const teacherForEdit = buildTeacherEditData(teacher);
-    
-    startEdit(teacherForEdit);
-    setEditingEntity(teacher);
-    setEditModalState('editing');
-    setSaveError('');
-    toggleRow(null);
+    if (editLoadingId) return; // guard against double-clicks
+
+    setEditLoadingId(teacher.id);
+    try {
+      console.log('✏️ Fetching fresh assignments before opening edit modal for teacher:', teacher.id);
+      const fresh = await fetchTeacherAssignmentsFresh(teacher.id);
+
+      const teacherForEdit = buildTeacherEditData(teacher, fresh);
+
+      startEdit(teacherForEdit);
+      setEditingEntity(teacher);
+      setEditModalState('editing');
+      setSaveError('');
+      toggleRow(null);
+    } catch (err) {
+      console.error('Failed to load teacher assignments for edit:', err);
+      toastError('Failed to load teacher assignments. Please try again.');
+    } finally {
+      setEditLoadingId(null);
+    }
   };
 
   // ===== CLOSE MODAL =====
@@ -507,19 +469,25 @@ const TeacherTable = ({
     
     setSaveError('');
     
-    // Validate required fields
     if (!editFormData.first_name || !editFormData.last_name) {
       setSaveError('First name and last name are required');
       return;
     }
 
-    // For teachers, we don't have the same critical fields check as students
-    // But we still want to update the teacher
     performTeacherUpdate(teacher.id);
   };
 
+  // ===== FIXED: performTeacherUpdate now saves assignments too =====
   const performTeacherUpdate = async (teacherId) => {
+    // CRITICAL: Capture form data BEFORE saveEdit can reset it
+    const capturedAssignments = [...(editFormData.assignments || [])];
+    const capturedSubjects = [...(editFormData.subjects || [])];
+    
+    console.log('📝 Captured assignments for save:', capturedAssignments);
+    console.log('📝 Captured subjects for save:', capturedSubjects);
+    
     try {
+      // 1. Update basic teacher info
       const result = await saveEdit(
         teacherId, 
         null, 
@@ -535,27 +503,80 @@ const TeacherTable = ({
             updated_at: new Date().toISOString()
           };
           
-          console.log('💾 Updating teacher:', updateData);
+          console.log('💾 Updating teacher basic info:', updateData);
           
+          // Use the teacherService from the hook's internal state
+          // We need to use the hook's update method or create a new service instance
+          const { TeacherService } = await import('../../../Utils/EntityService');
+          const teacherService = new TeacherService();
           const result = await teacherService.update(id, updateData);
           return result;
         }
       );
       
-      if (result.success) {
-        success('Teacher updated successfully');
-        if (refreshTeachers) {
-          await refreshTeachers();
-        }
-        // Close everything on success
-        setEditModalState('closed');
-        setEditingEntity(null);
+      if (!result.success) {
+        setSaveError(result.error || 'Failed to update teacher');
+        setEditModalState('editing');
+        return;
       }
+      
+      // 2. Now handle assignments using captured data
+      console.log('📋 Processing assignments:', { capturedAssignments, capturedSubjects });
+      
+      const subjectIds = capturedSubjects
+        .map(row => {
+          const subject = allSubjects.find(s => s.code === row.code);
+          return subject?.id;
+        })
+        .filter(Boolean);
+      
+      console.log('📚 Resolved subject IDs:', subjectIds);
+      
+      const sectionIds = capturedAssignments
+        .map(row => {
+          const key = `${row.grade}|${row.section}`;
+          return sectionIdMap[key];
+        })
+        .filter(Boolean);
+      
+      console.log('🏫 Resolved section IDs:', sectionIds);
+      
+      const adviserRow = capturedAssignments.find(row => row.isAdviser);
+      const adviserSectionId = adviserRow
+        ? sectionIdMap[`${adviserRow.grade}|${adviserRow.section}`]
+        : null;
+      
+      console.log('👨‍🏫 Adviser section ID:', adviserSectionId);
+      
+      // 3. Update teacher assignments using the hook's method
+      const assignResult = await updateTeacherAssignmentsViaHook(teacherId, {
+        subjectIds,
+        sectionIds,
+        adviserSectionId
+      });
+      
+      if (!assignResult.success) {
+        toastError(assignResult.error || 'Teacher info saved, but assignments failed to update');
+        setSaveError(assignResult.error || 'Failed to update assignments');
+        setEditModalState('editing');
+        return;
+      }
+      
+      // 4. Success!
+      success('Teacher updated successfully with assignments');
+      
+      // 5. Refresh data
+      if (refreshTeachers) {
+        await refreshTeachers();
+      }
+      
+      // 6. Close modal
+      setEditModalState('closed');
+      setEditingEntity(null);
       
     } catch (error) {
       console.error('Update error:', error);
       setSaveError(error.message || 'Failed to update teacher');
-      // Stay in editing state so user can fix and retry
       setEditModalState('editing');
     }
   };
@@ -703,7 +724,6 @@ const TeacherTable = ({
     if (onSingleDeleteClick) onSingleDeleteClick(teacher);
   };
 
-  // ===== HELPER: Get status-based action for ActionsMenu =====
   const getStatusAction = (teacher) => {
     const status = (teacher.status || '').toLowerCase();
 
@@ -732,7 +752,6 @@ const TeacherTable = ({
       };
     }
 
-    // No status / anything else -> plain Invite
     return {
       label: 'Invite',
       icon: faPaperPlane,
@@ -755,7 +774,6 @@ const TeacherTable = ({
     return <span className={styles.statusBadge} style={{ backgroundColor: config.color }}>{config.label}</span>;
   };
 
-  // ===== UPDATED: renderField now only shows display values (no inline editing) =====
   const renderField = (teacher, fieldName) => {
     if (fieldName === 'status') return renderStatusBadge(teacher.status);
     if (fieldName === 'email_address' || fieldName === 'phone_no') {
@@ -764,7 +782,6 @@ const TeacherTable = ({
     return teacher[fieldName] || '';
   };
 
-  // ===== RENDER EXPANDED ROW WITH PROFILE =====
   const renderExpandedRow = (teacher) => {
     const addedAt = formatDateTimeLocal(teacher.created_at);
     const updatedAt = teacher.updated_at ? formatDateTimeLocal(teacher.updated_at) : 'Never updated';
@@ -987,6 +1004,7 @@ const TeacherTable = ({
                 label: 'Edit',
                 icon: faPenToSquare,
                 onClick: (e) => handleEditClick(row, e),
+                disabled: editLoadingId === row.id,
               },
               {
                 label: 'Delete',
@@ -1041,7 +1059,7 @@ const TeacherTable = ({
         }}
       />
 
-      {/* ===== EDIT MODAL - only open when in 'editing' state ===== */}
+      {/* ===== EDIT MODAL ===== */}
       <EditEntityFormModal
         isOpen={editModalState === 'editing'}
         onClose={handleCloseModal}
@@ -1051,7 +1069,6 @@ const TeacherTable = ({
         errorMessage={saveError}
       >
         <EditTeacherForm
-          teacher={editingEntity}
           formData={editFormData}
           onFieldChange={updateEditField}
           validationErrors={validationErrors}

@@ -215,23 +215,42 @@ export class TeacherService extends EntityService {
     }
   }
 
-  // NEW: Update teacher assignments
+  // NEW: Update teacher assignments - FIXED to always delete first
   async updateTeacherAssignments(teacherId, assignments) {
     try {
-      // Update subjects
+      // ALWAYS delete existing assignments first (clears everything)
+      
+      // 1. Delete all subject assignments
+      const { error: deleteSubjectsError } = await supabase
+        .from('teacher_subjects')
+        .delete()
+        .eq('teacher_id', teacherId);
+      
+      if (deleteSubjectsError) throw deleteSubjectsError;
+
+      // 2. Delete all section assignments
+      const { error: deleteSectionsError } = await supabase
+        .from('teacher_sections')
+        .delete()
+        .eq('teacher_id', teacherId);
+      
+      if (deleteSectionsError) throw deleteSectionsError;
+
+      // 3. Delete all subject-section assignments
+      const { error: deleteAssignmentsError } = await supabase
+        .from('teacher_subject_sections')
+        .delete()
+        .eq('teacher_id', teacherId);
+      
+      if (deleteAssignmentsError) throw deleteAssignmentsError;
+
+      // 4. Insert new subject assignments (if any)
       if (assignments.subjectIds && assignments.subjectIds.length > 0) {
         const subjectAssignments = assignments.subjectIds.map(subjectId => ({
           teacher_id: teacherId,
           subject_id: subjectId
         }));
         
-        // Delete existing subjects
-        await supabase
-          .from('teacher_subjects')
-          .delete()
-          .eq('teacher_id', teacherId);
-        
-        // Insert new subjects
         const { error: subjectsError } = await supabase
           .from('teacher_subjects')
           .insert(subjectAssignments);
@@ -239,7 +258,7 @@ export class TeacherService extends EntityService {
         if (subjectsError) throw subjectsError;
       }
 
-      // Update sections with adviser flag
+      // 5. Insert new section assignments with adviser flag (if any)
       if (assignments.sectionIds && assignments.sectionIds.length > 0) {
         const sectionAssignments = assignments.sectionIds.map(sectionId => ({
           teacher_id: teacherId,
@@ -247,13 +266,6 @@ export class TeacherService extends EntityService {
           is_adviser: assignments.adviserSectionId === sectionId
         }));
         
-        // Delete existing sections
-        await supabase
-          .from('teacher_sections')
-          .delete()
-          .eq('teacher_id', teacherId);
-        
-        // Insert new sections
         const { error: sectionsError } = await supabase
           .from('teacher_sections')
           .insert(sectionAssignments);
@@ -261,8 +273,8 @@ export class TeacherService extends EntityService {
         if (sectionsError) throw sectionsError;
       }
 
-      // Update subject-section assignments
-      if (assignments.subjectIds && assignments.sectionIds) {
+      // 6. Insert new subject-section assignments (if both exist)
+      if (assignments.subjectIds?.length > 0 && assignments.sectionIds?.length > 0) {
         const teachingAssignments = [];
         
         assignments.subjectIds.forEach(subjectId => {
@@ -275,20 +287,11 @@ export class TeacherService extends EntityService {
           });
         });
         
-        if (teachingAssignments.length > 0) {
-          // Delete existing teaching assignments
-          await supabase
-            .from('teacher_subject_sections')
-            .delete()
-            .eq('teacher_id', teacherId);
-          
-          // Insert new teaching assignments
-          const { error: assignmentsError } = await supabase
-            .from('teacher_subject_sections')
-            .insert(teachingAssignments);
-          
-          if (assignmentsError) throw assignmentsError;
-        }
+        const { error: assignmentsError } = await supabase
+          .from('teacher_subject_sections')
+          .insert(teachingAssignments);
+        
+        if (assignmentsError) throw assignmentsError;
       }
 
       return { success: true, message: 'Teacher assignments updated successfully' };
