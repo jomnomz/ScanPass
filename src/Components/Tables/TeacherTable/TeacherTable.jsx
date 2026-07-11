@@ -617,20 +617,22 @@ const TeacherTable = ({
     const subjects = assignments.subjects?.map(s => String(s.subject?.subject_name || '').trim())
       .filter(name => name && name !== 'Unknown').join(', ') || 'None';
 
-    const teachingSections = assignments.teachingAssignments?.map(assignment => {
+    // Get teaching sections as an array for wrapped display
+    const teachingSectionsArray = assignments.teachingAssignments?.map(assignment => {
       const section = assignments.sections?.find(s => s.section_id === assignment.section_id);
       if (section?.section) {
         return `Grade ${section.section.grade?.grade_level || '?'}-${section.section.section_name || '?'}`;
       }
       return '';
-    }).filter(Boolean).join(', ') || 'None';
+    }).filter(Boolean) || [];
 
     const adviserSection = assignments.sections?.find(s => s.is_adviser);
     const adviserDisplay = adviserSection?.section ? 
       `Grade ${adviserSection.section.grade?.grade_level || '?'}-${adviserSection.section.section_name || '?'}` : 
       'None';
 
-    return { subjects, teachingSections, adviserDisplay };
+    // Return the array separately so it can be rendered with wrapping
+    return { subjects, teachingSectionsArray, teachingSections: teachingSectionsArray.join(', ') || 'None', adviserDisplay };
   };
 
   const getTeacherFilterData = (teacher) => {
@@ -848,7 +850,25 @@ const TeacherTable = ({
               <div>
                 <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
                 <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
-                <div className={styles.teacherInfo}>Teaching Sections: {assignments.teachingSections}</div>
+                <div className={styles.teacherInfo}>
+                  <strong>Teaching Sections:</strong>{' '}
+                  <span className={styles.teachingSectionsContainer}>
+                    {assignments.teachingSectionsArray.length > 0 ? (
+                      assignments.teachingSectionsArray.map((section, index) => (
+                        <React.Fragment key={index}>
+                          {index > 0 && ', '}
+                          <span className={styles.sectionItem}>{section}</span>
+                          {/* Add line break after every 3 sections for visual grouping */}
+                          {(index + 1) % 3 === 0 && index < assignments.teachingSectionsArray.length - 1 && (
+                            <br />
+                          )}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      'None'
+                    )}
+                  </span>
+                </div>
                 <div className={styles.teacherInfo}>Adviser Section: {assignments.adviserDisplay}</div>
               </div>
               <div>
