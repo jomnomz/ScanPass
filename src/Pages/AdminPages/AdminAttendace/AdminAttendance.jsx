@@ -6,8 +6,10 @@ import Input from '../../../Components/UI/Input/Input.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
 import { supabase } from '../../../lib/supabase';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
+import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
 
 function AdminAttendance() {
+  const { error: toastError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
@@ -20,6 +22,10 @@ function AdminAttendance() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarBtnRef = useRef(null);
 
+  // ===== NEW: Fetch grades and sections data =====
+  const [gradesData, setGradesData] = useState([]);
+  const [sectionsData, setSectionsData] = useState([]);
+
   // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 20;
@@ -29,6 +35,41 @@ function AdminAttendance() {
     const phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
     return phTime.toISOString().split('T')[0];
   }, []);
+
+  // ===== NEW: Fetch grades =====
+  const fetchGrades = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .order('id');
+      
+      if (error) throw error;
+      setGradesData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading grades:', err);
+      toastError('Failed to load grades data');
+    }
+  }, [toastError]);
+
+  // ===== NEW: Fetch sections =====
+  const fetchSections = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sections')
+        .select(`
+          *,
+          grade:grades(grade_level)
+        `)
+        .order('id');
+      
+      if (error) throw error;
+      setSectionsData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading sections:', err);
+      toastError('Failed to load sections data');
+    }
+  }, [toastError]);
 
   const fetchAvailableDatesFallback = useCallback(async () => {
     try {
@@ -109,9 +150,24 @@ function AdminAttendance() {
     }
   }, [fetchAvailableDatesFallback]);
 
+  // ===== NEW: Fetch all initial data =====
   useEffect(() => {
-    fetchAvailableDates();
-  }, [fetchAvailableDates, fetchAvailableDatesFallback]);
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        await fetchGrades();
+        await fetchSections();
+        await fetchAvailableDates();
+      } catch (err) {
+        console.error('❌ Error fetching initial data:', err);
+        toastError('Failed to load initial data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [fetchGrades, fetchSections, fetchAvailableDates, toastError]);
 
   useEffect(() => {
     const channel = supabase
@@ -236,6 +292,8 @@ function AdminAttendance() {
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         rowsPerPage={20}
+        gradesData={gradesData}
+        sectionsData={sectionsData}
       />
     </main>
   );

@@ -180,29 +180,25 @@ const StudentTable = ({
     }
   }, [gradesData, sectionsData]);
 
+  // ===== FIXED: Section dropdown now uses gradeSectionsMap (unpaginated reference data) =====
+  // Full, unpaginated section list — derived from gradeSectionsMap, which is
+  // itself built from gradesData/sectionsData (unpaginated reference tables),
+  // not from the paginated `students` array. This ensures the dropdown always
+  // shows every section for a grade, regardless of which page of students is
+  // currently loaded.
   const allUniqueSections = useMemo(() => {
-    const sections = students
-      .map(student => student.section || '')
-      .filter(section => section && section.trim() !== '');
-    
-    const uniqueSections = [...new Set(sections)];
-    const sorted = uniqueSections.sort(compareSections);
-    return sorted;
-  }, [students]);
+    const allSections = Object.values(gradeSectionsMap).flat();
+    const uniqueSections = [...new Set(allSections)];
+    return uniqueSections.sort(compareSections);
+  }, [gradeSectionsMap]);
 
   const currentGradeSections = useMemo(() => {
     if (currentClass === 'all') {
       return allUniqueSections;
     }
     
-    const sections = students
-      .filter(student => student.grade === currentClass)
-      .map(student => student.section || '')
-      .filter(section => section && section.trim() !== '');
-    
-    const uniqueSections = [...new Set(sections)];
-    return uniqueSections.sort(compareSections);
-  }, [students, currentClass, allUniqueSections]);
+    return gradeSectionsMap[currentClass] || [];
+  }, [currentClass, gradeSectionsMap, allUniqueSections]);
 
   const sectionsToShowInDropdown = useMemo(() => {
     return currentGradeSections;
@@ -300,12 +296,16 @@ const StudentTable = ({
     // Clear snapshots when changing grade
     setFullySelectedSnapshots(new Map());
     
+    // ===== FIXED: Only clear section if it's no longer valid =====
+    // This matches AttendanceTable's behavior
     if (selectedSection && onSectionSelect) {
-      onSectionSelect('');
-    }
-    
-    if (selectedSection && onClearSectionFilter) {
-      onClearSectionFilter();
+      const isValidSection = currentGradeSections.includes(selectedSection);
+      if (!isValidSection) {
+        onSectionSelect('');
+        if (onClearSectionFilter) {
+          onClearSectionFilter();
+        }
+      }
     }
   };
 

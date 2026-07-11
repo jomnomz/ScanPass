@@ -3,6 +3,7 @@ import { useEntityEdit } from '../../Hooks/useEntityEdit';
 import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { grades } from '../../../Utils/TableHelpers';
 import { formatNA } from '../../../Utils/Formatters';
+import { compareSections } from '../../../Utils/CompareHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
 import EditGuardianForm from '../../Forms/EditGuardianForm/EditGuardianForm.jsx';
@@ -52,7 +53,9 @@ const GuardianTable = ({
   currentGrade = 'all',
   paginationContent = null,
   totalGuardianCount = 0,
-  currentPage = 1
+  currentPage = 1,
+  gradesData = [],
+  sectionsData = []
 }) => {
   const [guardians, setGuardians] = useState([]);
   const [currentClass, setCurrentClass] = useState(currentGrade);
@@ -80,6 +83,38 @@ const GuardianTable = ({
 
   const { user, profile } = useAuth();
   const { success } = useToast();
+  
+  // ===== BUILD GRADE-SECTIONS MAP (same as StudentTable) =====
+  const [gradeSectionsMap, setGradeSectionsMap] = useState({});
+
+  useEffect(() => {
+    if (sectionsData.length > 0 && gradesData.length > 0) {
+      console.log('📋 Building grade-sections map for guardians from props...');
+      const map = {};
+      
+      const gradeIdToLevel = {};
+      gradesData.forEach(grade => {
+        gradeIdToLevel[grade.id] = grade.grade_level;
+      });
+      
+      sectionsData.forEach(section => {
+        const gradeLevel = gradeIdToLevel[section.grade_id];
+        if (gradeLevel) {
+          if (!map[gradeLevel]) {
+            map[gradeLevel] = [];
+          }
+          map[gradeLevel].push(section.section_name);
+        }
+      });
+      
+      Object.keys(map).forEach(grade => {
+        map[grade] = map[grade].sort(compareSections);
+      });
+      
+      console.log('📋 Grade-sections map for guardians:', map);
+      setGradeSectionsMap(map);
+    }
+  }, [gradesData, sectionsData]);
 
   useEffect(() => {
     setCurrentClass(currentGrade);
@@ -136,28 +171,25 @@ const GuardianTable = ({
     }
   }, [currentClass, onGradeUpdate]);
 
+  // ===== FIXED: Section dropdown now uses gradeSectionsMap (unpaginated reference data) =====
+  // Full, unpaginated section list — derived from gradeSectionsMap, which is
+  // itself built from gradesData/sectionsData (unpaginated reference tables),
+  // not from the paginated `guardians` array. This ensures the dropdown always
+  // shows every section for a grade, regardless of which page of guardians is
+  // currently loaded.
   const allUniqueSections = useMemo(() => {
-    const sections = localGuardians
-      .map(guardian => guardian.section || '')
-      .filter(section => section && section !== 'N/A' && section.trim() !== '');
-
-    const uniqueSections = [...new Set(sections)];
-    return uniqueSections.sort();
-  }, [localGuardians]);
+    const allSections = Object.values(gradeSectionsMap).flat();
+    const uniqueSections = [...new Set(allSections)];
+    return uniqueSections.sort(compareSections);
+  }, [gradeSectionsMap]);
 
   const currentGradeSections = useMemo(() => {
     if (currentClass === 'all') {
       return allUniqueSections;
     }
-
-    const sections = localGuardians
-      .filter(guardian => guardian.grade === currentClass)
-      .map(guardian => guardian.section || '')
-      .filter(section => section && section !== 'N/A' && section.trim() !== '');
-
-    const uniqueSections = [...new Set(sections)];
-    return uniqueSections.sort();
-  }, [localGuardians, currentClass, allUniqueSections]);
+    
+    return gradeSectionsMap[currentClass] || [];
+  }, [currentClass, gradeSectionsMap, allUniqueSections]);
 
   const sectionsToShowInDropdown = useMemo(() => {
     return currentGradeSections;
@@ -178,12 +210,19 @@ const GuardianTable = ({
     toggleRow(null);
     handleCloseModal();
 
+    // ===== FIXED: Only clear section if it's no longer valid =====
+    // This matches AttendanceTable's behavior
     if (selectedSection && onSectionSelect) {
-      onSectionSelect('');
-    }
-
-    if (selectedSection && onClearSectionFilter) {
-      onClearSectionFilter();
+      // Check if section is still valid for the new grade
+      const sectionsForNewGrade = gradeSectionsMap[className] || [];
+      const isValidSection = sectionsForNewGrade.includes(selectedSection);
+      
+      if (!isValidSection) {
+        onSectionSelect('');
+        if (onClearSectionFilter) {
+          onClearSectionFilter();
+        }
+      }
     }
 
     setTimeout(() => setLoading(false), 100);
@@ -430,7 +469,7 @@ const GuardianTable = ({
       if (currentClass === 'all') {
         message = `Showing ${guardianCount} guardian/s across all grades`;
       } else {
-        message = `Showing ${guardianCount} guardian/s in Grade ${currentClass}`;
+        message += `Showing ${guardianCount} guardian/s in Grade ${currentClass}`;
       }
     }
 

@@ -3,6 +3,7 @@ import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
 import { sortEntities } from '../../../Utils/SortEntities'; 
+import { compareSections } from '../../../Utils/CompareHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import styles from './AttendanceTable.module.css';
 import { useAttendance } from '../../Hooks/useAttendance';
@@ -98,7 +99,9 @@ const AttendanceTable = ({
   onStatsUpdate,
   currentPage = 1,
   onPageChange = () => {},
-  rowsPerPage = 20
+  rowsPerPage = 20,
+  gradesData = [],
+  sectionsData = []
 }) => {
   const { 
     currentClass,
@@ -121,6 +124,38 @@ const AttendanceTable = ({
   const [validationErrors, setValidationErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState(externalStatusFilter || 'all');
+  
+  // ===== BUILD GRADE-SECTIONS MAP (same as StudentTable) =====
+  const [gradeSectionsMap, setGradeSectionsMap] = useState({});
+
+  useEffect(() => {
+    if (sectionsData.length > 0 && gradesData.length > 0) {
+      console.log('📋 Building grade-sections map for attendance from props...');
+      const map = {};
+      
+      const gradeIdToLevel = {};
+      gradesData.forEach(grade => {
+        gradeIdToLevel[grade.id] = grade.grade_level;
+      });
+      
+      sectionsData.forEach(section => {
+        const gradeLevel = gradeIdToLevel[section.grade_id];
+        if (gradeLevel) {
+          if (!map[gradeLevel]) {
+            map[gradeLevel] = [];
+          }
+          map[gradeLevel].push(section.section_name);
+        }
+      });
+      
+      Object.keys(map).forEach(grade => {
+        map[grade] = map[grade].sort(compareSections);
+      });
+      
+      console.log('📋 Grade-sections map for attendance:', map);
+      setGradeSectionsMap(map);
+    }
+  }, [gradesData, sectionsData]);
 
   useEffect(() => {
     setStatusFilter(externalStatusFilter || 'all');
@@ -363,16 +398,22 @@ const AttendanceTable = ({
     toggleRow(null);
     cancelEdit();
     
+    // ===== FIXED: Only clear section if it's no longer valid =====
     if (selectedSection && onSectionSelect) {
-      onSectionSelect('');
-    }
-    
-    if (selectedSection && onClearSectionFilter) {
-      onClearSectionFilter();
+      // Check if section is still valid for the new grade
+      const sectionsForNewGrade = gradeSectionsMap[className] || [];
+      const isValidSection = sectionsForNewGrade.includes(selectedSection);
+      
+      if (!isValidSection) {
+        onSectionSelect('');
+        if (onClearSectionFilter) {
+          onClearSectionFilter();
+        }
+      }
     }
     
     fetchAttendanceForDate(selectedDate, className);
-  }, [changeClass, onPageChange, toggleRow, cancelEdit, selectedSection, onSectionSelect, onClearSectionFilter, selectedDate, fetchAttendanceForDate]);
+  }, [changeClass, onPageChange, toggleRow, cancelEdit, selectedSection, onSectionSelect, onClearSectionFilter, selectedDate, fetchAttendanceForDate, gradeSectionsMap]);
 
   const handleSectionFilter = useCallback((section) => {
     if (onSectionSelect) {
@@ -436,24 +477,25 @@ const AttendanceTable = ({
     return stats;
   }, []);
 
+  // ===== FIXED: Section dropdown now uses gradeSectionsMap (unpaginated reference data) =====
+  // Full, unpaginated section list — derived from gradeSectionsMap, which is
+  // itself built from gradesData/sectionsData (unpaginated reference tables),
+  // not from the paginated `attendances` array. This ensures the dropdown always
+  // shows every section for a grade, regardless of which page of attendances is
+  // currently loaded.
   const allUniqueSections = useMemo(() => {
-    const sections = attendances
-      .map(attendance => attendance.section || '')
-      .filter(section => section && section.trim() !== '');
-    
-    return [...new Set(sections)].sort();
-  }, [attendances]);
+    const allSections = Object.values(gradeSectionsMap).flat();
+    const uniqueSections = [...new Set(allSections)];
+    return uniqueSections.sort(compareSections);
+  }, [gradeSectionsMap]);
 
   const currentGradeSections = useMemo(() => {
-    if (currentClass === 'all') return allUniqueSections;
+    if (currentClass === 'all') {
+      return allUniqueSections;
+    }
     
-    const sections = attendances
-      .filter(attendance => attendance.grade === currentClass)
-      .map(attendance => attendance.section || '')
-      .filter(section => section && section.trim() !== '');
-    
-    return [...new Set(sections)].sort();
-  }, [attendances, currentClass, allUniqueSections]);
+    return gradeSectionsMap[currentClass] || [];
+  }, [currentClass, gradeSectionsMap, allUniqueSections]);
 
   const sectionsToShowInDropdown = useMemo(() => {
     return currentGradeSections;
@@ -513,10 +555,8 @@ const AttendanceTable = ({
 
   // SETUP REALTIME SUBSCRIPTION FOR AUTO-UPDATE
   useEffect(() => {
-    // Only set up subscription if we have a selected date and current class
     if (!selectedDate) return undefined;
 
-    // Create a unique channel name based on current filters
     const channelName = `attendance-admin-${selectedDate}-${currentClass}`;
 
     const channel = supabase
@@ -529,13 +569,11 @@ const AttendanceTable = ({
           table: 'attendance'
         },
         () => {
-          // Refresh attendance data when any change occurs
           fetchAttendanceForDate(selectedDate, currentClass);
         }
       )
       .subscribe();
 
-    // Cleanup subscription on unmount or when dependencies change
     return () => {
       supabase.removeChannel(channel);
     };
@@ -635,7 +673,6 @@ const AttendanceTable = ({
         className={`${styles.attendanceCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button - collapses the expanded row */}
         <button
           className={styles.closeExpandBtn}
           onClick={(e) => {
@@ -652,7 +689,6 @@ const AttendanceTable = ({
         </div>
         
         <div className={styles.details}>
-          {/* LEFT COLUMN - Attendance Details */}
           <div>
             <div className={styles.attendanceInfo}>
               <strong>Attendance Details</strong>
@@ -674,7 +710,6 @@ const AttendanceTable = ({
             </div>
           </div>
 
-          {/* MIDDLE COLUMN - Student Details */}
           <div>
             <div className={styles.attendanceInfo}>
               <strong>Student Details</strong>
@@ -690,7 +725,6 @@ const AttendanceTable = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN - Record Information */}
           <div>
             <div className={styles.attendanceInfo}>
               <strong>Record Information</strong>

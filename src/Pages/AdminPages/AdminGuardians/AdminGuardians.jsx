@@ -8,8 +8,10 @@ import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import { supabase } from '../../../lib/supabase';
 import { sortGuardians } from '../../../Utils/SortEntities';
+import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
 
 function AdminGuardians() {
+  const { error: toastError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
@@ -17,9 +19,45 @@ function AdminGuardians() {
   const [allGuardians, setAllGuardians] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  const [gradesData, setGradesData] = useState([]);
+  const [sectionsData, setSectionsData] = useState([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 20;
+
+  const fetchGrades = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .order('id');
+      
+      if (error) throw error;
+      setGradesData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading grades:', err);
+      toastError('Failed to load grades data');
+    }
+  }, [toastError]);
+
+  const fetchSections = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sections')
+        .select(`
+          *,
+          grade:grades(grade_level)
+        `)
+        .order('id');
+      
+      if (error) throw error;
+      setSectionsData(data || []);
+    } catch (err) {
+      console.error('❌ Error loading sections:', err);
+      toastError('Failed to load sections data');
+    }
+  }, [toastError]);
 
   const fetchAllGuardians = useCallback(async () => {
     try {
@@ -72,8 +110,22 @@ function AdminGuardians() {
   }, []);
 
   useEffect(() => {
-    fetchAllGuardians();
-  }, [fetchAllGuardians]);
+    const fetchInitialData = async () => {
+      setLoadingData(true);
+      try {
+        await fetchGrades();
+        await fetchSections();
+        await fetchAllGuardians();
+      } catch (err) {
+        console.error('❌ Error fetching initial data:', err);
+        toastError('Failed to load application data');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [fetchGrades, fetchSections, fetchAllGuardians, toastError]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -183,6 +235,8 @@ function AdminGuardians() {
             totalGuardianCount={sortedGuardians.length}
             currentPage={currentPage}
             loading={loadingData}
+            gradesData={gradesData}
+            sectionsData={sectionsData}
             paginationContent={
               <Pagination 
                 currentPage={currentPage} 
