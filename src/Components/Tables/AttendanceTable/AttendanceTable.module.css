@@ -1,3 +1,118 @@
+.summaryCard {
+  background: linear-gradient(180deg, #f8fafc 0%, #f4f8fc 100%);
+  border: 1px solid #dde5ef;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
+  margin-bottom: 16px;
+  width: 95%;
+}
+
+.summaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5d728d;
+}
+
+.metaCluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: -10px;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid #dbe5f0;
+  background: #ffffff;
+  color: #42536d;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.statCard {
+  background-color: transparent !important;
+  border: solid 1px #CACED6;
+  box-shadow: 0 2px 10px rgba(207, 207, 207, 0.1);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statLabel {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #72839a;
+}
+
+.statValue {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #213247;
+}
+
+.statPresent {
+  color: #1f8a4d;
+}
+
+.statLate {
+  color: #c57900;
+}
+
+.statAbsent {
+  color: #bc4749;
+}
+
+/* ===== RESPONSIVE FOR STATS CARDS ===== */
+@media (max-width: 1024px) {
+  .summaryHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .summaryCard {
+    padding: 16px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== ATTENDANCE TABLE CONTAINER ===== */
 .attendanceTableContainer {
   height: 100%;
   display: flex;
@@ -6,7 +121,7 @@
 }
 
 .tableWrapper {
-  max-height: 66vh;
+  max-height: 45vh;
   overflow-y: auto;
   width: 98%;
 }
@@ -123,15 +238,15 @@
 }
 
 .statusPresent {
-  background-color: #10b981; /* Green - matches Active status */
+  background-color: #10b981;
 }
 
 .statusLate {
-  background-color: #f59e0b; /* Orange/Amber - matches Pending status */
+  background-color: #f59e0b;
 }
 
 .statusAbsent {
-  background-color: #ef4444; /* Red - matches Inactive status */
+  background-color: #ef4444;
 }
 
 /* ===== LOADING & ERROR STATES ===== */

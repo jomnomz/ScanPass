@@ -851,7 +851,7 @@ const TeacherTable = ({
                 <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
                 <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
                 <div className={styles.teacherInfo}>
-                  <strong>Teaching Sections:</strong>{' '}
+                  Teaching Sections:{' '}
                   <span className={styles.teachingSectionsContainer}>
                     {assignments.teachingSectionsArray.length > 0 ? (
                       assignments.teachingSectionsArray.map((section, index) => (

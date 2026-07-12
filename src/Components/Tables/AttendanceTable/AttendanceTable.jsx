@@ -398,9 +398,7 @@ const AttendanceTable = ({
     toggleRow(null);
     cancelEdit();
     
-    // ===== FIXED: Only clear section if it's no longer valid =====
     if (selectedSection && onSectionSelect) {
-      // Check if section is still valid for the new grade
       const sectionsForNewGrade = gradeSectionsMap[className] || [];
       const isValidSection = sectionsForNewGrade.includes(selectedSection);
       
@@ -477,12 +475,6 @@ const AttendanceTable = ({
     return stats;
   }, []);
 
-  // ===== FIXED: Section dropdown now uses gradeSectionsMap (unpaginated reference data) =====
-  // Full, unpaginated section list — derived from gradeSectionsMap, which is
-  // itself built from gradesData/sectionsData (unpaginated reference tables),
-  // not from the paginated `attendances` array. This ensures the dropdown always
-  // shows every section for a grade, regardless of which page of attendances is
-  // currently loaded.
   const allUniqueSections = useMemo(() => {
     const allSections = Object.values(gradeSectionsMap).flat();
     const uniqueSections = [...new Set(allSections)];
@@ -537,6 +529,16 @@ const AttendanceTable = ({
     
     return sortEntities(filtered, { type: 'student' });
   }, [attendances, selectedDate, statusFilter, currentClass, selectedSection, searchTerm]);
+
+  // ===== STATS FOR KPI CARDS (same as teacher table) =====
+  const stats = useMemo(() => {
+    const total = sortedAttendances.length;
+    const present = sortedAttendances.filter((item) => item.status === 'present').length;
+    const late = sortedAttendances.filter((item) => item.status === 'late').length;
+    const absent = sortedAttendances.filter((item) => item.status === 'absent').length;
+
+    return { total, present, late, absent };
+  }, [sortedAttendances]);
 
   const totalPages = Math.ceil(sortedAttendances.length / rowsPerPage);
 
@@ -955,6 +957,29 @@ const AttendanceTable = ({
 
   return (
     <div className={styles.attendanceTableContainer}>
+      {/* === STATS CARDS (same style as teacher table) === */}
+      <section className={styles.summaryCard}>
+
+        <div className={styles.statsGrid}>
+          <article className={styles.statCard}>
+            <span className={styles.statLabel}>Total students</span>
+            <strong className={styles.statValue}>{stats.total}</strong>
+          </article>
+          <article className={styles.statCard}>
+            <span className={styles.statLabel}>Present</span>
+            <strong className={`${styles.statValue} ${styles.statPresent}`}>{stats.present}</strong>
+          </article>
+          <article className={styles.statCard}>
+            <span className={styles.statLabel}>Late</span>
+            <strong className={`${styles.statValue} ${styles.statLate}`}>{stats.late}</strong>
+          </article>
+          <article className={styles.statCard}>
+            <span className={styles.statLabel}>Absent</span>
+            <strong className={`${styles.statValue} ${styles.statAbsent}`}>{stats.absent}</strong>
+          </article>
+        </div>
+      </section>
+
       <Table
         columns={tableColumns}
         rows={paginatedAttendances}

@@ -290,23 +290,6 @@ function Table({
 		});
 	};
 
-	// ===== UPDATED: getPaginationMargin with fixed logic =====
-	const getPaginationMargin = () => {
-		if (!paginationContent) return '0px';
-		
-		// 1. All pages selected
-		if (isAllPagesSelected) return '190px';
-		
-		// 2. Nothing selected
-		if (visibleSelectedCount === 0) return '482px';
-		
-		// 3. All rows on current page selected (visibleSelectedCount >= totalRowsOnPage)
-		if (visibleSelectedCount >= totalRowsOnPage && totalRowsOnPage > 0) return '103px';
-		
-		// 4. Some rows selected (partial — including cross-page selections)
-		return '305px';
-	};
-
 	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;
 
 	return (
@@ -324,10 +307,7 @@ function Table({
 							{selectedInfoText && <div className={styles.selectedInfoText}>{selectedInfoText}</div>}
 							{headerContent}
 							{paginationContent && (
-								<div 
-									className={styles.paginationWrapper}
-									style={{ marginLeft: getPaginationMargin() }}
-								>
+								<div className={styles.paginationWrapper}>
 									{paginationContent}
 								</div>
 							)}
