@@ -130,10 +130,10 @@ function FileUploadModal({
         }
     };
 
-    const getImportantNote = () => {
+    const getNotesNote = () => {
         return (
-            <InfoBox type="important">
-                <strong>Important:</strong> All records must be valid. If any record has errors, the entire upload will be rejected.
+            <InfoBox type="note">
+                <strong>Note:</strong> All records must be valid for the upload to succeed. If any rows have errors, we'll show you exactly which ones so you can fix and re-upload.
             </InfoBox>
         );
     };
@@ -387,7 +387,7 @@ function FileUploadModal({
                         )}
 
                         {/* Important note moved here - below the drag-and-drop area */}
-                        {getImportantNote()}
+                        {getNotesNote()}
                     </>
                 )}
                 
