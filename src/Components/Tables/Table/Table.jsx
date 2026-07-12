@@ -290,22 +290,28 @@ function Table({
 		});
 	};
 
-	const hasRightContent = infoText || selectedInfoText || headerContent || paginationContent;
+	// Check if we have left content (grade tabs, renderTopContent, info/selected info, headerContent)
+	const hasLeftContent = gradeTabs || renderTopContent || infoText || selectedInfoText || headerContent;
+	const hasRightContent = paginationContent;
 
 	return (
 		<div className={joinClassNames(styles.container, className)} ref={containerRef}>
-			{(renderTopContent || gradeTabs || hasRightContent) && (
+			{(hasLeftContent || hasRightContent) && (
 				<div className={styles.topBar}>
 					<div className={styles.topBarLeft}>
 						{renderTopContent}
 						{renderGradeTabs()}
+						
+						{/* Move infoText and selectedInfoText here - closer to grade tabs */}
+						{infoText && <div className={styles.infoText}>{infoText}</div>}
+						{selectedInfoText && <div className={styles.selectedInfoText}>{selectedInfoText}</div>}
+						
+						{/* Move headerContent here - this includes the "Select All" button */}
+						{headerContent && <div className={styles.headerContent}>{headerContent}</div>}
 					</div>
 
 					{hasRightContent && (
 						<div className={styles.topBarRight}>
-							{infoText && <div className={styles.infoText}>{infoText}</div>}
-							{selectedInfoText && <div className={styles.selectedInfoText}>{selectedInfoText}</div>}
-							{headerContent}
 							{paginationContent && (
 								<div className={styles.paginationWrapper}>
 									{paginationContent}

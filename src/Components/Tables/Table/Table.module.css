@@ -26,6 +26,7 @@
 	flex-wrap: nowrap;
 	min-width: 0;
 	flex-shrink: 1;
+	overflow-x: auto; /* Allow scrolling if content overflows */
 }
 
 .topBarRight {
@@ -78,6 +79,7 @@
 	border-radius: 999px;
 	background: #e8f4ef;
 	border: 1px solid #cae6dd;
+	white-space: nowrap;
 }
 
 .selectedInfoText {
@@ -88,6 +90,14 @@
 	border-radius: 999px;
 	background: #e8f4ef;
 	border: 1px solid #cae6dd;
+	white-space: nowrap;
+}
+
+.headerContent {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	white-space: nowrap;
 }
 
 .stateMessage {
@@ -244,6 +254,11 @@
     border: none !important;
     font-size: 0;
     line-height: 0;
+}
+
+.paginationWrapper {
+	display: flex;
+	align-items: center;
 }
 
 @media (max-width: 768px) {
