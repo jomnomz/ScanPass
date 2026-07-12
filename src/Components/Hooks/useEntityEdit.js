@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { validateStudentData } from '../../Utils/StudentDataValidation'; 
+import { validateAndNormalizeStudent } from '../../Utils/StudentDataValidation';
 import { validateTeacherData } from '../../Utils/TeacherValidation';
 import { validateGradeSectionData, validateSubjectData  } from '../../Utils/MasterDataValidation'; 
 
@@ -92,7 +92,8 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
     let errors = {};
     
     if (entityType === 'student') {
-      errors = validateStudentData(editFormData);
+      const result = validateAndNormalizeStudent(editFormData);
+      errors = result.errors;
     } else if (entityType === 'guardian') {
       if (!editFormData.first_name?.trim()) errors.first_name = 'First name is required';
       if (!editFormData.last_name?.trim()) errors.last_name = 'Last name is required';

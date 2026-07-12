@@ -8,6 +8,9 @@ import { useToast } from '../../Toast/ToastContext/ToastContext.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
 import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
 import UploadIcon from '@mui/icons-material/Upload';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import EntityList from '../../List/EntityList/EntityList.jsx';
 import { apiClient } from '../../../config/api.js'; // Import apiClient
 
 function FileUploadModal({ 
@@ -21,6 +24,13 @@ function FileUploadModal({
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
     const { success, error, warning, info } = useToast();
+
+    // Validation error state: null = no errors yet (never had a failed submit).
+    // Once populated, the toggle button becomes visible and stays visible for
+    // the rest of this modal session (until close or a successful upload).
+    const [validationErrors, setValidationErrors] = useState(null);
+    // 'drop' = show the drag-and-drop area, 'errors' = show the error list
+    const [viewMode, setViewMode] = useState('drop');
 
     // DRAG AND DROP HANDLERS
     const handleDragOver = (e) => {
@@ -76,9 +86,17 @@ function FileUploadModal({
     const resetFileUpload = () => {
         setFile(null);
         setIsDragOver(false);
+        setValidationErrors(null);
+        setViewMode('drop');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+    };
+
+    // Flip between the drop area and the error list. Only relevant once
+    // validationErrors has been populated by a failed submit.
+    const toggleErrorView = () => {
+        setViewMode(prev => (prev === 'errors' ? 'drop' : 'errors'));
     };
 
     // Get modal title based on entity type
@@ -128,6 +146,15 @@ function FileUploadModal({
                 </p>
             </InfoBox>
         );
+    };
+
+    // Converts the backend's invalidRecords shape into the { row, message }
+    // shape EntityList's 'validationError' case expects.
+    const buildValidationErrorEntities = (invalidRecords) => {
+        return invalidRecords.map(record => ({
+            row: record.row,
+            message: Object.values(record.errors || {}).join(', ')
+        }));
     };
 
     async function handleUpload() {
@@ -222,17 +249,14 @@ function FileUploadModal({
             } else {
                 if (response.data.invalidRecords && response.data.invalidRecords.length > 0) {
                     const errorCount = response.data.invalidCount || response.data.invalidRecords.length;
-                    error(`${errorCount} record(s) have validation errors`);
-                    
-                    if (response.data.errorSummary && response.data.errorSummary.length > 0) {
-                        response.data.errorSummary.forEach(err => {
-                            warning(err);
-                        });
-                    }
-                    
-                    if (response.data.summary) {
-                        info(`${response.data.summary.validRecords} valid, ${response.data.summary.invalidRecords} invalid`);
-                    }
+
+                    // Single summary toast — grabs attention, doesn't explain.
+                    // The error list (rendered in place of the drop area below)
+                    // carries the actual per-row detail.
+                    error(`Import failed — ${errorCount} row(s) have errors. See details below.`);
+
+                    setValidationErrors(buildValidationErrorEntities(response.data.invalidRecords));
+                    setViewMode('errors');
                 } else {
                     error(response.data.error || 'Upload failed');
                 }
@@ -245,24 +269,18 @@ function FileUploadModal({
             if (err.response) {
                 // Server responded with error status
                 const errorData = err.response.data;
-                
-                if (errorData.error) {
+
+                if (errorData.invalidRecords && errorData.invalidRecords.length > 0) {
+                    const errorCount = errorData.invalidCount || errorData.invalidRecords.length;
+
+                    error(`Import failed — ${errorCount} row(s) have errors. See details below.`);
+
+                    setValidationErrors(buildValidationErrorEntities(errorData.invalidRecords));
+                    setViewMode('errors');
+                } else if (errorData.error) {
                     error(errorData.error);
                 } else {
                     error('Upload failed. Please check the file format and try again.');
-                }
-                
-                if (errorData.invalidRecords) {
-                    errorData.invalidRecords.slice(0, 3).forEach(record => {
-                        const errorMsg = Object.values(record.errors || {}).join(', ');
-                        warning(`Row ${record.row}: ${errorMsg}`);
-                    });
-                }
-                
-                if (errorData.errorSummary) {
-                    errorData.errorSummary.slice(0, 3).forEach(errMsg => {
-                        warning(errMsg);
-                    });
                 }
             } else if (err.request) {
                 // Request made but no response received
@@ -281,6 +299,9 @@ function FileUploadModal({
         onClose();
     };
 
+    const hasValidationErrors = validationErrors && validationErrors.length > 0;
+    const showErrorList = hasValidationErrors && viewMode === 'errors';
+
     return (
         <Modal isOpen={isOpen} onClose={handleClose} size="md"> 
             <div className={styles.modalContainer}>
@@ -291,44 +312,80 @@ function FileUploadModal({
                 </MessageModalLabel>
 
                 {getImportantNote()}
-                
-                
-                <div 
-                    className={`${styles.dropArea} ${isDragOver ? styles.highlight : ''} ${file ? styles.hasFile : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    <div className={styles.dropAreaRow}>
-                        
-                        <UploadIcon sx={{ fontSize: 30 }} className={styles.icon} />
-                        <p>Drag and drop your file here</p>
+
+                {/* Toggle button only appears once a failed submit has produced
+                    an error list, and persists (flipping icon/direction) until
+                    the modal closes or a new upload succeeds. */}
+                {hasValidationErrors && (
+                    <div className={styles.viewToggleRow}>
+                        <button
+                            type="button"
+                            className={styles.viewToggleBtn}
+                            onClick={toggleErrorView}
+                            title={showErrorList ? 'Select a different file' : 'View error details'}
+                        >
+                            {showErrorList ? (
+                                <>
+                                    <UploadFileIcon sx={{ fontSize: 18 }} />
+                                    <span>Select new file</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ListAltIcon sx={{ fontSize: 18 }} />
+                                    <span>View errors</span>
+                                </>
+                            )}
+                        </button>
                     </div>
-                    <div>
-                        <Button
-                            label="Select Files" 
-                            height="xs"
-                            width="sm"
-                            pill={true}
-                            color="nav"
-                            className={styles.browseBtn}
-                            onClick={handleBrowseClick}
-                        />
-                     
-                    <input 
-                        type="file" 
-                        ref={fileInputRef}
-                        onChange={handleFileInputChange}
-                        accept=".xlsx, .xls, .csv"
-                        className={styles.fileInput}
+                )}
+
+                {showErrorList ? (
+                    <EntityList
+                        entities={validationErrors}
+                        entityType="validationError"
+                        title="Rows with errors"
+                        maxHeight="220px"
                     />
-                    </div>
-                </div>
-                
-                {file && (
-                    <div className={styles.fileInfo}>
-                        <p>Selected file: <strong>{file.name}</strong> ({formatFileSize(file.size)})</p>
-                    </div>
+                ) : (
+                    <>
+                        <div 
+                            className={`${styles.dropArea} ${isDragOver ? styles.highlight : ''} ${file ? styles.hasFile : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
+                            <div className={styles.dropAreaRow}>
+                                
+                                <UploadIcon sx={{ fontSize: 30 }} className={styles.icon} />
+                                <p>Drag and drop your file here</p>
+                            </div>
+                            <div>
+                                <Button
+                                    label="Select Files" 
+                                    height="xs"
+                                    width="sm"
+                                    pill={true}
+                                    color="nav"
+                                    className={styles.browseBtn}
+                                    onClick={handleBrowseClick}
+                                />
+                             
+                            <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                onChange={handleFileInputChange}
+                                accept=".xlsx, .xls, .csv"
+                                className={styles.fileInput}
+                            />
+                            </div>
+                        </div>
+                        
+                        {file && (
+                            <div className={styles.fileInfo}>
+                                <p>Selected file: <strong>{file.name}</strong> ({formatFileSize(file.size)})</p>
+                            </div>
+                        )}
+                    </>
                 )}
                 
                 <div className={styles.uploadActions}>
@@ -342,7 +399,7 @@ function FileUploadModal({
                     <Button 
                         className={styles.submitBtn}
                         onClick={handleUpload}
-                        disabled={!file || isUploading}
+                        disabled={!file || isUploading || showErrorList}
                         label={isUploading ? 'Uploading...' : 'Submit'}
                         color="ocean"
                     />

@@ -166,6 +166,15 @@ function EntityList({
           details: entity.description || entity.building || ''
         };
 
+      // Validation errors from a failed file upload — entities here look like
+      // { row: 5, message: "Email is invalid, LRN is duplicated in the file" }
+      case 'validationError':
+        return {
+          identifier: `Row ${entity.row}`,
+          name: entity.message || '',
+          details: ''
+        };
+
       default:
         if (entity.lrn) {
           return {
@@ -228,6 +237,7 @@ function EntityList({
       gradeSchedule: 'Grade Schedule',
       schedule: 'Schedule',
       room: 'Room',
+      validationError: 'Error',
       'grade section': 'Grade Section',
       'grade schedule': 'Grade Schedule',
       'grade sections': 'Grade Section',
@@ -260,6 +270,10 @@ function EntityList({
 
     if (entityType === 'room') {
       return `${details.identifier}${details.details ? ` - ${details.details}` : ''}`;
+    }
+
+    if (entityType === 'validationError') {
+      return `${details.identifier}: ${details.name}`;
     }
 
     if (details.identifier && details.name) {

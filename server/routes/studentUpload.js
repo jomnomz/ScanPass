@@ -5,8 +5,7 @@ import { excelUpload } from '../middleware/excelUpload.js';
 import { supabase } from '../config/supabase.js';
 import stream from 'stream';
 import path from 'path';
-import { formatPhilippinePhone } from '../../src/Utils/PhoneValidation.js'; 
-import { validateStudentData } from '../../src/Utils/StudentDataValidation.js'; 
+import { validateAndNormalizeStudent } from '../../src/Utils/StudentDataValidation.js';
 
 const router = express.Router();
 
@@ -54,20 +53,6 @@ const cleanStudentData = (student) => {
     }
   });
   return cleaned;
-};
-
-const formatPhoneFieldsForDatabase = (student) => {
-  const formatted = { ...student };
-  
-  if (formatted.phone_number) {
-    formatted.phone_number = formatPhilippinePhone(formatted.phone_number);
-  }
-  
-  if (formatted.guardian_phone_number) {
-    formatted.guardian_phone_number = formatPhilippinePhone(formatted.guardian_phone_number);
-  }
-  
-  return formatted;
 };
 
 const findGradeAndSectionIds = async (gradeText, sectionText) => {
@@ -243,14 +228,15 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
     const validationResults = [];
     const duplicateLRNs = new Set();
     const lrnSet = new Set();
-    
+    const duplicateEmails = new Set();
+    const emailSet = new Set();
+
     rawStudentData.forEach((student, index) => {
       const rowNumber = index + 2;
 
       const cleanedStudent = cleanStudentData(student);
-      const formattedStudent = formatPhoneFieldsForDatabase(cleanedStudent);
-      const validationErrors = validateStudentData(formattedStudent);
-      
+      const { student: formattedStudent, errors: validationErrors } = validateAndNormalizeStudent(cleanedStudent);
+
       if (formattedStudent.lrn) {
         if (lrnSet.has(formattedStudent.lrn)) {
           validationErrors.lrn = `LRN ${formattedStudent.lrn} is duplicated in the file`;
@@ -259,7 +245,18 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           lrnSet.add(formattedStudent.lrn);
         }
       }
-      
+
+      // in-file duplicate email check (DB unique constraint will enforce
+      // this too, but catching it here gives a clearer, LRN-independent error)
+      if (formattedStudent.email) {
+        if (emailSet.has(formattedStudent.email)) {
+          validationErrors.email = `Email ${formattedStudent.email} is duplicated in the file`;
+          duplicateEmails.add(formattedStudent.email);
+        } else {
+          emailSet.add(formattedStudent.email);
+        }
+      }
+
       validationResults.push({
         row: rowNumber,
         student: formattedStudent,
@@ -293,7 +290,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           totalRecords: rawStudentData.length,
           validRecords: validRecords.length,
           invalidRecords: invalidRecords.length,
-          duplicateLRNs: Array.from(duplicateLRNs)
+          duplicateLRNs: Array.from(duplicateLRNs),
+          duplicateEmails: Array.from(duplicateEmails)
         }
       });
     }
@@ -423,6 +421,7 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
     }
     
     console.log(`📱 Phone numbers formatted for Twilio E.164 compatibility`);
+    console.log(`📧 Emails normalized and validated`);
     
     res.json(response);
 
@@ -436,7 +435,13 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       errorMessage = 'Invalid data format in file. Please check your data.';
       statusCode = 400;
     } else if (error.message.includes('duplicate key')) {
-      errorMessage = 'Duplicate LRN found in database.';
+      if (error.message.includes('students_email_unique')) {
+        errorMessage = 'One or more emails already exist in the database.';
+      } else if (error.message.includes('students_student_id_key')) {
+        errorMessage = 'Duplicate LRN found in database.';
+      } else {
+        errorMessage = 'A duplicate value was found in the database.';
+      }
       statusCode = 409;
     } else if (error.message.includes('permission denied')) {
       errorMessage = 'Permission denied. Please check your database credentials.';
