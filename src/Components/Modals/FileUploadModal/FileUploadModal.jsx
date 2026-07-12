@@ -134,16 +134,6 @@ function FileUploadModal({
         return (
             <InfoBox type="important">
                 <strong>Important:</strong> All records must be valid. If any record has errors, the entire upload will be rejected.
-                <p className={styles.templateLink}>
-                    <a 
-                        href={getFieldMappingLink()} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className={styles.downloadLink}
-                    >
-                        <span><span className={styles.download}>Download:</span> {entityType} import template</span>
-                    </a>
-                </p>
             </InfoBox>
         );
     };
@@ -253,7 +243,7 @@ function FileUploadModal({
                     // Single summary toast — grabs attention, doesn't explain.
                     // The error list (rendered in place of the drop area below)
                     // carries the actual per-row detail.
-                    error(`Import failed — ${errorCount} row(s) have errors. See details below.`);
+                    error(`Import failed — ${errorCount} row(s) have errors.`);
 
                     setValidationErrors(buildValidationErrorEntities(response.data.invalidRecords));
                     setViewMode('errors');
@@ -273,7 +263,7 @@ function FileUploadModal({
                 if (errorData.invalidRecords && errorData.invalidRecords.length > 0) {
                     const errorCount = errorData.invalidCount || errorData.invalidRecords.length;
 
-                    error(`Import failed — ${errorCount} row(s) have errors. See details below.`);
+                    error(`Import failed — ${errorCount} row(s) have errors.`);
 
                     setValidationErrors(buildValidationErrorEntities(errorData.invalidRecords));
                     setViewMode('errors');
@@ -311,7 +301,17 @@ function FileUploadModal({
                     {getDescription()}
                 </MessageModalLabel>
 
-                {getImportantNote()}
+                {/* Download link moved here - right after the description */}
+                <div className={styles.templateLinkWrapper}>
+                    <a 
+                        href={getFieldMappingLink()} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.downloadLink}
+                    >
+                        <span><span className={styles.download}>Download:</span> {entityType} import template</span>
+                    </a>
+                </div>
 
                 {/* Toggle button only appears once a failed submit has produced
                     an error list, and persists (flipping icon/direction) until
@@ -385,6 +385,9 @@ function FileUploadModal({
                                 <p>Selected file: <strong>{file.name}</strong> ({formatFileSize(file.size)})</p>
                             </div>
                         )}
+
+                        {/* Important note moved here - below the drag-and-drop area */}
+                        {getImportantNote()}
                     </>
                 )}
                 

@@ -246,8 +246,9 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         }
       }
 
-      // in-file duplicate email check (DB unique constraint will enforce
-      // this too, but catching it here gives a clearer, LRN-independent error)
+      // in-file duplicate email check (separate from the DB-level check done
+      // later, which catches an email already belonging to a DIFFERENT
+      // existing student)
       if (formattedStudent.email) {
         if (emailSet.has(formattedStudent.email)) {
           validationErrors.email = `Email ${formattedStudent.email} is duplicated in the file`;
@@ -317,7 +318,9 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           grade_id: result.gradeId,
           section_id: result.sectionId,
           grade: result.gradeDisplay || student.grade,
-          section: result.sectionDisplay || student.section
+          section: result.sectionDisplay || student.section,
+          // Row number kept only for error reporting below — stripped before insert.
+          _row: record.row
         });
       }
     }
@@ -343,6 +346,80 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       });
     }
 
+    // ------------------------------------------------------------------
+    // DB-level email conflict check: does this email already belong to a
+    // DIFFERENT student already in the database? (Not the LRN duplicate
+    // case — that's handled separately below and is allowed to "skip".)
+    //
+    // Without this check, a single insert() with N rows would fail
+    // ENTIRELY if even one row collided on the unique email constraint,
+    // with no indication of which row caused it. This catches it early
+    // and reports it the same way the initial validation pass does.
+    // ------------------------------------------------------------------
+    const emailsToCheck = studentsWithIds
+      .map(s => s.email)
+      .filter(email => email);
+
+    const existingEmailToLrn = new Map();
+
+    if (emailsToCheck.length > 0) {
+      const { data: existingEmailRows, error: emailFetchError } = await supabase
+        .from('students')
+        .select('lrn, email')
+        .in('email', emailsToCheck);
+
+      if (emailFetchError) {
+        console.error('Error checking existing emails:', emailFetchError);
+        throw new Error(`Database error: ${emailFetchError.message}`);
+      }
+
+      if (existingEmailRows && existingEmailRows.length > 0) {
+        existingEmailRows.forEach(row => {
+          existingEmailToLrn.set(row.email, row.lrn);
+        });
+      }
+    }
+
+    // A conflict only counts if the existing row's LRN is DIFFERENT from
+    // this row's LRN — if they match, this is just a legitimate re-upload
+    // of the same student (handled by the existingLRNs skip-logic below),
+    // not a genuine email collision.
+    const emailConflicts = studentsWithIds.filter(s => {
+      const existingLrnForEmail = existingEmailToLrn.get(s.email);
+      return existingLrnForEmail && existingLrnForEmail !== s.lrn;
+    });
+
+    if (emailConflicts.length > 0) {
+      console.log(`❌ ${emailConflicts.length} students have emails already belonging to other students in the database`);
+
+      const emailConflictInvalidRecords = emailConflicts.map(s => ({
+        row: s._row,
+        data: s,
+        errors: {
+          email: `Email ${s.email} already belongs to another student (LRN ${existingEmailToLrn.get(s.email)}) in the database`
+        }
+      }));
+
+      const errorMessages = emailConflictInvalidRecords.map(record =>
+        `Row ${record.row}: ${Object.values(record.errors).join(', ')}`
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'One or more emails already belong to other students in the database.',
+        invalidCount: emailConflictInvalidRecords.length,
+        invalidRecords: emailConflictInvalidRecords.slice(0, 10),
+        errorSummary: errorMessages.slice(0, 5),
+        summary: {
+          totalRecords: rawStudentData.length,
+          validRecords: studentsWithIds.length - emailConflicts.length,
+          invalidRecords: emailConflicts.length,
+          duplicateLRNs: [],
+          duplicateEmails: emailConflicts.map(s => s.email)
+        }
+      });
+    }
+
     const lrns = studentsWithIds.map(s => s.lrn).filter(lrn => lrn);
     const existingLRNs = [];
     
@@ -361,10 +438,20 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       }
     }
 
-    const newStudents = studentsWithIds
-      .filter(student => !existingLRNs.includes(student.lrn));
+    // Strip the internal _row field before these objects touch the DB —
+    // it's not a real column and Supabase would reject the insert otherwise.
+    const stripRowMeta = (student) => {
+      const { _row, ...rest } = student;
+      return rest;
+    };
 
-    const existingStudents = studentsWithIds.filter(student => existingLRNs.includes(student.lrn));
+    const newStudents = studentsWithIds
+      .filter(student => !existingLRNs.includes(student.lrn))
+      .map(stripRowMeta);
+
+    const existingStudents = studentsWithIds
+      .filter(student => existingLRNs.includes(student.lrn))
+      .map(stripRowMeta);
 
     console.log(`📝 Found ${newStudents.length} new students and ${existingStudents.length} existing students`);
 

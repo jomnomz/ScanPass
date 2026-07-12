@@ -529,6 +529,12 @@
   }
 }
 
+@media (min-width: 1400px) {
+    .tableWrapper {
+    max-height: 55vh;
+  }
+}
+
 @media (max-width: 768px) {
   .timeInput {
     min-width: 80px;

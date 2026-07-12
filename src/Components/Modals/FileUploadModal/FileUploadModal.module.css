@@ -1,8 +1,21 @@
+/* Add this new style */
+.templateLinkWrapper {
+    margin: 4px 0 8px 0;
+    font-size: 15px;
+}
+
+/* Update existing styles - remove templateLink from InfoBox */
+.templateLink {
+    margin: 8px 0 0;
+    font-size: 15px;
+}
+
+/* Rest of your existing styles remain the same */
 .modalContainer {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px; 
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px; 
 }
 
 .dropArea {
@@ -118,27 +131,20 @@
 }
 
 .loading, .error, .noStudents {
-  text-align: center;
-  padding: 20px;
-  font-size: 16px;
+    text-align: center;
+    padding: 20px;
+    font-size: 16px;
 }
 
 .error {
-  color: #d32f2f;
-  background-color: #ffebee;
-  border: 1px solid #f44336;
-  border-radius: 4px;
+    color: #d32f2f;
+    background-color: #ffebee;
+    border: 1px solid #f44336;
+    border-radius: 4px;
 }
 
 .download{
     color: #13457a;
-}
-
-.templateLink {
-    position: static;
-    margin: 8px 0 0;
-    font-size: 15px;
-
 }
 
 .downloadLink {
@@ -153,15 +159,6 @@
 .downloadLink:hover {
     text-decoration: underline;
     color: #0056b3;
-}
-
-.fileInfo {
-    padding: 12px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    border-left: 3px solid #28a745;
-    font-size: 14px;
-    margin: 8px 0;
 }
 
 /* --- Error-list / drop-area toggle --- */
