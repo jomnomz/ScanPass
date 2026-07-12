@@ -1,3 +1,4 @@
+// src/components/Modals/InviteModal/InviteModal.jsx
 import { useState } from 'react';
 import Modal from '../Modal/Modal.jsx';
 import styles from './InviteModal.module.css';
@@ -7,6 +8,8 @@ import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
 import EntityList from '../../List/EntityList/EntityList.jsx';
 import TitleModalLabel from '../../UI/Labels/TitleModalLabel/TitleModalLabel.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
+import Tooltip from '../../UI/Tooltip/Tooltip.jsx';
+import InfoIcon from '@mui/icons-material/Info';
 
 function InviteModal({ 
   isOpen, 
@@ -45,6 +48,14 @@ function InviteModal({
   const eligibleTeachers = filterEligibleTeachers(isBulkInvite ? selectedTeacherObjects : [teacher]);
   const ineligibleCount = inviteCount - eligibleTeachers.length;
 
+  const getNotesNote = () => {
+    return (
+      <InfoBox type="note">
+        <strong>Note:</strong> Teachers will receive an email with their account email and password. Once they accept the invite, their status will automatically change to "Active" and can now login.
+      </InfoBox>
+    );
+  };
+
   const handleConfirm = async () => {
     setLoading(true);
     
@@ -79,15 +90,24 @@ function InviteModal({
   return (
     <Modal size="md" isOpen={isOpen} onClose={onClose}>
       <div className={styles.modalContainer}>
-        <TitleModalLabel>
-          {isBulkInvite ? `Send Invitations to ${eligibleTeachers.length} Teachers` : 'Send Invitation'}
-        </TitleModalLabel>
+        {/* Title row with info icon on the left */}
+        <div className={styles.titleRow}>
+          <Tooltip 
+            content={getNotesNote()} 
+            width="400px"
+          >
+            <InfoIcon sx={{ fontSize: 20, color: '#3F7857', cursor: 'pointer' }} />
+          </Tooltip>
+          <TitleModalLabel className={styles.modalTitle}>
+            {isBulkInvite ? `Send Invitations to Teachers` : 'Send Invitation'}
+          </TitleModalLabel>
+        </div>
         
         <MessageModalLabel>
           {isBulkInvite ? (
-            `Are you sure you want to send account invitations to ${eligibleTeachers.length} teacher${eligibleTeachers.length !== 1 ? 's' : ''}.`
+            `Are you sure you want to send account invitations to ${eligibleTeachers.length} teacher${eligibleTeachers.length !== 1 ? 's' : '' }? `
           ) : (
-            'Are you sure you want to send an account invitation to this teacher:'
+            'Are you sure you want to send an account invitation to this teacher?'
           )}
         </MessageModalLabel>
         
@@ -117,9 +137,7 @@ function InviteModal({
           />
         )}
 
-        <InfoBox type="note">
-          <strong>Note:</strong> Teachers will receive an email with their account email and password. Once they accept the invite, their status will automatically change to "Active" and can now login.
-        </InfoBox>
+        {/* Note: InfoBox removed from here since it's now in the tooltip */}
 
         <div className={styles.buttonGroup}>
           <Button 

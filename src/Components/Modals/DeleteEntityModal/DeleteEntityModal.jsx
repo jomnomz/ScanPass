@@ -1,3 +1,4 @@
+// src/components/Modals/DeleteEntityModal/DeleteEntityModal.jsx
 import Modal from '../Modal/Modal.jsx';
 import styles from './DeleteEntityModal.module.css';
 import Button from '../../UI/Buttons/Button/Button.jsx';
@@ -6,6 +7,8 @@ import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
 import EntityList from '../../List/EntityList/EntityList.jsx';
 import TitleModalLabel from '../../UI/Labels/TitleModalLabel/TitleModalLabel.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
+import Tooltip from '../../UI/Tooltip/Tooltip.jsx';
+import InfoIcon from '@mui/icons-material/Info';
 
 function DeleteEntityModal({ 
   isOpen, 
@@ -89,8 +92,22 @@ function DeleteEntityModal({
       if (status === 'inactive') return `${deleteCount > 1 ? labels.sentencePlural : labels.sentenceSingular} ${deleteCount > 1 ? 'have' : 'has'} inactive accounts.`;
       return `${deleteCount > 1 ? labels.sentencePlural : labels.sentenceSingular} ${deleteCount > 1 ? 'have' : 'has'} no accounts yet.`;
     } else {
-      return `Selected ${labels.sentencePlural} have various account statuses.`;
+      return `Some Selected ${labels.sentencePlural} have existing user accounts with Active, Pending, or Inactive Statuses`;
     }
+  };
+
+  const getNotesNote = () => {
+    // Only show the note for teacher entities
+    if (entityType !== 'teacher') return null;
+    
+    const statusMessage = getStatusMessage();
+    if (!statusMessage) return null;
+    
+    return (
+      <InfoBox type="note">
+        <strong>Note:</strong> {statusMessage}
+      </InfoBox>
+    );
   };
 
   const handleConfirm = async () => {
@@ -122,14 +139,36 @@ function DeleteEntityModal({
     return currentGrade ? `from Grade ${currentGrade}` : '';
   };
 
+  // Check if we should show the info icon (only for teacher entities with status messages)
+  const shouldShowInfoIcon = entityType === 'teacher' && getStatusMessage() !== null;
+
   return (
     <Modal size="md" isOpen={isOpen} onClose={onClose}>
       <div className={styles.modalContainer}>
-        <TitleModalLabel>
-          {isBulkDelete 
-            ? `Delete ${deleteCount} Selected ${deleteCount > 1 ? labels.titlePlural : labels.titleSingular}` 
-            : `Delete ${labels.titleSingular}`}
-        </TitleModalLabel>
+        {/* Title with conditional info icon */}
+        {shouldShowInfoIcon ? (
+          // Title row with info icon (for teachers)
+          <div className={styles.titleRow}>
+            <Tooltip 
+              content={getNotesNote()} 
+              width="400px"
+            >
+              <InfoIcon sx={{ fontSize: 20, color: '#3F7857', cursor: 'pointer' }} />
+            </Tooltip>
+            <TitleModalLabel className={styles.modalTitle}>
+              {isBulkDelete 
+                ? `Delete Selected ${deleteCount > 1 ? labels.titlePlural : labels.titleSingular}` 
+                : `Delete ${labels.titleSingular}`}
+            </TitleModalLabel>
+          </div>
+        ) : (
+          // Regular title without icon (for non-teachers)
+          <TitleModalLabel>
+            {isBulkDelete 
+              ? `Delete Selected ${deleteCount > 1 ? labels.titlePlural : labels.titleSingular}` 
+              : `Delete ${labels.titleSingular}`}
+          </TitleModalLabel>
+        )}
         
         <MessageModalLabel>
           {isBulkDelete ? (
@@ -143,11 +182,7 @@ function DeleteEntityModal({
           <strong>Warning:</strong> {getWarningMessage()}
         </InfoBox>
         
-        {config.hasAccountField && getStatusMessage() && (
-          <InfoBox type="important">
-            <strong>Status:</strong> {getStatusMessage()}
-          </InfoBox>
-        )}
+        {/* Removed the standalone status message InfoBox - now in tooltip */}
         
         <EntityList 
           entities={selectedEntityObjects}

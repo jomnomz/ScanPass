@@ -1,8 +1,20 @@
+/* src/components/Modals/InviteModal/InviteModal.module.css */
 .modalContainer {
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* --- Title row: info icon + title inline --- */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalTitle {
+  margin: 0;
 }
 
 .buttonGroup {

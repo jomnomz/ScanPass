@@ -7,11 +7,13 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { useToast } from '../../Toast/ToastContext/ToastContext.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
 import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
+import Tooltip from '../../UI/Tooltip/Tooltip.jsx';
 import UploadIcon from '@mui/icons-material/Upload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import InfoIcon from '@mui/icons-material/Info';
 import EntityList from '../../List/EntityList/EntityList.jsx';
-import { apiClient } from '../../../config/api.js'; // Import apiClient
+import { apiClient } from '../../../config/api.js';
 
 function FileUploadModal({ 
   isOpen, 
@@ -25,14 +27,9 @@ function FileUploadModal({
     const fileInputRef = useRef(null);
     const { success, error, warning, info } = useToast();
 
-    // Validation error state: null = no errors yet (never had a failed submit).
-    // Once populated, the toggle button becomes visible and stays visible for
-    // the rest of this modal session (until close or a successful upload).
     const [validationErrors, setValidationErrors] = useState(null);
-    // 'drop' = show the drag-and-drop area, 'errors' = show the error list
     const [viewMode, setViewMode] = useState('drop');
 
-    // DRAG AND DROP HANDLERS
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragOver(true);
@@ -93,13 +90,10 @@ function FileUploadModal({
         }
     };
 
-    // Flip between the drop area and the error list. Only relevant once
-    // validationErrors has been populated by a failed submit.
     const toggleErrorView = () => {
         setViewMode(prev => (prev === 'errors' ? 'drop' : 'errors'));
     };
 
-    // Get modal title based on entity type
     const getModalTitle = () => {
         switch(entityType) {
             case 'teacher':
@@ -138,8 +132,6 @@ function FileUploadModal({
         );
     };
 
-    // Converts the backend's invalidRecords shape into the { row, message }
-    // shape EntityList's 'validationError' case expects.
     const buildValidationErrorEntities = (invalidRecords) => {
         return invalidRecords.map(record => ({
             row: record.row,
@@ -176,7 +168,6 @@ function FileUploadModal({
                     throw new Error('Invalid entity type');
             }
             
-            // Use apiClient instead of axios directly
             const response = await apiClient.post(endpoint, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -240,9 +231,6 @@ function FileUploadModal({
                 if (response.data.invalidRecords && response.data.invalidRecords.length > 0) {
                     const errorCount = response.data.invalidCount || response.data.invalidRecords.length;
 
-                    // Single summary toast — grabs attention, doesn't explain.
-                    // The error list (rendered in place of the drop area below)
-                    // carries the actual per-row detail.
                     error(`Import failed — ${errorCount} row(s) have errors.`);
 
                     setValidationErrors(buildValidationErrorEntities(response.data.invalidRecords));
@@ -255,9 +243,7 @@ function FileUploadModal({
         } catch (err) {
             console.error('❌ Upload failed:', err);
             
-            // Better error handling with axios error object
             if (err.response) {
-                // Server responded with error status
                 const errorData = err.response.data;
 
                 if (errorData.invalidRecords && errorData.invalidRecords.length > 0) {
@@ -273,10 +259,8 @@ function FileUploadModal({
                     error('Upload failed. Please check the file format and try again.');
                 }
             } else if (err.request) {
-                // Request made but no response received
                 error('Cannot connect to server. Please check your connection.');
             } else {
-                // Something else happened
                 error('Upload failed. Please try again.');
             }
         } finally {
@@ -295,13 +279,22 @@ function FileUploadModal({
     return (
         <Modal isOpen={isOpen} onClose={handleClose} size="md"> 
             <div className={styles.modalContainer}>
-                <h2>{getModalTitle()}</h2>
-                
-                <MessageModalLabel>
-                    {getDescription()}
-                </MessageModalLabel>
+                {/* Title row with info icon on the left */}
+                <div className={styles.titleRow}>
+                    <Tooltip content={getNotesNote()} width="400px" >
+                        <InfoIcon sx={{ fontSize: 20, color: '#3F7857', cursor: 'pointer' }} />
+                    </Tooltip>
+                    <h2 className={styles.modalTitle}>{getModalTitle()}</h2>
+                </div>
 
-                {/* Download link moved here - right after the description */}
+                {/* Description */}
+                <div className={styles.descriptionRow}>
+                    <MessageModalLabel>
+                        {getDescription()}
+                    </MessageModalLabel>
+                </div>
+
+                {/* Download link */}
                 <div className={styles.templateLinkWrapper}>
                     <a 
                         href={getFieldMappingLink()} 
@@ -313,9 +306,7 @@ function FileUploadModal({
                     </a>
                 </div>
 
-                {/* Toggle button only appears once a failed submit has produced
-                    an error list, and persists (flipping icon/direction) until
-                    the modal closes or a new upload succeeds. */}
+                {/* Toggle button */}
                 {hasValidationErrors && (
                     <div className={styles.viewToggleRow}>
                         <button
@@ -344,7 +335,6 @@ function FileUploadModal({
                         entities={validationErrors}
                         entityType="validationError"
                         title="Rows with errors"
-                        maxHeight="220px"
                     />
                 ) : (
                     <>
@@ -355,7 +345,6 @@ function FileUploadModal({
                             onDrop={handleDrop}
                         >
                             <div className={styles.dropAreaRow}>
-                                
                                 <UploadIcon sx={{ fontSize: 30 }} className={styles.icon} />
                                 <p>Drag and drop your file here</p>
                             </div>
@@ -385,9 +374,6 @@ function FileUploadModal({
                                 <p>Selected file: <strong>{file.name}</strong> ({formatFileSize(file.size)})</p>
                             </div>
                         )}
-
-                        {/* Important note moved here - below the drag-and-drop area */}
-                        {getNotesNote()}
                     </>
                 )}
                 

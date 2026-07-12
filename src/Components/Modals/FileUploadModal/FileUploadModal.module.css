@@ -4,18 +4,36 @@
     font-size: 15px;
 }
 
-/* Update existing styles - remove templateLink from InfoBox */
 .templateLink {
     margin: 8px 0 0;
     font-size: 15px;
 }
 
-/* Rest of your existing styles remain the same */
 .modalContainer {
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 16px; 
+}
+
+/* --- Title row: info icon + title inline --- */
+.titleRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modalTitle {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* --- Description row: label only --- */
+.descriptionRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .dropArea {
@@ -46,17 +64,17 @@
 }
 
 .dropArea:hover {
-    background-color: #f0f8f0;
+    background-color: #eaf4ff;
 }
 
 .dropArea.highlight {
     background-color: #f0f8f0;
-    border-color: #7EC384;
+    border-color: #395675;
 }
 
 .dropArea.hasFile {
-    border-color: #7EC384;
-    background-color: #f8fff8;
+    border-color: #395675;
+    background-color: #eaf4ff;
 }
 
 .icon {
@@ -86,7 +104,7 @@
     padding: 10px;
     background-color: #f8f9fa;
     border-radius: 4px;
-    border-left: 4px solid #3F7857;
+    border-left: 4px solid #395675;
     margin-bottom: 8px;
 }
 
@@ -162,7 +180,6 @@
 }
 
 /* --- Error-list / drop-area toggle --- */
-
 .viewToggleRow {
     display: flex;
     justify-content: flex-end;

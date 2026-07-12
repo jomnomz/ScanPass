@@ -2,7 +2,17 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.modalTitle {
+  margin: 0;
 }
 
 .buttonGroup {
@@ -12,11 +22,11 @@
 }
 
 @media (max-width: 640px) {
-  .actionButtons {
+  .buttonGroup {
     flex-direction: column;
   }
   
-  .actionButtons button {
+  .buttonGroup button {
     width: 100%;
   }
 }

@@ -1,3 +1,4 @@
+// src/components/Modals/DownloadQRModal/DownloadQRModal.jsx
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal/Modal.jsx';
 import Button from '../../UI/Buttons/Button/Button.jsx';
@@ -7,6 +8,8 @@ import InfoBox from '../../UI/InfoBoxes/InfoBox/InfoBox.jsx';
 import EntityList from '../../List/EntityList/EntityList.jsx';
 import TitleModalLabel from '../../UI/Labels/TitleModalLabel/TitleModalLabel.jsx';
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
+import Tooltip from '../../UI/Tooltip/Tooltip.jsx';
+import InfoIcon from '@mui/icons-material/Info';
 import QRCode from 'qrcode';
 
 function DownloadQRModal({
@@ -63,6 +66,14 @@ function DownloadQRModal({
       return `matching "${currentFilter}"`;
     }
     return `from Grade ${currentGrade}`;
+  };
+
+  const getNotesNote = () => {
+    return (
+      <InfoBox type="note">
+        <strong>Note:</strong> Each QR code will contain student information (Name, LRN, Grade, Section) below the scannable QR code.
+      </InfoBox>
+    );
   };
 
   // Function to generate QR code image with student info BELOW the QR code
@@ -239,9 +250,18 @@ function DownloadQRModal({
   return (
     <Modal size="md" isOpen={isOpen} onClose={onClose}>
       <div className={styles.modalContainer}>
-        <TitleModalLabel>
-          Download QR Codes for {selectedCount} Student{selectedCount !== 1 ? 's' : ''}
-        </TitleModalLabel>
+        {/* Title row with info icon on the left */}
+        <div className={styles.titleRow}>
+          <Tooltip 
+            content={getNotesNote()} 
+            width="400px"
+          >
+            <InfoIcon sx={{ fontSize: 20, color: '#3F7857', cursor: 'pointer' }} />
+          </Tooltip>
+          <TitleModalLabel className={styles.modalTitle}>
+            Download QR Codes
+          </TitleModalLabel>
+        </div>
         
         <MessageModalLabel>
           {selectedCount} student{selectedCount !== 1 ? 's' : ''} {getContextDescription()}
@@ -254,9 +274,7 @@ function DownloadQRModal({
           entityType="student"
         />
         
-        <InfoBox type="note">
-          <strong>Note:</strong> Each QR code will contain student information (Name, LRN, Grade, Section) below the scannable QR code.
-        </InfoBox>
+        {/* Note: InfoBox removed from here since it's now in the tooltip */}
         
         <div className={styles.buttonGroup}>
           <Button
