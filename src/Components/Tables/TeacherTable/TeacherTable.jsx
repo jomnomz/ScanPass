@@ -16,7 +16,9 @@ import {
   faPlus,
   faPaperPlane,
   faUserSlash,
-  faUserCheck
+  faUserCheck,
+  faEnvelope,
+  faPhone
 } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
@@ -778,6 +780,7 @@ const TeacherTable = ({
 
   const renderField = (teacher, fieldName) => {
     if (fieldName === 'status') return renderStatusBadge(teacher.status);
+    // email_address and phone_no now render in the dedicated CONTACT column
     if (fieldName === 'email_address' || fieldName === 'phone_no') {
       return formatNA(teacher[fieldName]);
     }
@@ -894,6 +897,7 @@ const TeacherTable = ({
 
   const withColumnWidth = (width, minWidth) => ({ width, minWidth: `${minWidth}px` });
 
+  // ===== UPDATED COLUMNS: Replaced profile/employee_id/first_name/last_name/email_address with teacher + contact =====
   const columns = [
     {
       key: 'select', 
@@ -925,31 +929,59 @@ const TeacherTable = ({
       }
     },
     {
-      key: 'profile',
-      label: 'PROFILE',
-      headerStyle: withColumnWidth('5%', 56),
-      cellStyle: withColumnWidth('5%', 56),
+      key: 'teacher',
+      label: 'TEACHER',
+      headerStyle: withColumnWidth('26%', 200),
+      cellStyle: withColumnWidth('26%', 200),
       renderCell: ({ row }) => (
-        <div className={styles.profileCellWrapper}>
+        <div className={styles.teacherCell}>
           {renderProfileCircle(row, styles.profileSmall)}
+          <div className={styles.teacherCellText}>
+            <div className={styles.teacherCellName}>
+              {formatTeacherName(row)}
+            </div>
+            <div className={styles.teacherCellId}>
+              ID: {row.employee_id}
+            </div>
+          </div>
         </div>
       )
     },
-    { key: 'employee_id', label: 'EMPLOYEE ID', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'employee_id') },
-    { key: 'first_name', label: 'FIRST NAME', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'first_name') },
-    { key: 'last_name', label: 'LAST NAME', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'last_name') },
-    { key: 'email_address', label: 'EMAIL ADDRESS', headerStyle: withColumnWidth('10%', 100), cellStyle: withColumnWidth('10%', 100), renderCell: ({ row }) => renderField(row, 'email_address') },
     {
-      key: 'grade', label: 'GRADE', headerStyle: withColumnWidth('8%', 90), cellStyle: withColumnWidth('8%', 90),
+      key: 'contact',
+      label: 'CONTACT',
+      headerStyle: { ...withColumnWidth('18%', 160), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('18%', 160), textAlign: 'left' },
+      renderCell: ({ row }) => (
+        <div className={styles.contactCell}>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faEnvelope} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.email_address)}</span>
+          </div>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faPhone} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.phone_no)}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'grade', 
+      label: 'GRADE', 
+      headerStyle: { ...withColumnWidth('8%', 80), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('8%', 80), textAlign: 'left' },
       renderCell: ({ row }) => {
         const teacherData = getTeacherFilterData(row);
         return teacherData.gradeLevels.length > 0 ? teacherData.gradeLevels.join(' | ') : 'N/A';
       }
     },
     {
-      key: 'subject', label: 'SUBJECT', headerStyle: withColumnWidth('12%', 130), cellStyle: withColumnWidth('12%', 130),
+      key: 'subject', 
+      label: 'SUBJECT', 
+      headerStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
       renderHeader: () => (
-        <div className={styles.headerWithFilter}>
+        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
           <span>SUBJECT</span>
           <EntityDropdown options={teacherSubjectOptions} selectedValue={selectedSubjectFilter}
             onSelect={(value) => { setSelectedSubjectFilter(value); onPageChange(1); }}
@@ -963,7 +995,7 @@ const TeacherTable = ({
         const displaySubject = selectedSubjectFilter && subjects.includes(selectedSubjectFilter) ? selectedSubjectFilter : subjects[0];
         const remainingCount = Math.max(subjects.length - 1, 0);
         return (
-          <div className={styles.entityCellWithBadge}>
+          <div className={styles.entityCellWithBadge} style={{ justifyContent: 'flex-start' }}>
             <span>{displaySubject}</span>
             {remainingCount > 0 && <span className={styles.entityCountBadge} title="Click row to see all subjects">+{remainingCount}</span>}
           </div>
@@ -971,9 +1003,12 @@ const TeacherTable = ({
       }
     },
     {
-      key: 'section', label: 'SECTION', headerStyle: withColumnWidth('12%', 130), cellStyle: withColumnWidth('12%', 130),
+      key: 'section', 
+      label: 'SECTION', 
+      headerStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
       renderHeader: () => (
-        <div className={styles.headerWithFilter}>
+        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
           <span>SECTION</span>
           <EntityDropdown options={teacherSectionOptions} selectedValue={selectedSectionFilter}
             onSelect={(value) => { setSelectedSectionFilter(value); onPageChange(1); }}
@@ -988,7 +1023,7 @@ const TeacherTable = ({
         const displaySection = selectedSectionFilter && uniqueSections.includes(selectedSectionFilter) ? selectedSectionFilter : defaultSection;
         const remainingCount = Math.max(uniqueSections.length - 1, 0);
         return (
-          <div className={styles.entityCellWithBadge}>
+          <div className={styles.entityCellWithBadge} style={{ justifyContent: 'flex-start' }}>
             <span>{displaySection}</span>
             {remainingCount > 0 && <span className={styles.entityCountBadge} title="Click row to see all sections">+{remainingCount}</span>}
           </div>
@@ -996,9 +1031,12 @@ const TeacherTable = ({
       }
     },
     {
-      key: 'status', label: 'STATUS', headerStyle: withColumnWidth('12%', 120), cellStyle: withColumnWidth('12%', 120),
+      key: 'status', 
+      label: 'STATUS', 
+      headerStyle: { ...withColumnWidth('12%', 120), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('12%', 120), textAlign: 'left' },
       renderHeader: () => (
-        <div className={styles.headerWithFilter}>
+        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
           <span>STATUS</span>
           <EntityDropdown options={teacherStatusOptions} selectedValue={selectedStatusFilter}
             onSelect={(value) => { setSelectedStatusFilter(value); onPageChange(1); }}
@@ -1011,8 +1049,8 @@ const TeacherTable = ({
     {
       key: 'actions',
       label: 'ACTIONS',
-      headerStyle: withColumnWidth('10%', 100),
-      cellStyle: withColumnWidth('10%', 100),
+      headerStyle: { ...withColumnWidth('8%', 100), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('8%', 100), textAlign: 'left' },
       renderCell: ({ row }) => {
         const statusAction = getStatusAction(row);
 

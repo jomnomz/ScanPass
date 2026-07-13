@@ -10,7 +10,7 @@ import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityForm
 import EditStudentForm from '../../Forms/EditStudentForm/EditStudentForm.jsx';
 import styles from './StudentTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faQrcode, faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faQrcode, faPenToSquare, faTrashCan, faPlus, faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider'; 
 import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
@@ -633,16 +633,8 @@ const StudentTable = ({
     return null;
   })();
 
-  // ===== REMOVED: inline edit render functions (now using modal) =====
-  // renderEditInput, renderGuardianEditInput, renderGradeDropdown, 
-  // renderSectionDropdown, renderField, renderActionButtons are no longer needed
-
-  // ===== UPDATED: renderField now only shows display values =====
+  // ===== UPDATED: renderField now shows email and phone (removed early return) =====
   const renderField = (student, fieldName) => {
-    if (fieldName === 'email' || fieldName === 'phone_number') {
-      return '';
-    }
-    
     if (fieldName.startsWith('guardian_')) {
       return formatNA(student[fieldName]);
     }
@@ -803,7 +795,7 @@ const StudentTable = ({
     minWidth: `${minWidth}px`
   });
 
-  // ===== TABLE COLUMNS - SELECT COLUMN IS FIRST =====
+  // ===== TABLE COLUMNS - UPDATED: Added CONTACT column with icons =====
   const tableColumns = useMemo(() => [
     {
       key: 'select',
@@ -836,49 +828,54 @@ const StudentTable = ({
       }
     },
     {
-      key: 'profile',
-      label: 'PROFILE',
-      headerStyle: withColumnWidth('5%', 56),
-      cellStyle: withColumnWidth('5%', 56),
+      key: 'student',
+      label: 'STUDENT',
+      headerStyle: withColumnWidth('30%', 200),
+      cellStyle: withColumnWidth('30%', 200),
       renderCell: ({ row }) => (
-        <div className={styles.profileCellWrapper}>
+        <div className={styles.studentCell}>
           {renderProfileCircle(row, styles.profileSmall)}
+          <div className={styles.studentCellText}>
+            <div className={styles.studentCellName}>
+              {formatStudentName(row)}
+            </div>
+            <div className={styles.studentCellLrn}>
+              LRN: {row.lrn}
+            </div>
+          </div>
         </div>
       )
     },
     {
-      key: 'lrn',
-      label: 'LRN',
-      headerStyle: withColumnWidth('20%', 100),
-      cellStyle: withColumnWidth('20%', 100),
-      renderCell: ({ row }) => renderField(row, 'lrn')
-    },
-    {
-      key: 'first_name',
-      label: 'FIRST NAME',
-      headerStyle: withColumnWidth('22%', 120),
-      cellStyle: withColumnWidth('22%', 120),
-      renderCell: ({ row }) => renderField(row, 'first_name')
-    },
-    {
-      key: 'last_name',
-      label: 'LAST NAME',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => renderField(row, 'last_name')
+      key: 'contact',
+      label: 'CONTACT',
+      headerStyle: { ...withColumnWidth('22%', 160), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('22%', 160), textAlign: 'left' },
+      renderCell: ({ row }) => (
+        <div className={styles.contactCell}>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faEnvelope} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.email)}</span>
+          </div>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faPhone} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.phone_number)}</span>
+          </div>
+        </div>
+      )
     },
     {
       key: 'grade',
       label: 'GRADE',
-      headerStyle: withColumnWidth('10%', 80),
-      cellStyle: withColumnWidth('10%', 80),
+      headerStyle: { ...withColumnWidth('18%', 70) },
+      cellStyle: { ...withColumnWidth('18%', 70) },
       renderCell: ({ row }) => renderField(row, 'grade')
     },
     {
       key: 'section',
       label: 'SECTION',
-      headerStyle: withColumnWidth('12%', 110),
-      cellStyle: withColumnWidth('12%', 110),
+      headerStyle: { ...withColumnWidth('18%', 130) },
+      cellStyle: { ...withColumnWidth('18%', 130) },
       renderHeader: () => (
         <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderRow}>
@@ -896,8 +893,8 @@ const StudentTable = ({
     {
       key: 'actions',
       label: 'ACTIONS',
-      headerStyle: withColumnWidth('8%', 70),
-      cellStyle: withColumnWidth('8%', 70),
+      headerStyle: { ...withColumnWidth('8%', 70), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('8%', 70), textAlign: 'left' },
       renderCell: ({ row }) => {
         return (
           <ActionsMenu
