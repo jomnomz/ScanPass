@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { validateAndNormalizeStudent } from '../../Utils/StudentDataValidation';
-import { validateAndNormalizeTeacher } from '../../Utils/TeacherDataValidation';
+import { validateAndNormalizeTeacher } from  '../../Utils/TeacherValidation';
 import { validateGradeSectionData, validateSubjectData } from '../../Utils/MasterDataValidation';
 
 export const useEntityEdit = (entities, setEntities, entityType = 'student', refreshAll = null) => {
