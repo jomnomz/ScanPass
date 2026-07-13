@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { validateAndNormalizeStudent } from '../../Utils/StudentDataValidation';
-import { validateTeacherData } from '../../Utils/TeacherValidation';
-import { validateGradeSectionData, validateSubjectData  } from '../../Utils/MasterDataValidation'; 
+import { validateAndNormalizeTeacher } from '../../Utils/TeacherDataValidation';
+import { validateGradeSectionData, validateSubjectData } from '../../Utils/MasterDataValidation';
 
 export const useEntityEdit = (entities, setEntities, entityType = 'student', refreshAll = null) => {
   const [editingId, setEditingId] = useState(null);
@@ -50,8 +50,9 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
         last_name: entity.last_name,
         phone_no: entity.phone_no || '',
         email_address: entity.email_address || '',
-        assignments: entity.assignments || [],
-        subjects: entity.subjects || []
+        grade_sections_teaching: entity.grade_sections_teaching || '',
+        adviser_grade_section: entity.adviser_grade_section || '',
+        status: entity.status || ''
       });
     } else if (entityType === 'gradeSection') {
       setEditFormData({
@@ -102,7 +103,8 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
         errors.phone_number = 'Phone number is invalid';
       }
     } else if (entityType === 'teacher') {
-      errors = validateTeacherData(editFormData);
+      const result = validateAndNormalizeTeacher(editFormData);
+      errors = result.errors;
     } else if (entityType === 'gradeSection') {
       errors = validateGradeSectionData(editFormData);
     } else if (entityType === 'subject') {
