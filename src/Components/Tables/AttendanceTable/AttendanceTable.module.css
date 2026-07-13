@@ -1,3 +1,5 @@
+/* AttendanceTable.module.css - Add/update these styles */
+
 .summaryCard {
   background: linear-gradient(180deg, #f8fafc 0%, #f4f8fc 100%);
   border: 1px solid #dde5ef;
@@ -354,49 +356,12 @@
   align-items: center;
 }
 
+/* ===== UPDATED: editActions with Button component ===== */
 .editActions {
   display: flex;
   gap: 8px;
-}
-
-.saveBtn,
-.cancelBtn {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.saveBtn {
-  background-color: #28a745;
-  color: white;
-  border-color: #28a745;
-}
-
-.saveBtn:hover:not(:disabled) {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-.cancelBtn {
-  background-color: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
-.cancelBtn:hover:not(:disabled) {
-  background-color: #5a6268;
-  border-color: #545b62;
-}
-
-.saveBtn:disabled,
-.cancelBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ===== TIME PICKER ===== */
@@ -515,6 +480,49 @@
 
 .closeExpandBtn:active {
   transform: scale(0.95);
+}
+
+/* ===== ADD to AttendanceTable.module.css ===== */
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.studentCellText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studentCellName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a2332;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentCellLrn {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 /* ===== RESPONSIVE ===== */

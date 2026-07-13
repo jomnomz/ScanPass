@@ -306,27 +306,20 @@ function FileUploadModal({
                     </a>
                 </div>
 
-                {/* Toggle button */}
+                {/* Toggle button using Button component with teaGreen color */}
                 {hasValidationErrors && (
                     <div className={styles.viewToggleRow}>
-                        <button
-                            type="button"
-                            className={styles.viewToggleBtn}
+                        <Button
+                            label={showErrorList ? 'Select new file' : 'View errors'}
+                            icon={showErrorList ? <UploadFileIcon sx={{ fontSize: 18 }} /> : <ListAltIcon sx={{ fontSize: 18 }} />}
+                            iconPosition="left"
+                            height="xs"
+                            width="auto"
+                            color="teaGreen"
+                            pill={true}
                             onClick={toggleErrorView}
                             title={showErrorList ? 'Select a different file' : 'View error details'}
-                        >
-                            {showErrorList ? (
-                                <>
-                                    <UploadFileIcon sx={{ fontSize: 18 }} />
-                                    <span>Select new file</span>
-                                </>
-                            ) : (
-                                <>
-                                    <ListAltIcon sx={{ fontSize: 18 }} />
-                                    <span>View errors</span>
-                                </>
-                            )}
-                        </button>
+                        />
                     </div>
                 )}
 

@@ -9,7 +9,7 @@ import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityForm
 import EditGuardianForm from '../../Forms/EditGuardianForm/EditGuardianForm.jsx';
 import styles from './GuardianTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+import { faPenToSquare, faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
@@ -489,27 +489,41 @@ const GuardianTable = ({
     minWidth: `${minWidth}px`
   });
 
+  // ===== UPDATED TABLE COLUMNS: Replaced first_name, last_name, phone_number with guardian + contact =====
   const tableColumns = useMemo(() => [
     {
-      key: 'first_name',
-      label: 'FIRST NAME',
-      headerStyle: withColumnWidth('18%', 120),
-      cellStyle: withColumnWidth('18%', 120),
-      renderCell: ({ row }) => row.first_name || ''
+      key: 'guardian',
+      label: 'GUARDIAN',
+      headerStyle: withColumnWidth('20%', 200), textAlign: 'left' ,
+      cellStyle: withColumnWidth('20%', 200), textAlign: 'left' ,
+      renderCell: ({ row }) => (
+        <div className={styles.guardianCellText}>
+          <div className={styles.guardianCellName}>
+            {row.first_name} {row.last_name}
+          </div>
+          <div className={styles.guardianCellOf}>
+            Guardian of: {row.guardian_of || 'N/A'}
+          </div>
+        </div>
+      )
     },
     {
-      key: 'last_name',
-      label: 'LAST NAME',
-      headerStyle: withColumnWidth('18%', 120),
-      cellStyle: withColumnWidth('18%', 120),
-      renderCell: ({ row }) => row.last_name || ''
-    },
-    {
-      key: 'guardian_of',
-      label: 'GUARDIAN OF',
-      headerStyle: withColumnWidth('25%', 150),
-      cellStyle: withColumnWidth('25%', 150),
-      renderCell: ({ row }) => row.guardian_of
+      key: 'contact',
+      label: 'CONTACT',
+      headerStyle: { ...withColumnWidth('30%', 160), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('30%', 160), textAlign: 'left' },
+      renderCell: ({ row }) => (
+        <div className={styles.contactCell}>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faEnvelope} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.email)}</span>
+          </div>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faPhone} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.phone_number)}</span>
+          </div>
+        </div>
+      )
     },
     {
       key: 'grade',
@@ -538,17 +552,10 @@ const GuardianTable = ({
       renderCell: ({ row }) => row.section
     },
     {
-      key: 'phone_number',
-      label: 'PHONE NO.',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => formatNA(row.phone_number)
-    },
-    {
       key: 'edit',
       label: 'EDIT',
-      headerStyle: withColumnWidth('9%', 70),
-      cellStyle: withColumnWidth('9%', 70),
+      headerStyle: { ...withColumnWidth('8%', 70),  },
+      cellStyle: { ...withColumnWidth('8%', 70),  },
       renderCell: ({ row }) => (
         <div className={styles.icon}>
           <FontAwesomeIcon

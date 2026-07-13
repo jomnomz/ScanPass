@@ -4,6 +4,7 @@ import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
 import { sortEntities } from '../../../Utils/SortEntities'; 
 import { compareSections } from '../../../Utils/CompareHelpers';
+import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import styles from './AttendanceTable.module.css';
 import { useAttendance } from '../../Hooks/useAttendance';
@@ -14,6 +15,7 @@ import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
+import Button from '../../UI/Buttons/Button/Button.jsx'; // ADDED THIS IMPORT
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -44,6 +46,30 @@ const formatDateTimeLocal = (dateString) => {
     console.error('Error formatting date:', dateString, error);
     return 'N/A';
   }
+};
+
+// ===== SHARED PROFILE CIRCLE RENDERER =====
+const renderProfileCircle = (attendance, sizeClassName) => {
+  const { bg, text } = getProfileColor(
+    attendance.student_id ?? attendance.lrn ?? `${attendance.first_name}${attendance.last_name}`
+  );
+
+  if (attendance.photo_url) {
+    return (
+      <img
+        src={attendance.photo_url}
+        alt={formatStudentName(attendance)}
+        className={sizeClassName}
+        style={{ objectFit: 'cover' }}
+      />
+    );
+  }
+
+  return (
+    <div className={sizeClassName} style={{ backgroundColor: bg, color: text }}>
+      {getProfileInitial(attendance.first_name)}
+    </div>
+  );
 };
 
 const TimePicker = ({ value, onChange, name }) => {
@@ -621,28 +647,33 @@ const AttendanceTable = ({
     />
   ), [editFormData, handleTimeChange]);
 
+  // ===== UPDATED: renderActionButtons with Button component =====
   const renderActionButtons = useCallback((attendanceId, studentGrade) => (
     <div className={styles.editActions}>
-      <button 
-        onClick={(e) => {
-          e.stopPropagation();
-          saveEdit(attendanceId, studentGrade);
-        }}
-        disabled={saving}
-        className={styles.saveBtn}
-      >
-        {saving ? 'Saving...' : 'Save'}
-      </button>
-      <button 
+      <Button 
         onClick={(e) => {
           e.stopPropagation();
           cancelEdit();
         }}
         disabled={saving}
-        className={styles.cancelBtn}
-      >
-        Cancel
-      </button>
+        label="Cancel"
+        color="ghost"
+        height="xs"
+        width="auto"
+        pill={false}
+      />
+      <Button 
+        onClick={(e) => {
+          e.stopPropagation();
+          saveEdit(attendanceId, studentGrade);
+        }}
+        disabled={saving}
+        label={saving ? 'Saving...' : 'Save'}
+        color="ocean"
+        height="xs"
+        width="auto"
+        pill={false}
+      />
     </div>
   ), [saveEdit, cancelEdit, saving]);
 
@@ -790,20 +821,26 @@ const AttendanceTable = ({
     minWidth: `${minWidth}px`
   });
 
+  // ===== UPDATED TABLE COLUMNS: Replaced first_name and last_name with student column =====
   const tableColumns = useMemo(() => [
     {
-      key: 'first_name',
-      label: 'FIRST NAME',
-      headerStyle: withColumnWidth('14%', 120),
-      cellStyle: withColumnWidth('14%', 120),
-      renderCell: ({ row }) => formatNA(row.first_name)
-    },
-    {
-      key: 'last_name',
-      label: 'LAST NAME',
-      headerStyle: withColumnWidth('14%', 120),
-      cellStyle: withColumnWidth('14%', 120),
-      renderCell: ({ row }) => formatNA(row.last_name)
+      key: 'student',
+      label: 'STUDENT',
+      headerStyle: withColumnWidth('24%', 200),
+      cellStyle: withColumnWidth('24%', 200),
+      renderCell: ({ row }) => (
+        <div className={styles.studentCell}>
+          {renderProfileCircle(row, styles.profileSmall)}
+          <div className={styles.studentCellText}>
+            <div className={styles.studentCellName}>
+              {formatStudentName(row)}
+            </div>
+            <div className={styles.studentCellLrn}>
+              LRN: {row.lrn}
+            </div>
+          </div>
+        </div>
+      )
     },
     {
       key: 'grade',
