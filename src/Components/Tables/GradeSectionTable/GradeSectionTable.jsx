@@ -7,13 +7,10 @@ import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPenToSquare, 
-  faTrashCan,
-  faCircle as fasCircle,
-} from "@fortawesome/free-solid-svg-icons";
-import { faCircle as farCircleRegular } from "@fortawesome/free-regular-svg-icons";
+import { faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { compareSections } from '../../../Utils/CompareHelpers';
+import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
+import Button from '../../UI/Buttons/Button/Button.jsx'; // ADDED THIS IMPORT
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -80,7 +77,7 @@ const GradeSectionTable = ({
   onSelectAllPages,
   onClearAllPages,
   currentPage = 1,
-  refreshTrigger = 0, // Add this prop
+  refreshTrigger = 0,
 }) => {
   const [allGradeSections, setAllGradeSections] = useState([]);
   const [grades, setGrades] = useState([]);
@@ -124,7 +121,6 @@ const GradeSectionTable = ({
       const sorted = sortGradeSections(transformedData);
       setAllGradeSections(sorted);
       
-      // Pass full raw data up to parent
       if (onEntityDataUpdate) {
         onEntityDataUpdate(sorted);
       }
@@ -144,13 +140,66 @@ const GradeSectionTable = ({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => fetchGradeSections())
       .subscribe();
     return () => subscription.unsubscribe();
-  }, [fetchGradeSections, refreshTrigger]); // Add refreshTrigger to dependencies
+  }, [fetchGradeSections, refreshTrigger]);
 
-  // Sync prop gradeSections to local state for rendering
   useEffect(() => {
     // propGradeSections is already paginated from parent
-    // We don't store it in state, we use it directly in columns/render
   }, [propGradeSections]);
+
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
+  const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
+
+  useEffect(() => {
+    const allVisibleSelectedNow = propGradeSections.length > 0 &&
+      propGradeSections.every(gs => selectedGradeSections.includes(gs.id));
+
+    if (!allVisibleSelectedNow) return;
+
+    const currentIds = propGradeSections.map(gs => gs.id);
+
+    setFullySelectedSnapshots(prev => {
+      const existing = prev.get(currentPage);
+      const isSame = existing &&
+        existing.length === currentIds.length &&
+        existing.every((id, i) => id === currentIds[i]);
+
+      if (isSame) return prev;
+
+      const next = new Map(prev);
+      next.set(currentPage, currentIds);
+      return next;
+    });
+  }, [propGradeSections, selectedGradeSections, currentPage]);
+
+  useEffect(() => {
+    const selectedSet = new Set(selectedGradeSections);
+
+    setFullySelectedSnapshots(prev => {
+      let changed = false;
+      const next = new Map();
+
+      for (const [page, ids] of prev.entries()) {
+        const stillFull = ids.length > 0 && ids.every(id => selectedSet.has(id));
+        if (stillFull) {
+          next.set(page, ids);
+        } else {
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [selectedGradeSections]);
+
+  const hasTriggeredSelectAll = useMemo(() => {
+    return fullySelectedSnapshots.size > 0;
+  }, [fullySelectedSnapshots]);
+
+  useEffect(() => {
+    setFullySelectedSnapshots(new Map());
+  }, [searchTerm]);
+
+  // ===== END SNAPSHOT LOGIC =====
 
   const startEdit = (gradeSection) => {
     setEditingId(gradeSection.id);
@@ -239,7 +288,6 @@ const GradeSectionTable = ({
         }
       }
       
-      // Refresh data
       await fetchGradeSections();
       success(`Grade section updated successfully${gradeChanged || sectionNameChanged ? ' (students updated)' : ''}`);
       cancelEdit();
@@ -255,37 +303,104 @@ const GradeSectionTable = ({
   // Selection handlers
   const handleGradeSectionSelect = (gradeSectionId, e) => {
     e.stopPropagation();
+
+    if (isAllPagesSelected && selectedGradeSections.includes(gradeSectionId)) {
+      if (onClearAllPages) onClearAllPages();
+      return;
+    }
+
     const newSelected = selectedGradeSections.includes(gradeSectionId)
       ? selectedGradeSections.filter(id => id !== gradeSectionId)
       : [...selectedGradeSections, gradeSectionId];
-    
-    if (isAllPagesSelected && !newSelected.includes(gradeSectionId)) {
-      if (onClearAllPages) onClearAllPages();
-    }
-    if (onSelectedGradeSectionsUpdate) {
-      onSelectedGradeSectionsUpdate(newSelected);
-    }
+
+    if (onSelectedGradeSectionsUpdate) onSelectedGradeSectionsUpdate(newSelected);
   };
 
   const handleSelectAll = () => {
     const allVisibleIds = propGradeSections.map(gs => gs.id);
     const allSelected = allVisibleIds.every(id => selectedGradeSections.includes(id));
-    
+
     if (allSelected) {
-      if (onClearAllPages) onClearAllPages();
-      else if (onSelectedGradeSectionsUpdate) {
-        onSelectedGradeSectionsUpdate(selectedGradeSections.filter(id => !allVisibleIds.includes(id)));
-      }
+      const newSelected = selectedGradeSections.filter(id => !allVisibleIds.includes(id));
+      if (onSelectedGradeSectionsUpdate) onSelectedGradeSectionsUpdate(newSelected);
+      if (newSelected.length === 0 && onClearAllPages) onClearAllPages();
     } else {
       const newSelected = [...new Set([...selectedGradeSections, ...allVisibleIds])];
-      if (onSelectedGradeSectionsUpdate) {
-        onSelectedGradeSectionsUpdate(newSelected);
-      }
+      if (onSelectedGradeSectionsUpdate) onSelectedGradeSectionsUpdate(newSelected);
     }
   };
 
   const allVisibleSelected = propGradeSections.length > 0 && 
     propGradeSections.every(gs => selectedGradeSections.includes(gs.id));
+
+  // ===== UPDATED: Hide infoText when all pages are selected =====
+  const computedInfoText = (() => {
+    const allPagesSelected = selectedGradeSections.length === totalFilteredCount && totalFilteredCount > 0;
+    
+    // Don't show any info text if all pages are selected (banner handles it)
+    if (allPagesSelected) return '';
+    
+    if (selectedGradeSections.length > 0) return `${selectedGradeSections.length} grade section/s selected`;
+    return '';
+  })();
+
+  // ===== selectAllBanner with snapshot-based logic =====
+  const selectAllBanner = (() => {
+    const hasAnyPageFullySelected = hasTriggeredSelectAll;
+    const allPagesSelected = selectedGradeSections.length === totalFilteredCount && totalFilteredCount > 0;
+    const hasMorePages = totalFilteredCount > propGradeSections.length;
+
+    if (allPagesSelected && hasMorePages) {
+      return (
+        <button
+          onClick={onClearAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+
+    if (hasAnyPageFullySelected && hasMorePages && !allPagesSelected) {
+      return (
+        <button
+          onClick={onSelectAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {totalFilteredCount} grade sections
+        </button>
+      );
+    }
+
+    return null;
+  })();
 
   const handleDeleteClick = (gradeSection, e) => {
     e.stopPropagation();
@@ -320,75 +435,43 @@ const GradeSectionTable = ({
     startEdit(gradeSection);
   };
 
-  const renderEditCell = (gradeSection) => (
-    <div className={styles.editCell}>
-      {editingId === gradeSection.id ? (
-        <div className={styles.editActions}>
-          <button 
-            onClick={(e) => handleSaveEdit(gradeSection.id, e)} 
-            disabled={saving || updatingStudents} 
-            className={styles.saveBtn}
-          >
-            {saving || updatingStudents ? (updatingStudents ? 'Updating Students...' : 'Saving...') : 'Save'}
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); cancelEdit(); }} 
-            disabled={saving || updatingStudents} 
-            className={styles.cancelBtn}
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faPenToSquare} 
-            onClick={(e) => handleEditClick(gradeSection, e)} 
-            className="action-button" 
-          />
-        </div>
-      )}
-    </div>
-  );
-
   const renderExpandedRow = (gradeSection) => {
-  const addedAt = formatDateTimeLocal(gradeSection.created_at);
-  const updatedAt = gradeSection.updated_at ? formatDateTimeLocal(gradeSection.updated_at) : 'Never updated';
-  return (
-    <div 
-      className={`${styles.gradeSectionCard} ${styles.expandableCard}`} 
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* ✅ Close button - collapses the expanded row */}
-      <button
-        className={styles.closeExpandBtn}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleRow(null);
-        }}
-        aria-label="Close"
+    const addedAt = formatDateTimeLocal(gradeSection.created_at);
+    const updatedAt = gradeSection.updated_at ? formatDateTimeLocal(gradeSection.updated_at) : 'Never updated';
+    return (
+      <div 
+        className={`${styles.gradeSectionCard} ${styles.expandableCard}`} 
+        onClick={(e) => e.stopPropagation()}
       >
-        ✕
-      </button>
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
 
-      <div className={styles.gradeSectionHeader}>
-        Grade {gradeSection.grade} - Section {gradeSection.section}
-      </div>
-      <div className={styles.details}>
-        <div>
-          <div className={styles.gradeSectionInfo}><strong>Grade Section Details</strong></div>
-          <div className={styles.gradeSectionInfo}>Grade Level: {gradeSection.grade}</div>
-          <div className={styles.gradeSectionInfo}>Section: {gradeSection.section}</div>
+        <div className={styles.gradeSectionHeader}>
+          Grade {gradeSection.grade} - Section {gradeSection.section}
         </div>
-        <div>
-          <div className={styles.gradeSectionInfo}><strong>Record Information</strong></div>
-          <div className={styles.gradeSectionInfo}>Added: {addedAt}</div>
-          <div className={styles.gradeSectionInfo}>Last Updated: {updatedAt}</div>
+        <div className={styles.details}>
+          <div>
+            <div className={styles.gradeSectionInfo}><strong>Grade Section Details</strong></div>
+            <div className={styles.gradeSectionInfo}>Grade Level: {gradeSection.grade}</div>
+            <div className={styles.gradeSectionInfo}>Section: {gradeSection.section}</div>
+          </div>
+          <div>
+            <div className={styles.gradeSectionInfo}><strong>Record Information</strong></div>
+            <div className={styles.gradeSectionInfo}>Added: {addedAt}</div>
+            <div className={styles.gradeSectionInfo}>Last Updated: {updatedAt}</div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   const withColumnWidth = (width, minWidth) => ({ width, minWidth: `${minWidth}px` });
 
@@ -399,20 +482,24 @@ const GradeSectionTable = ({
       headerStyle: withColumnWidth('5%', 40),
       cellStyle: withColumnWidth('5%', 40),
       renderHeader: () => (
-        <div className={styles.icon} onClick={handleSelectAll}>
-          <FontAwesomeIcon 
-            icon={allVisibleSelected ? fasCircle : farCircleRegular} 
-            style={{ cursor: 'pointer', color: allVisibleSelected ? '#0f6b58' : '' }} 
+        <div className={styles.checkboxWrapper}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={allVisibleSelected}
+            onChange={handleSelectAll}
           />
         </div>
       ),
       renderCell: ({ row }) => {
         const isSelected = selectedGradeSections.includes(row.id);
         return (
-          <div className={styles.icon} onClick={(e) => handleGradeSectionSelect(row.id, e)}>
-            <FontAwesomeIcon 
-              icon={isSelected ? fasCircle : farCircleRegular} 
-              style={{ cursor: 'pointer', color: isSelected ? '#0f6b58' : '' }} 
+          <div className={styles.checkboxWrapper}>
+            <input
+              type="checkbox"
+              className={styles.checkbox}
+              checked={isSelected}
+              onChange={(e) => handleGradeSectionSelect(row.id, e)}
             />
           </div>
         );
@@ -421,8 +508,8 @@ const GradeSectionTable = ({
     {
       key: 'grade',
       label: 'GRADE LEVEL',
-      headerStyle: withColumnWidth('25%', 100),
-      cellStyle: withColumnWidth('25%', 100),
+      headerStyle: withColumnWidth('35%', 100),
+      cellStyle: withColumnWidth('35%', 100),
       renderCell: ({ row }) => {
         const isEditing = editingId === row.id;
         if (!isEditing) return `Grade ${row.grade}`;
@@ -462,26 +549,59 @@ const GradeSectionTable = ({
       }
     },
     {
-      key: 'edit',
-      label: 'EDIT',
-      headerStyle: withColumnWidth('10%', 80),
-      cellStyle: withColumnWidth('10%', 80),
-      renderCell: ({ row }) => renderEditCell(row)
-    },
-    {
-      key: 'delete',
-      label: 'DELETE',
-      headerStyle: withColumnWidth('10%', 70),
-      cellStyle: withColumnWidth('10%', 70),
-      renderCell: ({ row }) => (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faTrashCan} 
-            className="action-button" 
-            onClick={(e) => handleDeleteClick(row, e)} 
+      key: 'actions',
+      label: 'ACTIONS',
+      headerStyle: { ...withColumnWidth('10%', 90), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('10%', 90), textAlign: 'left' },
+      renderCell: ({ row }) => {
+        const isEditing = editingId === row.id;
+
+        if (isEditing) {
+          return (
+            <div className={styles.editActions}>
+              <Button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelEdit();
+                }}
+                disabled={saving || updatingStudents}
+                label="Cancel"
+                color="ghost"
+                height="xs"
+                width="auto"
+                pill={false}
+              />
+              <Button 
+                onClick={(e) => handleSaveEdit(row.id, e)}
+                disabled={saving || updatingStudents}
+                label={saving || updatingStudents ? (updatingStudents ? 'Updating...' : 'Saving...') : 'Save'}
+                color="ocean"
+                height="xs"
+                width="auto"
+                pill={false}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <ActionsMenu
+            actions={[
+              {
+                label: 'Edit',
+                icon: faPenToSquare,
+                onClick: (e) => handleEditClick(row, e)
+              },
+              {
+                label: 'Delete',
+                icon: faTrashCan,
+                onClick: (e) => handleDeleteClick(row, e),
+                variant: 'danger'
+              },
+            ]}
           />
-        </div>
-      )
+        );
+      }
     }
   ];
 
@@ -511,6 +631,12 @@ const GradeSectionTable = ({
         hideMainRowWhenExpanded
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         stickyHeader
+        infoText={computedInfoText}
+        selectedInfoText=""
+        headerContent={selectAllBanner}
+        isAllPagesSelected={isAllPagesSelected}
+        visibleSelectedCount={selectedGradeSections.length}
+        totalRowsOnPage={propGradeSections.length}
         className={styles.tableContainer}
         wrapperClassName={styles.tableWrapper}
       />

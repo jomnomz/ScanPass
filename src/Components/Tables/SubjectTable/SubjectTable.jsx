@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from './SubjectTable.module.css';
 import { EntityService } from '../../../Utils/EntityService';
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
@@ -8,12 +8,9 @@ import { useToast } from '../../Toast/ToastContext/ToastContext';
 import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPenToSquare, 
-  faTrashCan,
-  faCircle as fasCircle 
-} from "@fortawesome/free-solid-svg-icons";
-import { faCircle as farCircleRegular } from "@fortawesome/free-regular-svg-icons";
+import { faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
+import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
+import Button from '../../UI/Buttons/Button/Button.jsx';
 
 // Date formatter function
 const formatDateTimeLocal = (dateString) => {
@@ -129,6 +126,61 @@ const SubjectTable = ({
   // Use propSubjects for display (already paginated+filtered by parent)
   const displaySubjects = propSubjects;
 
+  // ===== SNAPSHOT-BASED BANNER PERSISTENCE (same pattern as GradeSectionTable) =====
+  const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
+
+  useEffect(() => {
+    const allVisibleSelectedNow = displaySubjects.length > 0 &&
+      displaySubjects.every(subject => selectedSubjects.includes(subject.id));
+
+    if (!allVisibleSelectedNow) return;
+
+    const currentIds = displaySubjects.map(s => s.id);
+
+    setFullySelectedSnapshots(prev => {
+      const existing = prev.get(currentPage);
+      const isSame = existing &&
+        existing.length === currentIds.length &&
+        existing.every((id, i) => id === currentIds[i]);
+
+      if (isSame) return prev;
+
+      const next = new Map(prev);
+      next.set(currentPage, currentIds);
+      return next;
+    });
+  }, [displaySubjects, selectedSubjects, currentPage]);
+
+  useEffect(() => {
+    const selectedSet = new Set(selectedSubjects);
+
+    setFullySelectedSnapshots(prev => {
+      let changed = false;
+      const next = new Map();
+
+      for (const [page, ids] of prev.entries()) {
+        const stillFull = ids.length > 0 && ids.every(id => selectedSet.has(id));
+        if (stillFull) {
+          next.set(page, ids);
+        } else {
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [selectedSubjects]);
+
+  const hasTriggeredSelectAll = useMemo(() => {
+    return fullySelectedSnapshots.size > 0;
+  }, [fullySelectedSnapshots]);
+
+  useEffect(() => {
+    setFullySelectedSnapshots(new Map());
+  }, [searchTerm]);
+
+  // ===== END SNAPSHOT LOGIC =====
+
   // Handle individual subject selection
   const handleSubjectSelect = (subjectId, e) => {
     e.stopPropagation();
@@ -154,21 +206,86 @@ const SubjectTable = ({
     const allSelected = allVisibleIds.every(id => selectedSubjects.includes(id));
     
     if (allSelected) {
-      // Deselect all on current page
-      if (onClearAllPages) onClearAllPages();
-      else if (onSelectedSubjectsUpdate) {
-        onSelectedSubjectsUpdate(selectedSubjects.filter(id => !allVisibleIds.includes(id)));
-      }
+      const newSelected = selectedSubjects.filter(id => !allVisibleIds.includes(id));
+      if (onSelectedSubjectsUpdate) onSelectedSubjectsUpdate(newSelected);
+      if (newSelected.length === 0 && onClearAllPages) onClearAllPages();
     } else {
-      // Select all on current page
-      if (onSelectedSubjectsUpdate) {
-        onSelectedSubjectsUpdate([...new Set([...selectedSubjects, ...allVisibleIds])]);
-      }
+      const newSelected = [...new Set([...selectedSubjects, ...allVisibleIds])];
+      if (onSelectedSubjectsUpdate) onSelectedSubjectsUpdate(newSelected);
     }
   };
 
   const allVisibleSelected = displaySubjects.length > 0 && 
     displaySubjects.every(subject => selectedSubjects.includes(subject.id));
+
+  // ===== Hide infoText when all pages are selected =====
+  const computedInfoText = (() => {
+    const allPagesSelected = selectedSubjects.length === totalFilteredCount && totalFilteredCount > 0;
+
+    if (allPagesSelected) return '';
+
+    if (selectedSubjects.length > 0) return `${selectedSubjects.length} subject/s selected`;
+    return '';
+  })();
+
+  // ===== selectAllBanner with snapshot-based logic =====
+  const selectAllBanner = (() => {
+    const hasAnyPageFullySelected = hasTriggeredSelectAll;
+    const allPagesSelected = selectedSubjects.length === totalFilteredCount && totalFilteredCount > 0;
+    const hasMorePages = totalFilteredCount > displaySubjects.length;
+
+    if (allPagesSelected && hasMorePages) {
+      return (
+        <button
+          onClick={onClearAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+
+    if (hasAnyPageFullySelected && hasMorePages && !allPagesSelected) {
+      return (
+        <button
+          onClick={onSelectAllPages}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
+            textDecoration: 'none',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {totalFilteredCount} subjects
+        </button>
+      );
+    }
+
+    return null;
+  })();
+  // ===== END select-all banner =====
 
   // Delete handler
   const handleDeleteClick = (subject, e) => {
@@ -185,6 +302,7 @@ const SubjectTable = ({
   const handleConfirmDelete = async (id) => {
     setIsDeleting(true);
     try {
+      if (editingId === id) cancelEdit();
       await subjectService.delete(id);
       success('Subject deleted successfully');
       await fetchSubjects();
@@ -228,38 +346,6 @@ const SubjectTable = ({
     if (e) e.stopPropagation();
     cancelEdit();
   };
-
-  // Render edit cell
-  const renderEditCell = (subject) => (
-    <div className={styles.editCell}>
-      {editingId === subject.id ? (
-        <div className={styles.editActions}>
-          <button 
-            onClick={(e) => handleSaveEdit(subject.id, e)}
-            disabled={saving}
-            className={styles.saveBtn}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button 
-            onClick={(e) => handleCancelEdit(e)}
-            disabled={saving}
-            className={styles.cancelBtn}
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faPenToSquare} 
-            onClick={(e) => handleEditClick(subject, e)}
-            className="action-button"
-          />
-        </div>
-      )}
-    </div>
-  );
 
 // Render expanded row with details
 const renderExpandedRow = (subject) => {
@@ -319,20 +405,24 @@ const renderExpandedRow = (subject) => {
       headerStyle: withColumnWidth('5%', 40),
       cellStyle: withColumnWidth('5%', 40),
       renderHeader: () => (
-        <div className={styles.icon} onClick={handleSelectAll}>
-          <FontAwesomeIcon 
-            icon={allVisibleSelected ? fasCircle : farCircleRegular}
-            style={{ cursor: 'pointer', color: allVisibleSelected ? '#0f6b58' : '' }}
+        <div className={styles.checkboxWrapper}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={allVisibleSelected}
+            onChange={handleSelectAll}
           />
         </div>
       ),
       renderCell: ({ row }) => {
         const isSelected = selectedSubjects.includes(row.id);
         return (
-          <div className={styles.icon} onClick={(e) => handleSubjectSelect(row.id, e)}>
-            <FontAwesomeIcon 
-              icon={isSelected ? fasCircle : farCircleRegular}
-              style={{ cursor: 'pointer', color: isSelected ? '#0f6b58' : '' }}
+          <div className={styles.checkboxWrapper}>
+            <input
+              type="checkbox"
+              className={styles.checkbox}
+              checked={isSelected}
+              onChange={(e) => handleSubjectSelect(row.id, e)}
             />
           </div>
         );
@@ -341,8 +431,8 @@ const renderExpandedRow = (subject) => {
     {
       key: 'subject_code',
       label: 'SUBJECT CODE',
-      headerStyle: withColumnWidth('20%', 120),
-      cellStyle: withColumnWidth('20%', 120),
+      headerStyle: withColumnWidth('35%', 120),
+      cellStyle: withColumnWidth('35%', 120),
       renderCell: ({ row }) => {
         const isEditing = editingId === row.id;
         if (!isEditing) return row.subject_code;
@@ -362,8 +452,8 @@ const renderExpandedRow = (subject) => {
     {
       key: 'subject_name',
       label: 'SUBJECT NAME',
-      headerStyle: withColumnWidth('55%', 200),
-      cellStyle: withColumnWidth('55%', 200),
+      headerStyle: withColumnWidth('50%', 200),
+      cellStyle: withColumnWidth('50%', 200),
       renderCell: ({ row }) => {
         const isEditing = editingId === row.id;
         if (!isEditing) return row.subject_name;
@@ -380,26 +470,56 @@ const renderExpandedRow = (subject) => {
       }
     },
     {
-      key: 'edit',
-      label: 'EDIT',
-      headerStyle: withColumnWidth('10%', 70),
-      cellStyle: withColumnWidth('10%', 70),
-      renderCell: ({ row }) => renderEditCell(row)
-    },
-    {
-      key: 'delete',
-      label: 'DELETE',
-      headerStyle: withColumnWidth('10%', 70),
-      cellStyle: withColumnWidth('10%', 70),
-      renderCell: ({ row }) => (
-        <div className={styles.icon}>
-          <FontAwesomeIcon 
-            icon={faTrashCan}
-            className="action-button"
-            onClick={(e) => handleDeleteClick(row, e)}
+      key: 'actions',
+      label: 'ACTIONS',
+      headerStyle: { ...withColumnWidth('10%', 90), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('10%', 90), textAlign: 'left' },
+      renderCell: ({ row }) => {
+        const isEditing = editingId === row.id;
+
+        if (isEditing) {
+          return (
+            <div className={styles.editActions}>
+              <Button 
+                onClick={(e) => handleCancelEdit(e)}
+                disabled={saving}
+                label="Cancel"
+                color="ghost"
+                height="xs"
+                width="auto"
+                pill={false}
+              />
+              <Button 
+                onClick={(e) => handleSaveEdit(row.id, e)}
+                disabled={saving}
+                label={saving ? 'Saving...' : 'Save'}
+                color="ocean"
+                height="xs"
+                width="auto"
+                pill={false}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <ActionsMenu
+            actions={[
+              {
+                label: 'Edit',
+                icon: faPenToSquare,
+                onClick: (e) => handleEditClick(row, e)
+              },
+              {
+                label: 'Delete',
+                icon: faTrashCan,
+                onClick: (e) => handleDeleteClick(row, e),
+                variant: 'danger'
+              },
+            ]}
           />
-        </div>
-      )
+        );
+      }
     }
   ];
 
@@ -426,6 +546,12 @@ const renderExpandedRow = (subject) => {
         hideMainRowWhenExpanded
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         stickyHeader
+        infoText={computedInfoText}
+        selectedInfoText=""
+        headerContent={selectAllBanner}
+        isAllPagesSelected={isAllPagesSelected}
+        visibleSelectedCount={selectedSubjects.length}
+        totalRowsOnPage={displaySubjects.length}
         wrapperClassName={styles.tableWrapper}
       />
 
