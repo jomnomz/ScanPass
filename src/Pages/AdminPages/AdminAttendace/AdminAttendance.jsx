@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './AdminAttendance.module.css';
 import SectionLabel from '../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx';
 import AttendanceTable from '../../../Components/Tables/AttendanceTable/AttendanceTable.jsx';
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from '../../../Components/UI/Inputs/Input/Input.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
 import { supabase } from '../../../lib/supabase';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';

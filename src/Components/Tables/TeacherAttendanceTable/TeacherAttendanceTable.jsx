@@ -3,7 +3,7 @@ import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { sortEntities } from '../../../Utils/SortEntities';
 import styles from './TeacherAttendanceTable.module.css';
 import { supabase } from '../../../lib/supabase';
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from  '../../UI/Inputs/Input/Input.jsx';
 import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';

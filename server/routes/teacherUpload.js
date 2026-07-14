@@ -5,7 +5,7 @@ import { excelUpload } from '../middleware/excelUpload.js';
 import { supabase } from '../config/supabase.js';
 import stream from 'stream';
 import path from 'path';
-import { validateTeacherData } from '../../src/Utils/TeacherValidation.js'; 
+import { validateAndNormalizeTeacher } from '../../src/Utils/TeacherDataValidation.js';
 
 const router = express.Router();
 
@@ -48,12 +48,10 @@ const cleanTeacherData = (teacher) => {
     }
   });
   
-  
   return cleaned;
 };
 
 const validateStatus = (status) => {
-
   if (!status || status.toString().trim() === '') return null;
   
   const statusLower = status.toString().toLowerCase().trim();
@@ -479,29 +477,30 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       
       console.log(`Row ${rowNumber} - Status: "${teacher.status}" -> Cleaned: "${cleanedTeacher.status}" (will be NULL/empty in DB)`);
       
-      const validationErrors = validateTeacherData(cleanedTeacher);
+      // FIX: Use validateAndNormalizeTeacher and destructure both teacher and errors
+      const { teacher: normalizedTeacher, errors: validationErrors } = validateAndNormalizeTeacher(cleanedTeacher);
       
-      if (cleanedTeacher.employee_id) {
-        if (employeeIdSet.has(cleanedTeacher.employee_id)) {
-          validationErrors.employee_id = `Employee ID ${cleanedTeacher.employee_id} is duplicated in the file`;
-          duplicateEmployeeIds.add(cleanedTeacher.employee_id);
+      if (normalizedTeacher.employee_id) {
+        if (employeeIdSet.has(normalizedTeacher.employee_id)) {
+          validationErrors.employee_id = `Employee ID ${normalizedTeacher.employee_id} is duplicated in the file`;
+          duplicateEmployeeIds.add(normalizedTeacher.employee_id);
         } else {
-          employeeIdSet.add(cleanedTeacher.employee_id);
+          employeeIdSet.add(normalizedTeacher.employee_id);
         }
       }
       
-      if (cleanedTeacher.email_address) {
-        if (emailSet.has(cleanedTeacher.email_address)) {
-          validationErrors.email_address = `Email ${cleanedTeacher.email_address} is duplicated in the file`;
-          duplicateEmails.add(cleanedTeacher.email_address);
+      if (normalizedTeacher.email_address) {
+        if (emailSet.has(normalizedTeacher.email_address)) {
+          validationErrors.email_address = `Email ${normalizedTeacher.email_address} is duplicated in the file`;
+          duplicateEmails.add(normalizedTeacher.email_address);
         } else {
-          emailSet.add(cleanedTeacher.email_address);
+          emailSet.add(normalizedTeacher.email_address);
         }
       }
       
       validationResults.push({
         row: rowNumber,
-        teacher: cleanedTeacher,
+        teacher: normalizedTeacher, // Use normalizedTeacher instead of cleanedTeacher
         errors: validationErrors,
         isValid: Object.keys(validationErrors).length === 0
       });

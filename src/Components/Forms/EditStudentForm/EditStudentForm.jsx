@@ -4,7 +4,7 @@ import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelper
 import styles from './EditStudentForm.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCamera } from '@fortawesome/free-solid-svg-icons';
-
+import PhoneNumberInput from '../../UI/Inputs/PhoneNumberInput/PhoneNumberInput';
 function EditStudentForm({
   student,
   formData,
@@ -86,7 +86,9 @@ function EditStudentForm({
       </div>
 
       <div className={styles.formGroup}>
-        <label>LRN</label>
+        <label>
+          LRN<span className={styles.required}>*</span>
+        </label>
         <input
           type="text"
           name="lrn"
@@ -102,7 +104,9 @@ function EditStudentForm({
 
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
-          <label>First Name</label>
+          <label>
+            First Name<span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="first_name"
@@ -117,7 +121,9 @@ function EditStudentForm({
         </div>
 
         <div className={styles.formGroup}>
-          <label>Last Name</label>
+          <label>
+            Last Name<span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="last_name"
@@ -134,7 +140,9 @@ function EditStudentForm({
 
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
-          <label>Grade</label>
+          <label>
+            Grade<span className={styles.required}>*</span>
+          </label>
           <select
             name="grade"
             value={formData.grade || ''}
@@ -155,7 +163,9 @@ function EditStudentForm({
         </div>
 
         <div className={styles.formGroup}>
-          <label>Section</label>
+          <label>
+            Section<span className={styles.required}>*</span>
+          </label>
           {!formData.grade || availableSections.length === 0 ? (
             <div className={styles.noSectionsMessage}>
               {!formData.grade ? 'Select a grade first' : 'No sections available for this grade'}
@@ -197,20 +207,14 @@ function EditStudentForm({
           )}
         </div>
 
-        <div className={styles.formGroup}>
-          <label>Phone</label>
-          <input
-            type="text"
-            name="phone_number"
-            value={formData.phone_number || ''}
-            onChange={handleInputChange}
-            className={`${styles.input} ${validationErrors.phone_number ? styles.inputError : ''}`}
-            disabled={disabled}
-          />
-          {validationErrors.phone_number && (
-            <div className={styles.fieldError}>{validationErrors.phone_number}</div>
-          )}
-        </div>
+        <PhoneNumberInput
+          name="phone_number"
+          label="Phone"
+          value={formData.phone_number}
+          onChange={onFieldChange}
+          error={validationErrors.phone_number}
+          disabled={disabled}
+        />
       </div>
     </div>
   );

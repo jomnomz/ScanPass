@@ -89,12 +89,33 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
     }
   };
 
-  const validateForm = () => {
+  /**
+   * Runs field-level validation for the current entityType and, where the
+   * validator supports it (student/teacher), also checks whether the
+   * identifier (LRN / Employee ID) being edited would collide with a
+   * DIFFERENT existing entity already in `entities`.
+   *
+   * Returns both the errors AND the normalized/sanitized data so callers
+   * (saveEdit) can persist the sanitized version instead of the raw input.
+   */
+  const runValidation = (currentEntityId) => {
     let errors = {};
-    
+    let normalized = editFormData;
+
     if (entityType === 'student') {
-      const result = validateAndNormalizeStudent(editFormData);
-      errors = result.errors;
+     const result = validateAndNormalizeStudent(editFormData, { isFormContext: true });
+      errors = { ...result.errors };
+      normalized = result.student;
+
+      const lrn = editFormData.lrn?.toString().trim();
+      if (lrn) {
+        const isDuplicate = entities.some(
+          (e) => e.id !== currentEntityId && e.lrn?.toString().trim() === lrn
+        );
+        if (isDuplicate) {
+          errors.lrn = `LRN ${lrn} already belongs to another student`;
+        }
+      }
     } else if (entityType === 'guardian') {
       if (!editFormData.first_name?.trim()) errors.first_name = 'First name is required';
       if (!editFormData.last_name?.trim()) errors.last_name = 'Last name is required';
@@ -104,13 +125,33 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
       }
     } else if (entityType === 'teacher') {
       const result = validateAndNormalizeTeacher(editFormData);
-      errors = result.errors;
+      errors = { ...result.errors };
+      // Defensive: fall back to raw form data if the validator's return
+      // shape doesn't expose a normalized object under `teacher`/`student`.
+      normalized = result.teacher ?? result.student ?? editFormData;
+
+      const employeeId = editFormData.employee_id?.toString().trim();
+      if (employeeId) {
+        const isDuplicate = entities.some(
+          (e) => e.id !== currentEntityId && e.employee_id?.toString().trim() === employeeId
+        );
+        if (isDuplicate) {
+          errors.employee_id = `Employee ID ${employeeId} already belongs to another teacher`;
+        }
+      }
     } else if (entityType === 'gradeSection') {
       errors = validateGradeSectionData(editFormData);
     } else if (entityType === 'subject') {
       errors = validateSubjectData(editFormData);
     }
-    
+
+    return { errors, normalized };
+  };
+
+  // Kept for backward compatibility with any existing callers (e.g. on-blur
+  // validation) that only care about the errors object.
+  const validateForm = () => {
+    const { errors } = runValidation(editingId);
     setValidationErrors(errors);
     return errors;
   };
@@ -118,13 +159,17 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
   const saveEdit = async (entityId, currentClass, updateService) => {
     try {
       setSaving(true);
-      
-      const errors = validateForm();
+
+      const { errors, normalized } = runValidation(entityId);
+      setValidationErrors(errors);
+
       if (Object.keys(errors).length > 0) {
         throw new Error('Please fix the validation errors');
       }
-      
-      const updatedEntity = await updateService(entityId, editFormData);
+
+      // Use the sanitized/normalized data (formatted phone, lowercased
+      // email, etc.) rather than the raw editFormData.
+      const updatedEntity = await updateService(entityId, normalized);
       
       // Always update the entity in local state
       setEntities(prevEntities => {
@@ -142,12 +187,12 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
       let gradeChanged = false;
       if (entityType === 'student') {
         const entity = entities.find(e => e.id === entityId);
-        if (entity && editFormData.grade) {
+        if (entity && normalized.grade) {
           let originalGrade = entity.grade;
           if (typeof originalGrade === 'string' && originalGrade.includes('Grade ')) {
             originalGrade = originalGrade.replace('Grade ', '');
           }
-          gradeChanged = originalGrade !== editFormData.grade;
+          gradeChanged = originalGrade !== normalized.grade;
         }
       }
       

@@ -59,19 +59,19 @@ function QRCodeModal({ isOpen, onClose, student }) {
         </div>
         
         <div className={styles.qrActions}>
-          <Button
-            label="Download"
-            height="sm"
-            width="sm"
-            color="ocean"
-            onClick={handleDownloadQR}
-          />
           <Button 
             label="Close"
             height="sm"
             width="xs"
             color="ghost"
             onClick={onClose}
+          />
+          <Button
+            label="Download"
+            height="sm"
+            width="sm"
+            color="ocean"
+            onClick={handleDownloadQR}
           />
         </div>
       </div>

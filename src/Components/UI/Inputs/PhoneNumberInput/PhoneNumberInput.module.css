@@ -1,0 +1,80 @@
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.required {
+  color: #FF4930;
+  margin-left: 3px;
+}
+
+.phoneInputWrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #ffffff;
+  transition: border-color 0.3s;
+  overflow: hidden;
+}
+
+.phoneInputWrapper:focus-within {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.phonePrefix {
+  padding: 12px 0 12px 15px;
+  color: #555;
+  font-size: 16px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.phoneDivider {
+  padding: 0 10px;
+  color: #ccc;
+  font-size: 16px;
+  user-select: none;
+}
+
+.phoneInputField {
+    width: 150px;   /* instead of flex: 1 */
+  min-width: 0;
+  border: none;
+  outline: none;
+  padding: 12px 15px 12px 0;
+  font-size: 16px;
+  color: #222;
+  background: transparent;
+}
+
+.phoneInputField:disabled {
+  cursor: not-allowed;
+}
+
+.phoneInputDisabled {
+  background-color: #f4f4f4;
+  cursor: not-allowed;
+}
+
+.phoneInputWrapper.inputError {
+  border-color: #FF4930;
+}
+
+.phoneInputWrapper.inputError:focus-within {
+  box-shadow: 0 0 0 3px rgba(255, 73, 48, 0.1);
+}
+
+.fieldError {
+  color: #FF4930;
+  font-size: 13px;
+  margin-top: 6px;
+}

@@ -15,14 +15,23 @@ import { validateAndFormatEmail } from "./EmailValidation.js";
  * recorded, so the row is guaranteed to be rejected downstream.
  *
  * @param {object} cleanedStudent - output of cleanStudentData() (trimmed, nulls for empty optionals)
+ * @param {object} options - configuration options
+ * @param {boolean} options.isFormContext - if true, shortens phone error messages for form UI
  * @returns {{ student: object, errors: object }}
  */
-export const validateAndNormalizeStudent = (cleanedStudent) => {
+export const validateAndNormalizeStudent = (cleanedStudent, options = {}) => {
+  const { isFormContext = false } = options;
   const errors = {};
   const student = { ...cleanedStudent };
 
+  // ---- LRN (required, must be exactly 12 digits) ----
+  if (!student.lrn?.trim()) {
+    errors.lrn = 'LRN is required';
+  } else if (!/^\d{12}$/.test(student.lrn.trim())) {
+    errors.lrn = 'LRN must be exactly 12 digits';
+  }
+
   // ---- Required fields ----
-  if (!student.lrn?.trim()) errors.lrn = 'LRN is required';
   if (!student.first_name?.trim()) errors.first_name = 'First name is required';
   if (!student.last_name?.trim()) errors.last_name = 'Last name is required';
   if (!student.grade?.trim()) errors.grade = 'Grade is required';
@@ -43,7 +52,10 @@ export const validateAndNormalizeStudent = (cleanedStudent) => {
     if (result.isValid) {
       student.phone_number = result.formatted;
     } else {
-      errors.phone_number = result.error;
+      // Form context gets shortened message; bulk upload gets full detail
+      errors.phone_number = isFormContext 
+        ? 'Phone number is invalid' 
+        : result.error;
       // leave student.phone_number as the raw input so the error is traceable
     }
   }
@@ -53,7 +65,9 @@ export const validateAndNormalizeStudent = (cleanedStudent) => {
     if (result.isValid) {
       student.guardian_phone_number = result.formatted;
     } else {
-      errors.guardian_phone_number = result.error;
+      errors.guardian_phone_number = isFormContext 
+        ? 'Phone number is invalid' 
+        : result.error;
     }
   }
 

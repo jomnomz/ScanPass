@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import styles from './AdminTeachers.module.css';
 import TeacherTable from '../../../Components/Tables/TeacherTable/TeacherTable.jsx';
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from '../../../Components/UI/Inputs/Input/Input.jsx';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
 import FileUploadModal from '../../../Components/Modals/FileUploadModal/FileUploadModal.jsx';
 import DeleteEntityModal from '../../../Components/Modals/DeleteEntityModal/DeleteEntityModal.jsx';

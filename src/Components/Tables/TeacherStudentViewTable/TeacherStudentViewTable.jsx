@@ -5,7 +5,7 @@ import styles from './TeacherStudentViewTable.module.css';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 import { useRowExpansion } from '../../Hooks/useRowExpansion';
-import Input from '../../UI/Input/Input';
+import Input from '../../UI/Inputs/Input/Input';
 import Button from '../../UI/Buttons/Button/Button';
 import ReportGenerationModal from '../../Modals/ReportGenerationModal/ReportGenerationModal';
 import ClassAttendanceReportModal from '../../Modals/ClassAttendanceReportModal/ClassAttendanceReportModal';

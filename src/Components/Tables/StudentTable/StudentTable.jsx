@@ -115,7 +115,8 @@ const StudentTable = ({
   // NEW: ref-based reentry guard for confirmation flow
   const confirmingRef = useRef(false);
   
-  const { editingId: editingStudent, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
+  // ===== FIX: Destructure validateForm from useEntityEdit =====
+  const { editingId: editingStudent, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit, validateForm } = useEntityEdit(
     students, 
     setStudents,
     'student',
@@ -362,16 +363,20 @@ const StudentTable = ({
     cancelEdit();
   };
 
-  // ===== HANDLE SAVE FROM MODAL =====
+  // ===== FIXED: HANDLE SAVE FROM MODAL with proper validation =====
   const handleEditFormSave = () => {
     const student = editingEntity;
     if (!student) return;
     
     setSaveError('');
-    
-    // Validate required fields
-    if (!editFormData.grade || !editFormData.section) {
-      setSaveError('Please select both grade and section');
+
+    // Run full validation (required fields, phone/email format, LRN duplicate
+    // check, etc.) BEFORE deciding whether to show the QR-regeneration
+    // warning. Without this, an emptied or invalid LRN still counts as
+    // "changed" (it's !== the original), so it used to skip straight past
+    // validation into the warning modal for a save that could never succeed.
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
       return;
     }
 

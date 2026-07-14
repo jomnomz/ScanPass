@@ -5,7 +5,7 @@ import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabe
 import FileUploadModal from "../../../Components/Modals/FileUploadModal/FileUploadModal.jsx";
 import Button from "../../../Components/UI/Buttons/Button/Button.jsx";
 import StudentTable from '../../../Components/Tables/StudentTable/StudentTable.jsx';
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from  "../../../Components/UI/Inputs/Input/Input.jsx";
 import DeleteEntityModal from '../../../Components/Modals/DeleteEntityModal/DeleteEntityModal.jsx';
 import DownloadQRModal from '../../../Components/Modals/DownloadQRModal/DownloadQRModal.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';

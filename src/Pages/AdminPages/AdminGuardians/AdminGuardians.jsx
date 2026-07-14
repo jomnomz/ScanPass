@@ -3,7 +3,7 @@ import styles from './AdminGuardians.module.css';
 import PageLabel from "../../../Components/UI/Labels/PageLabel/PageLabel.jsx";
 import SectionLabel from '../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx';
 import GuardianTable from '../../../Components/Tables/GuardianTable/GuardianTable.jsx';
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from '../../../Components/UI/Inputs/Input/Input.jsx';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import { supabase } from '../../../lib/supabase';

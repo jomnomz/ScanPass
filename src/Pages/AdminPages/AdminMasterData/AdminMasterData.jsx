@@ -3,7 +3,7 @@ import styles from './AdminMasterData.module.css';
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
 import FileUploadModal from '../../../Components/Modals/FileUploadModal/FileUploadModal.jsx';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
-import Input from '../../../Components/UI/Input/Input.jsx';
+import Input from  "../../../Components/UI/Inputs/Input/Input.jsx";
 import DeleteEntityModal from '../../../Components/Modals/DeleteEntityModal/DeleteEntityModal.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
