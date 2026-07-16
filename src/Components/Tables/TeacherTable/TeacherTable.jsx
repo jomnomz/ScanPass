@@ -109,9 +109,9 @@ const TeacherTable = ({
   const [allSubjects, setAllSubjects] = useState([]);
   const [sectionIdMap, setSectionIdMap] = useState({}); // key: `${gradeLevel}|${sectionName}` -> section.id
 
-  const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit } = useEntityEdit(
-    teachers, setEntities, 'teacher', refreshTeachers
-  );
+  const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit, validateForm } = useEntityEdit(
+  teachers, setEntities, 'teacher', refreshTeachers
+);
 
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
   const { success, error: toastError } = useToast();
@@ -466,18 +466,20 @@ const TeacherTable = ({
 
   // ===== HANDLE SAVE FROM MODAL =====
   const handleEditFormSave = () => {
-    const teacher = editingEntity;
-    if (!teacher) return;
-    
-    setSaveError('');
-    
-    if (!editFormData.first_name || !editFormData.last_name) {
-      setSaveError('First name and last name are required');
-      return;
-    }
+  const teacher = editingEntity;
+  if (!teacher) return;
 
-    performTeacherUpdate(teacher.id);
-  };
+  setSaveError('');
+
+  const errors = validateForm();
+  if (Object.keys(errors).length > 0) {
+    // Don't proceed — validateForm() already populated validationErrors,
+    // and EditTeacherForm renders each one under its corresponding field.
+    return;
+  }
+
+  performTeacherUpdate(teacher.id);
+};
 
   // ===== FIXED: performTeacherUpdate now saves assignments too =====
   const performTeacherUpdate = async (teacherId) => {

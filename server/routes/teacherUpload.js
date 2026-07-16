@@ -16,7 +16,6 @@ const csvHeaders = {
   middle_name: ['Middle Name', 'middle_name', 'Middle_Name', 'Middle Initial', 'Middle_Initial', 'Middle', 'MI'],
   email_address: ['Email', 'Email Address', 'email_address', 'Email_Address', 'email', 'E-mail'],
   phone_no: ['Phone', 'Phone Number', 'phone_no', 'Phone_Number', 'Contact Number', 'Contact_Number', 'Mobile', 'Cell', 'Cellphone'],
-  status: ['Status', 'status', 'Account Status', 'Account_Status'],
   subjects: ['Subjects', 'subjects', 'Subject Codes', 'Subject_Codes'],
   grade_sections_teaching: ['Grade-Sections (Teaching)', 'grade_sections_teaching', 'Grade-Sections', 'Teaching Assignments', 'Grade-Sections (Teaching)'],
   adviser_grade_section: ['Adviser Grade-Section', 'adviser_grade_section', 'Advisory Class', 'Adviser Grade-Section']
@@ -33,7 +32,7 @@ const getCsvValue = (data, keys) => {
 
 const cleanTeacherData = (teacher) => {
   const cleaned = {};
-  const optionalFields = ['email_address', 'phone_no', 'middle_name', 'status', 'subjects', 'grade_sections_teaching', 'adviser_grade_section'];
+  const optionalFields = ['email_address', 'phone_no', 'middle_name', 'subjects', 'grade_sections_teaching', 'adviser_grade_section'];
   
   Object.keys(teacher).forEach(key => {
     if (teacher[key] !== undefined && teacher[key] !== null) {
@@ -49,15 +48,6 @@ const cleanTeacherData = (teacher) => {
   });
   
   return cleaned;
-};
-
-const validateStatus = (status) => {
-  if (!status || status.toString().trim() === '') return null;
-  
-  const statusLower = status.toString().toLowerCase().trim();
-  const validStatuses = ['pending', 'active', 'inactive'];
-  
-  return validStatuses.includes(statusLower) ? statusLower : null;
 };
 
 const parseCommaSeparated = (str) => {
@@ -395,7 +385,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           middle_name: getValue(csvHeaders.middle_name),
           email_address: getValue(csvHeaders.email_address),
           phone_no: getValue(csvHeaders.phone_no),
-          status: getValue(csvHeaders.status),
           subjects: getValue(csvHeaders.subjects),
           grade_sections_teaching: getValue(csvHeaders.grade_sections_teaching),
           adviser_grade_section: getValue(csvHeaders.adviser_grade_section)
@@ -420,7 +409,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
               middle_name: getCsvValue(data, csvHeaders.middle_name),
               email_address: getCsvValue(data, csvHeaders.email_address),
               phone_no: getCsvValue(data, csvHeaders.phone_no),
-              status: getCsvValue(data, csvHeaders.status),
               subjects: getCsvValue(data, csvHeaders.subjects),
               grade_sections_teaching: getCsvValue(data, csvHeaders.grade_sections_teaching),
               adviser_grade_section: getCsvValue(data, csvHeaders.adviser_grade_section)
@@ -456,8 +444,7 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         name: `${teacher.first_name} ${teacher.last_name}`,
         subjects: teacher.subjects,
         grade_sections_teaching: teacher.grade_sections_teaching,
-        adviser_grade_section: teacher.adviser_grade_section,
-        status: teacher.status || '(empty)'
+        adviser_grade_section: teacher.adviser_grade_section
       });
     });
 
@@ -473,11 +460,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       
       const cleanedTeacher = cleanTeacherData(teacher);
       
-      cleanedTeacher.status = validateStatus(cleanedTeacher.status);
-      
-      console.log(`Row ${rowNumber} - Status: "${teacher.status}" -> Cleaned: "${cleanedTeacher.status}" (will be NULL/empty in DB)`);
-      
-      // FIX: Use validateAndNormalizeTeacher and destructure both teacher and errors
       const { teacher: normalizedTeacher, errors: validationErrors } = validateAndNormalizeTeacher(cleanedTeacher);
       
       if (normalizedTeacher.employee_id) {
@@ -500,7 +482,7 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       
       validationResults.push({
         row: rowNumber,
-        teacher: normalizedTeacher, // Use normalizedTeacher instead of cleanedTeacher
+        teacher: normalizedTeacher,
         errors: validationErrors,
         isValid: Object.keys(validationErrors).length === 0
       });
@@ -522,14 +504,13 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         success: false,
         error: 'File contains invalid data. Please fix all errors and try again.',
         invalidCount: invalidRecords.length,
-        invalidRecords: invalidRecords.slice(0, 5).map(record => ({
+        invalidRecords: invalidRecords.slice(0, 10).map(record => ({
           row: record.row,
           data: {
             employee_id: record.teacher.employee_id,
-            name: `${record.teacher.first_name} ${record.teacher.last_name}`,
-            status: record.teacher.status,
-            errors: record.errors
-          }
+            name: `${record.teacher.first_name} ${record.teacher.last_name}`
+          },
+          errors: record.errors
         })),
         errorSummary: errorMessages.slice(0, 5),
         summary: {
@@ -542,12 +523,82 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       });
     }
 
-    const allTeachers = validationResults.map(r => r.teacher);
-    
-    console.log('\n📋 All teacher statuses before insert:');
-    allTeachers.forEach((teacher, index) => {
-      console.log(`Teacher ${index + 1}: ${teacher.first_name} ${teacher.last_name} - Status: ${teacher.status === null ? 'NULL (No Status)' : teacher.status}`);
+    // Row number kept only for error reporting below — stripped before insert.
+    const allTeachers = validationResults.map(r => ({ ...r.teacher, _row: r.row }));
+
+    // ------------------------------------------------------------------
+    // DB-level email conflict check: does this email already belong to a
+    // DIFFERENT teacher already in the database? Mirrors the same check
+    // added to the student upload route. Without this, a single insert()
+    // with N rows fails ENTIRELY if even one row collides with an existing
+    // teacher's email, with no indication of which row caused it.
+    // ------------------------------------------------------------------
+    const teacherEmailsToCheck = allTeachers
+      .map(t => t.email_address)
+      .filter(email => email);
+
+    const existingEmailToEmployeeId = new Map();
+
+    if (teacherEmailsToCheck.length > 0) {
+      const { data: existingEmailRows, error: emailFetchError } = await supabase
+        .from('teachers')
+        .select('employee_id, email_address')
+        .in('email_address', teacherEmailsToCheck);
+
+      if (emailFetchError) {
+        console.error('Error checking existing teacher emails:', emailFetchError);
+        throw new Error(`Database error: ${emailFetchError.message}`);
+      }
+
+      if (existingEmailRows && existingEmailRows.length > 0) {
+        existingEmailRows.forEach(row => {
+          existingEmailToEmployeeId.set(row.email_address, row.employee_id);
+        });
+      }
+    }
+
+    // A conflict only counts if the existing row's employee_id is DIFFERENT
+    // from this row's employee_id — if they match, this is just a
+    // legitimate re-upload of the same teacher (handled by the
+    // existingEmployeeIds skip-logic below), not a genuine email collision.
+    const teacherEmailConflicts = allTeachers.filter(t => {
+      const existingEmployeeIdForEmail = existingEmailToEmployeeId.get(t.email_address);
+      return existingEmployeeIdForEmail && existingEmployeeIdForEmail !== t.employee_id;
     });
+
+    if (teacherEmailConflicts.length > 0) {
+      console.log(`❌ ${teacherEmailConflicts.length} teachers have emails already belonging to other teachers in the database`);
+
+      const emailConflictInvalidRecords = teacherEmailConflicts.map(t => ({
+        row: t._row,
+        data: {
+          employee_id: t.employee_id,
+          name: `${t.first_name} ${t.last_name}`
+        },
+        errors: {
+          email_address: `Email ${t.email_address} already belongs to another teacher (Employee ID ${existingEmailToEmployeeId.get(t.email_address)}) in the database`
+        }
+      }));
+
+      const errorMessages = emailConflictInvalidRecords.map(record =>
+        `Row ${record.row}: ${Object.values(record.errors).join(', ')}`
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'One or more emails already belong to other teachers in the database.',
+        invalidCount: emailConflictInvalidRecords.length,
+        invalidRecords: emailConflictInvalidRecords.slice(0, 10),
+        errorSummary: errorMessages.slice(0, 5),
+        summary: {
+          totalRecords: rawTeacherData.length,
+          validRecords: allTeachers.length - teacherEmailConflicts.length,
+          invalidRecords: teacherEmailConflicts.length,
+          duplicateEmployeeIds: [],
+          duplicateEmails: teacherEmailConflicts.map(t => t.email_address)
+        }
+      });
+    }
     
     const employeeIds = allTeachers.map(t => t.employee_id);
     
@@ -557,7 +608,7 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       console.log(`\n🔍 Checking for existing teachers in database...`);
       const { data: existingTeachersById, error: fetchErrorId } = await supabase
         .from('teachers')
-        .select('id, employee_id, status')
+        .select('id, employee_id')
         .in('employee_id', employeeIds);
       
       if (fetchErrorId) {
@@ -568,9 +619,20 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         console.log(`⚠️ Found ${existingEmployeeIds.length} existing Employee IDs in database`);
       }
     }
+
+    // Strip the internal _row field before these objects touch the DB —
+    // it's not a real column and Supabase would reject the insert otherwise.
+    const stripRowMeta = (teacher) => {
+      const { _row, ...rest } = teacher;
+      return rest;
+    };
     
-    const newTeachers = allTeachers.filter(teacher => !existingEmployeeIds.includes(teacher.employee_id));
-    const existingTeachers = allTeachers.filter(teacher => existingEmployeeIds.includes(teacher.employee_id));
+    const newTeachers = allTeachers
+      .filter(teacher => !existingEmployeeIds.includes(teacher.employee_id))
+      .map(stripRowMeta);
+    const existingTeachers = allTeachers
+      .filter(teacher => existingEmployeeIds.includes(teacher.employee_id))
+      .map(stripRowMeta);
 
     console.log(`\n📝 Database Summary:`);
     console.log(`📋 New teachers to insert: ${newTeachers.length}`);
@@ -613,8 +675,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         return teacherData;
       });
       
-      console.log('First teacher to insert (check status - should be null):', teachersToInsert[0]);
-      
       const { data: insertedData, error: insertError } = await supabase
         .from('teachers')
         .insert(teachersToInsert)
@@ -627,11 +687,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       
       uploadedData = insertedData || [];
       console.log(`✅ Successfully added ${uploadedData.length} new teachers`);
-      
-      console.log('📋 Inserted teachers with statuses:');
-      uploadedData.forEach(teacher => {
-        console.log(`- ${teacher.first_name} ${teacher.last_name}: Status = ${teacher.status === null ? 'NULL (No Status)' : teacher.status}`);
-      });
       
       console.log('\n📚 Processing teacher assignments...');
       
@@ -798,16 +853,19 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       errorMessage = 'Invalid data format in file. Please check your data.';
       statusCode = 400;
     } else if (error.message.includes('duplicate key')) {
-      errorMessage = 'Duplicate Employee ID or Email found in database.';
+      if (error.message.includes('teachers_email_address_key')) {
+        errorMessage = 'One or more emails already exist in the database.';
+      } else if (error.message.includes('teachers_employee_id_key')) {
+        errorMessage = 'Duplicate Employee ID found in database.';
+      } else {
+        errorMessage = 'A duplicate value was found in the database.';
+      }
       statusCode = 409;
     } else if (error.message.includes('permission denied')) {
       errorMessage = 'Permission denied. Please check your database credentials.';
       statusCode = 403;
     } else if (error.message.includes('File contains invalid data')) {
       errorMessage = error.message;
-      statusCode = 400;
-    } else if (error.message.includes('check constraint')) {
-      errorMessage = 'Invalid status value. Status must be one of: pending, active, inactive.';
       statusCode = 400;
     }
     

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { validateAndNormalizeStudent } from '../../Utils/StudentDataValidation';
-import { validateAndNormalizeTeacher } from  '../../Utils/TeacherValidation';
+import { validateAndNormalizeTeacher } from  '../../Utils/TeacherDataValidation';
 import { validateGradeSectionData, validateSubjectData } from '../../Utils/MasterDataValidation';
 
 export const useEntityEdit = (entities, setEntities, entityType = 'student', refreshAll = null) => {
@@ -42,19 +42,20 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
         phone_number: entity.phone_number || '',
         email: entity.email || ''
       });
-    } else if (entityType === 'teacher') {
-      setEditFormData({
-        employee_id: entity.employee_id,
-        first_name: entity.first_name,
-        middle_name: entity.middle_name || '',
-        last_name: entity.last_name,
-        phone_no: entity.phone_no || '',
-        email_address: entity.email_address || '',
-        grade_sections_teaching: entity.grade_sections_teaching || '',
-        adviser_grade_section: entity.adviser_grade_section || '',
-        status: entity.status || ''
-      });
-    } else if (entityType === 'gradeSection') {
+      } else if (entityType === 'teacher') {
+    setEditFormData({
+      employee_id: entity.employee_id,
+      first_name: entity.first_name,
+      middle_name: entity.middle_name || '',
+      last_name: entity.last_name,
+      phone_no: entity.phone_no || '',
+      email_address: entity.email_address || '',
+      assignments: entity.assignments || [],
+      subjects: entity.subjects || [],
+      status: entity.status || ''
+    });
+  }
+    else if (entityType === 'gradeSection') {
       setEditFormData({
         grade: entity.grade,
         section: entity.section,
@@ -123,23 +124,21 @@ export const useEntityEdit = (entities, setEntities, entityType = 'student', ref
       if (editFormData.phone_number && !/^[\+]?[1-9][\d]{0,15}$/.test(editFormData.phone_number.replace(/\D/g, ''))) {
         errors.phone_number = 'Phone number is invalid';
       }
-    } else if (entityType === 'teacher') {
-      const result = validateAndNormalizeTeacher(editFormData);
-      errors = { ...result.errors };
-      // Defensive: fall back to raw form data if the validator's return
-      // shape doesn't expose a normalized object under `teacher`/`student`.
-      normalized = result.teacher ?? result.student ?? editFormData;
+   } else if (entityType === 'teacher') {
+  const result = validateAndNormalizeTeacher(editFormData, { isFormContext: true });
+  errors = { ...result.errors };
+  normalized = result.teacher ?? editFormData;
 
-      const employeeId = editFormData.employee_id?.toString().trim();
-      if (employeeId) {
-        const isDuplicate = entities.some(
-          (e) => e.id !== currentEntityId && e.employee_id?.toString().trim() === employeeId
-        );
-        if (isDuplicate) {
-          errors.employee_id = `Employee ID ${employeeId} already belongs to another teacher`;
-        }
-      }
-    } else if (entityType === 'gradeSection') {
+  const employeeId = editFormData.employee_id?.toString().trim();
+  if (employeeId) {
+    const isDuplicate = entities.some(
+      (e) => e.id !== currentEntityId && e.employee_id?.toString().trim() === employeeId
+    );
+    if (isDuplicate) {
+      errors.employee_id = `Employee ID ${employeeId} already belongs to another teacher`;
+    }
+  }
+} else if (entityType === 'gradeSection') {
       errors = validateGradeSectionData(editFormData);
     } else if (entityType === 'subject') {
       errors = validateSubjectData(editFormData);

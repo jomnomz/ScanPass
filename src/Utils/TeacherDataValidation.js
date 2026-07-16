@@ -5,18 +5,13 @@ import { validateAndFormatEmail } from "./EmailValidation.js";
 /**
  * Validates AND normalizes a teacher record in a single pass.
  *
- * Previously, phone/email were validated but the FORMATTED value was never
- * written back onto teacherData — only the pass/fail result was used. That
- * meant phone_no was inserted into the DB in whatever raw format the user
- * typed (e.g. "09171234567" instead of "+639171234567"), and email_address
- * was never lowercased. This mirrors the same single-pass pattern used for
- * students: validate once, use the formatted value only if valid, keep the
- * raw value (for error traceability) if invalid.
- *
  * @param {object} cleanedTeacher - output of cleanTeacherData() (trimmed, nulls for empty optionals)
+ * @param {object} options - configuration options
+ * @param {boolean} options.isFormContext - if true, shortens phone error messages for form UI
  * @returns {{ teacher: object, errors: object }}
  */
-export const validateAndNormalizeTeacher = (cleanedTeacher) => {
+export const validateAndNormalizeTeacher = (cleanedTeacher, options = {}) => {
+  const { isFormContext = false } = options;
   const errors = {};
   const teacher = { ...cleanedTeacher };
 
@@ -30,6 +25,9 @@ export const validateAndNormalizeTeacher = (cleanedTeacher) => {
 
   if (!teacher.employee_id?.trim()) {
     errors.employee_id = 'Employee ID is required';
+  } else if (!/^\d+$/.test(teacher.employee_id.trim())) {
+    // Digits only — no letters, spaces, or symbols (e.g. dashes)
+    errors.employee_id = 'Employee ID must contain numbers only';
   } else if (teacher.employee_id.trim().length > 50) {
     errors.employee_id = 'Employee ID must be 50 characters or less';
   }
@@ -57,7 +55,6 @@ export const validateAndNormalizeTeacher = (cleanedTeacher) => {
       teacher.email_address = result.formatted;
     } else {
       errors.email_address = result.error;
-      // leave teacher.email_address as the raw input so the error is traceable
     }
   }
 
@@ -67,7 +64,10 @@ export const validateAndNormalizeTeacher = (cleanedTeacher) => {
     if (result.isValid) {
       teacher.phone_no = result.formatted;
     } else {
-      errors.phone_no = result.error;
+      // Form context gets shortened message; bulk upload gets full detail
+      errors.phone_no = isFormContext
+        ? 'Phone number is invalid'
+        : result.error;
     }
   }
 
@@ -96,14 +96,6 @@ export const validateAndNormalizeTeacher = (cleanedTeacher) => {
       errors.adviser_grade_section = 'There must only be one adviser section';
     } else if (!teacher.adviser_grade_section.match(/^(\d+)\s*[-]?\s*(.+)$/)) {
       errors.adviser_grade_section = 'Invalid adviser grade-section format. Use formats like "7-1" or "7 - Section Name"';
-    }
-  }
-
-  if (teacher.status && teacher.status.trim()) {
-    const validStatuses = ['pending', 'active', 'inactive'];
-    const statusLower = teacher.status.toLowerCase().trim();
-    if (!validStatuses.includes(statusLower)) {
-      errors.status = `Status must be one of: ${validStatuses.join(', ')}`;
     }
   }
 

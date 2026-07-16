@@ -225,3 +225,8 @@
 .subjectChip button:hover:not(:disabled) {
   color: #d32f2f;
 }
+
+.required {
+  color: #FF4930;
+  margin-left: 3px;
+}

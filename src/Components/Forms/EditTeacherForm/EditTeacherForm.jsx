@@ -3,6 +3,7 @@ import { grades } from '../../../Utils/TableHelpers';
 import styles from './EditTeacherForm.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faPlus } from '@fortawesome/free-solid-svg-icons';
+import PhoneNumberInput from '../../UI/Inputs/PhoneNumberInput/PhoneNumberInput';
 
 let rowIdCounter = 0;
 const nextRowId = (prefix) => `${prefix}-${Date.now()}-${rowIdCounter++}`;
@@ -11,12 +12,12 @@ function EditTeacherForm({
   formData,
   onFieldChange,
   validationErrors = {},
-  gradeSectionsMap = {},       // { [gradeLevel]: [sectionName, ...] }
-  availableSubjects = [],      // [{ code, name }, ...] full catalog to choose from
+  gradeSectionsMap = {},
+  availableSubjects = [],
   disabled = false,
 }) {
   const assignments = formData.assignments || [];
-  const subjectRows = formData.subjects || []; // now [{ id, code }, ...]
+  const subjectRows = formData.subjects || [];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -96,7 +97,9 @@ function EditTeacherForm({
   return (
     <div className={styles.form}>
       <div className={styles.formGroup}>
-        <label>Employee ID</label>
+        <label>
+          Employee ID<span className={styles.required}>*</span>
+        </label>
         <input
           type="text"
           name="employee_id"
@@ -112,7 +115,9 @@ function EditTeacherForm({
 
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
-          <label>First Name</label>
+          <label>
+            First Name<span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="first_name"
@@ -127,7 +132,9 @@ function EditTeacherForm({
         </div>
 
         <div className={styles.formGroup}>
-          <label>Last Name</label>
+          <label>
+            Last Name<span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="last_name"
@@ -158,20 +165,14 @@ function EditTeacherForm({
           )}
         </div>
 
-        <div className={styles.formGroup}>
-          <label>Phone Number</label>
-          <input
-            type="text"
-            name="phone_no"
-            value={formData.phone_no || ''}
-            onChange={handleInputChange}
-            className={`${styles.input} ${validationErrors.phone_no ? styles.inputError : ''}`}
-            disabled={disabled}
-          />
-          {validationErrors.phone_no && (
-            <div className={styles.fieldError}>{validationErrors.phone_no}</div>
-          )}
-        </div>
+        <PhoneNumberInput
+          name="phone_no"
+          label="Phone Number"
+          value={formData.phone_no}
+          onChange={onFieldChange}
+          error={validationErrors.phone_no}
+          disabled={disabled}
+        />
       </div>
 
       {/* ===== TEACHING ASSIGNMENTS ===== */}
