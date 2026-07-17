@@ -1,7 +1,7 @@
 // src/pages/Admin/AdminSettings/AdminSettings.jsx
 import { useState } from 'react';
 import styles from './AdminSettings.module.css';
-import PageLabel from "../../../Components/UI/Labels/PageLabel/PageLabel.jsx";
+import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
 import ChangePasswordForm from '../../../Components/Forms/ChangePasswordForm/ChangePasswordForm.jsx';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useAuth } from '../../../Components/Authentication/AuthProvider/AuthProvider.jsx';
@@ -62,10 +62,7 @@ function AdminSettings() {
 
   return (
     <main className={styles.main}>
-      <PageLabel 
-        icon={<SettingsIcon sx={{ fontSize: 50, mb: -0.7 }}  />}  
-        label="Settings"
-      />
+    <SectionLabel label="Settings"></SectionLabel>
       
       <div className={styles.contentWrapper}>
         <div className={styles.settingsColumn}>

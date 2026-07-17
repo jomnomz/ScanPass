@@ -184,7 +184,7 @@ function Table({
 				rowId,
 				isExpanded
 			});
-			const rowStripeClassName = striped ? (rowIndex % 2 === 0 ? styles.rowEven : styles.rowOdd) : '';
+			const rowStripeClassName = striped ? (rowIndex % 2 === 0 ? styles.rowEven : styles.rowOdd) : styles.rowFlat;
 			const extraRowProps = getRowProps?.({ row, rowIndex, rowId, isExpanded }) || {};
 			const mainRow = (
 				<tr

@@ -1,15 +1,27 @@
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modalHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
-  
 }
 
 .modalTitle {
   font-size: 1.8rem;
   font-weight: 700;
-    margin-top: 20px;
+  margin-top: 20px;
+}
+
+
+.titleRow {
+  margin-bottom: 1rem;
 }
 
 .topControlsRow {
@@ -32,18 +44,24 @@
 }
 
 .monthNavButton {
-  background: none;
+  background: rgba(15, 107, 88, 0.08);
   border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 0 4px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
   color: #0f6b58;
-  transition: background 0.2s;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.monthNavButton:hover {
+  background: rgba(15, 107, 88, 0.15);
 }
 
 .monthNavButton:disabled {
-  color: #ccc;
-  cursor: not-allowed;
+  opacity: 0.3;
+  cursor: default;
+  background: rgba(15, 107, 88, 0.08);
 }
 
 .monthDropdown {
@@ -165,4 +183,92 @@
 
 .stickyHeader {
   /* Ensures sticky header works inside scroll wrapper */
+}
+
+.secondControlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rightControlsGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.monthPickerGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.searchWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #dbe5f0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-width: 220px;
+}
+
+.searchIcon {
+  color: #8a97ab;
+  font-size: 0.85rem;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  width: 100%;
+  color: #1f2f45;
+  background: transparent;
+}
+
+.searchInput::placeholder {
+  color: #9aa7ba;
+}
+
+.monthPickerButtonWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.monthTriggerButton {
+  background-color: #F4F6F9 !important;
+}
+
+.monthTriggerInner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monthTriggerDivider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.monthTriggerLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: #ffffff;
+}
+
+.monthDropdownOverlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  height: 100%;
 }
