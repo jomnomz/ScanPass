@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styles from './AdminMessages.module.css';
 import SectionLabel from '../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx';
 import MessageTable from '../../../Components/Tables/MessageTable/MessageTable.jsx';
@@ -6,9 +6,9 @@ import Input from  '../../../Components/UI/Inputs/Input/Input.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
 import { supabase } from '../../../lib/supabase';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
+import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 function AdminMessages() {
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
   const [currentGrade, setCurrentGrade] = useState('all');
@@ -19,11 +19,25 @@ function AdminMessages() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarBtnRef = useRef(null);
 
+  // State for messages data (will be populated from MessageTable or API)
+  const [allMessages, setAllMessages] = useState([]);
+
   const getCurrentPhilippinesDate = useCallback(() => {
     const now = new Date();
     const phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
     return phTime.toISOString().split('T')[0];
   }, []);
+
+  // Apply search filter to all messages
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(allMessages, [
+    'message',
+    'recipient_name',
+    'sender_name',
+    'recipient_phone',
+    'sender_phone',
+    'status',
+    'message_type'
+  ]);
 
   const fetchAvailableDates = useCallback(async () => {
     try {
@@ -95,11 +109,15 @@ function AdminMessages() {
     return `Past Date · ${monthStr} ${d}, ${y}`;
   };
 
-  const handleSearchChange = (e) => setSearchTerm(e.target.value);
   const handleSectionSelect = (section) => setSelectedSection(section);
   const handleClearSectionFilter = () => setSelectedSection('');
   const handleSectionsUpdate = (sections) => setAvailableSections(sections);
   const handleGradeUpdate = (grade) => setCurrentGrade(grade);
+
+  // Handle messages data coming from MessageTable
+  const handleMessagesUpdate = useCallback((messages) => {
+    setAllMessages(messages);
+  }, []);
 
   return (
     <main className={styles.main}>
@@ -111,7 +129,7 @@ function AdminMessages() {
             <Input
               placeholder="Search SMS Messages..."
               value={searchTerm}
-              onChange={handleSearchChange}
+              onChange={(e) => setSearchTerm(e.target.value)}
               search="true"
             />
           </div>
@@ -168,6 +186,8 @@ function AdminMessages() {
         availableSections={availableSections}
         loading={loading}
         selectedDate={selectedDate}
+        onMessagesUpdate={handleMessagesUpdate}
+        filteredMessages={searchFilteredRows}
       />
     </main>
   );

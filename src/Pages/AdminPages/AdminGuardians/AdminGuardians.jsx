@@ -9,10 +9,10 @@ import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx
 import { supabase } from '../../../lib/supabase';
 import { sortGuardians } from '../../../Utils/SortEntities';
 import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
+import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 function AdminGuardians() {
   const { error: toastError } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
   const [currentGrade, setCurrentGrade] = useState('all');
@@ -127,6 +127,16 @@ function AdminGuardians() {
     fetchInitialData();
   }, [fetchGrades, fetchSections, fetchAllGuardians, toastError]);
 
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(allGuardians, [
+    (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    'guardian_of',
+    'student_lrn',
+    'email',
+    'phone_number',
+    'grade',
+    'section'
+  ]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedSection, currentGrade]);
@@ -136,10 +146,6 @@ function AdminGuardians() {
     fetchAllGuardians();
     setRefreshTrigger(prev => prev + 1);
   }, [fetchAllGuardians]);
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
 
   const handleSectionSelect = (section) => {
     setSelectedSection(section);
@@ -157,9 +163,8 @@ function AdminGuardians() {
     setCurrentGrade(grade);
   };
 
-  // STEP 1: Filter guardians based on grade, section, and search
   const filteredGuardians = useMemo(() => {
-    let filtered = allGuardians;
+    let filtered = searchFilteredRows;
 
     if (currentGrade !== 'all') {
       filtered = filtered.filter(g => g.grade === currentGrade);
@@ -169,32 +174,15 @@ function AdminGuardians() {
       filtered = filtered.filter(g => g.section === selectedSection);
     }
 
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(g => 
-        g.first_name?.toLowerCase().includes(searchLower) ||
-        g.last_name?.toLowerCase().includes(searchLower) ||
-        g.guardian_of?.toLowerCase().includes(searchLower) ||
-        g.student_lrn?.toLowerCase().includes(searchLower) ||
-        g.email?.toLowerCase().includes(searchLower) ||
-        g.phone_number?.toLowerCase().includes(searchLower) ||
-        g.grade?.toString().toLowerCase().includes(searchLower) ||
-        g.section?.toString().toLowerCase().includes(searchLower)
-      );
-    }
-
     return filtered;
-  }, [allGuardians, searchTerm, currentGrade, selectedSection]);
+  }, [searchFilteredRows, currentGrade, selectedSection]);
 
-  // STEP 2: Sort the FULL filtered result set before pagination
   const sortedGuardians = useMemo(() => {
     return sortGuardians(filteredGuardians);
   }, [filteredGuardians]);
 
-  // STEP 3: Calculate total pages based on sorted count
   const totalPages = Math.ceil(sortedGuardians.length / ROWS_PER_PAGE);
 
-  // STEP 4: Paginate the sorted guardians
   const paginatedGuardians = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
     return sortedGuardians.slice(start, start + ROWS_PER_PAGE);
@@ -210,7 +198,7 @@ function AdminGuardians() {
             <Input 
               placeholder="Search Guardians..." 
               value={searchTerm}
-              onChange={handleSearchChange}
+              onChange={(e) => setSearchTerm(e.target.value)}
               search="true"
             />
           </div>

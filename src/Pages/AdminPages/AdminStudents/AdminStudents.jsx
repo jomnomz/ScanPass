@@ -18,10 +18,10 @@ import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
 import { sortStudents } from '../../../Utils/SortEntities';
+import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 function AdminStudents() {
   const { success, error: toastError } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [availableSections, setAvailableSections] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -127,14 +127,24 @@ function AdminStudents() {
     fetchInitialData();
   }, [fetchGrades, fetchSections, fetchAllStudents]);
 
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(allStudents, [
+    'lrn',
+    (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    'grade',
+    'section',
+    'email',
+    'phone_number',
+    (row) => [row.guardian_first_name, row.guardian_middle_name, row.guardian_last_name].filter(Boolean).join(' '),
+    'guardian_phone_number'
+  ]);
+
   useEffect(() => {
     setCurrentPage(1);
     setIsAllPagesSelected(false);
   }, [searchTerm, selectedSection, currentGrade]);
 
-  // STEP 1: Filter students based on grade, section, and search
   const filteredStudents = useMemo(() => {
-    let filtered = allStudents;
+    let filtered = searchFilteredRows;
 
     if (currentGrade !== 'all') {
       filtered = filtered.filter(s => s.grade === currentGrade);
@@ -144,34 +154,15 @@ function AdminStudents() {
       filtered = filtered.filter(s => s.section === selectedSection);
     }
 
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(s =>
-        s.lrn?.toLowerCase().includes(q) ||
-        s.first_name?.toLowerCase().includes(q) ||
-        s.last_name?.toLowerCase().includes(q) ||
-        s.grade?.toString().toLowerCase().includes(q) ||
-        s.section?.toString().toLowerCase().includes(q) ||
-        s.email?.toLowerCase().includes(q) ||
-        s.phone_number?.toLowerCase().includes(q) ||
-        s.guardian_first_name?.toLowerCase().includes(q) ||
-        s.guardian_last_name?.toLowerCase().includes(q) ||
-        s.guardian_phone_number?.toLowerCase().includes(q)
-      );
-    }
-
     return filtered;
-  }, [allStudents, currentGrade, selectedSection, searchTerm]);
+  }, [searchFilteredRows, currentGrade, selectedSection]);
 
-  // STEP 2: Sort the FULL filtered result set before pagination
   const sortedStudents = useMemo(() => {
     return sortStudents(filteredStudents);
   }, [filteredStudents]);
 
-  // STEP 3: Calculate total pages based on sorted count
   const totalPages = Math.ceil(sortedStudents.length / ROWS_PER_PAGE);
 
-  // STEP 4: Paginate the sorted students
   const paginatedStudents = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
     return sortedStudents.slice(start, start + ROWS_PER_PAGE);
@@ -189,10 +180,6 @@ function AdminStudents() {
     setRefreshTrigger(prev => prev + 1);
   }, [fetchAllStudents]);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   const handleSectionSelect = (section) => {
     setSelectedSection(section);
   };
@@ -205,9 +192,8 @@ function AdminStudents() {
     setAvailableSections(sections);
   };
 
-  // FIX: Guard against overwriting when all pages are selected
   const handleSelectedStudentsUpdate = (selected) => {
-    if (isAllPagesSelected) return; // ← Don't let the table clobber the full selection
+    if (isAllPagesSelected) return;
     setSelectedStudents(selected);
     if (selected.length === 0) {
       setIsAllPagesSelected(false);
@@ -383,7 +369,7 @@ function AdminStudents() {
           <Input 
             placeholder="Search Students..." 
             value={searchTerm}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchTerm(e.target.value)}
             search="true"
           />  
 

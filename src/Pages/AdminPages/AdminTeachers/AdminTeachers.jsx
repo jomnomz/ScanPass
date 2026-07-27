@@ -1,5 +1,5 @@
 // src/pages/Admin/AdminTeachers/AdminTeachers.jsx
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import styles from './AdminTeachers.module.css';
 import TeacherTable from '../../../Components/Tables/TeacherTable/TeacherTable.jsx';
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
@@ -19,14 +19,14 @@ import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
 import { apiClient } from '../../../config/api.js';
-import { supabase } from '../../../lib/supabase'; // Import supabase
+import { supabase } from '../../../lib/supabase';
+import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 function AdminTeachers() {
   const { success, error: toastError } = useToast();
   const { entities: teachers, refetch: refreshTeachers } = useTeachers();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeachers, setSelectedTeachers] = useState([]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -95,19 +95,25 @@ function AdminTeachers() {
 
   const teacherService = new TeacherService();
 
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(teachers, [
+    (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    'email',
+    'phone_number',
+    'employee_id',
+    'subjects',
+    'grade_sections_teaching',
+    'adviser_grade_section'
+  ]);
+
   // Reset page + all-pages flag when search changes
   useEffect(() => {
     setCurrentPage(1);
     setIsAllPagesSelected(false);
   }, [searchTerm]);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   // FIX: Guard against overwriting when all pages are selected
   const handleSelectedTeachersUpdate = (selected) => {
-    if (isAllPagesSelected) return; // ← Don't let the table clobber the full selection
+    if (isAllPagesSelected) return;
     setSelectedTeachers(selected);
     if (selected.length === 0) {
       setIsAllPagesSelected(false);
@@ -154,7 +160,6 @@ function AdminTeachers() {
 
   const sendInvitationAPI = async (teacherId) => {
     try {
-      // Use apiClient instead of fetch
       const response = await apiClient.post('/api/teacher-invite/invite', {
         teacherId: teacherId,
         invitedBy: user?.id
@@ -241,7 +246,6 @@ function AdminTeachers() {
         return { success: false, error: data.error || 'Failed to create account' };
       }
     } catch (err) {
-      // Better error handling with axios error object
       if (err.response) {
         return { success: false, error: err.response.data?.error || 'Failed to create account' };
       } else if (err.request) {
@@ -254,7 +258,6 @@ function AdminTeachers() {
 
   const sendBulkInvitationsAPI = async (teacherIds) => {
     try {
-      // Use apiClient instead of fetch
       const response = await apiClient.post('/api/teacher-invite/invite/bulk', {
         teacherIds: teacherIds,
         invitedBy: user?.id
@@ -272,7 +275,6 @@ function AdminTeachers() {
         return { success: false, error: data.error || 'Failed to send bulk invitations' };
       }
     } catch (err) {
-      // Better error handling with axios error object
       if (err.response) {
         return { success: false, error: err.response.data?.error || 'Failed to send bulk invitations' };
       } else if (err.request) {
@@ -399,7 +401,6 @@ function AdminTeachers() {
 
   const deleteSingleTeacherAPI = async (teacherId) => {
     try {
-      // Use apiClient instead of fetch
       const response = await apiClient.post('/api/teacher-invite/delete-teacher', {
         teacherId: teacherId,
         deletedBy: user?.id
@@ -425,7 +426,6 @@ function AdminTeachers() {
 
   const deleteMultipleTeachersAPI = async (teacherIds) => {
     try {
-      // Use apiClient instead of fetch
       const response = await apiClient.post('/api/teacher-invite/delete-teachers-bulk', {
         teacherIds: teacherIds,
         deletedBy: user?.id
@@ -548,7 +548,7 @@ function AdminTeachers() {
           <Input 
             placeholder="Search Teachers..." 
             value={searchTerm}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchTerm(e.target.value)}
             search="true"
           />
           <Button 

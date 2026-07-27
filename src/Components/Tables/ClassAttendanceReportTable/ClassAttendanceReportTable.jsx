@@ -12,7 +12,7 @@ const ROWS_PER_PAGE = 20;
 const ClassAttendanceReportTable = ({
   currentClass, selectedMonth, attendanceRows, setAttendanceRows,
   loading, setLoading, currentPage, setCurrentPage, totalPages,
-  setTotalPages, monthNames, searchTerm = ''
+  setTotalPages, monthNames
 }) => {
   const [error, setError] = useState(null);
 
@@ -41,7 +41,6 @@ const ClassAttendanceReportTable = ({
           .from('grades').select('id, grade_level').eq('grade_level', grade).single();
         if (gradeError) throw gradeError;
 
-        // Fetch LRN along with student details
         const { data: students, error: studentsError } = await supabase
           .from('students').select('id, lrn, first_name, last_name, middle_name')
           .eq('grade_id', gradeData.id).eq('section_id', sectionData.id);
@@ -69,7 +68,6 @@ const ClassAttendanceReportTable = ({
             const attendanceRate = schoolDays > 0
               ? (((present + late) / schoolDays) * 100).toFixed(2) : '0.00';
             
-            // Store LRN along with other student data
             newAttendanceRows.push({
               id: student.id,
               lrn: student.lrn,
@@ -90,27 +88,17 @@ const ClassAttendanceReportTable = ({
     fetchAttendanceData();
   }, [currentClass, selectedMonth]);
 
-  // Filter rows based on search term - now checks both name and LRN
-  const filteredRows = useMemo(() => {
-    if (!searchTerm.trim()) return attendanceRows;
-    const term = searchTerm.trim().toLowerCase();
-    return attendanceRows.filter(row =>
-      row.name.toLowerCase().includes(term) ||
-      (row.lrn && row.lrn.toLowerCase().includes(term))
-    );
-  }, [attendanceRows, searchTerm]);
-
-  // Reset pagination based on filtered results
+  // Reset pagination based on filtered results (attendanceRows is already filtered)
   useEffect(() => {
-    setTotalPages(Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE)));
+    setTotalPages(Math.max(1, Math.ceil(attendanceRows.length / ROWS_PER_PAGE)));
     setCurrentPage(1);
-  }, [filteredRows]);
+  }, [attendanceRows]);
 
-  // Get paginated rows
+  // Get paginated rows (no internal filtering needed)
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredRows.slice(start, start + ROWS_PER_PAGE);
-  }, [filteredRows, currentPage]);
+    return attendanceRows.slice(start, start + ROWS_PER_PAGE);
+  }, [attendanceRows, currentPage]);
 
   const columns = useMemo(() => [
     { key: 'name', label: 'Student Name', headerStyle: withColumnWidth('30%', 180), cellStyle: withColumnWidth('30%', 180), renderCell: ({ row }) => row.name },
@@ -148,7 +136,7 @@ const ClassAttendanceReportTable = ({
         getRowId={row => row.id}
         loading={loading}
         error={error ? `Error: ${error}` : ''}
-        emptyMessage={loading ? 'Loading...' : (searchTerm ? 'No students match your search.' : 'No attendance data found.')}
+        emptyMessage={loading ? 'Loading...' : 'No attendance data found.'}
         tableLabel="Class Attendance Report"
         striped={false}
         stickyHeader={true}
