@@ -27,7 +27,6 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
   const { expandedRow, tableRef, toggleRow } = useRowExpansion();
 
-  // FIX: Combine name parts with filter(Boolean) to avoid double spaces
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
     students,
     [
@@ -81,24 +80,11 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         .eq('is_adviser', true)
         .maybeSingle();
 
-      const { data: subjectData } = await supabase
-        .from('teacher_subject_sections')
-        .select(`subject:subjects ( subject_name, subject_code )`)
-        .eq('teacher_id', teacherData.id)
-        .eq('section_id', sectionData.id);
-
-      const subjects = (subjectData || []).map(s => s.subject).filter(Boolean);
-      subjects.sort((a, b) => a.subject_code.localeCompare(b.subject_code));
-
-      const subjectDisplay = subjects.map(s => s.subject_code).join(' | ');
-
       setCurrentClassDetails({
         className,
         grade,
         section,
         isAdvisory: !!advisoryData,
-        subjects,
-        subjectDisplay,
       });
     } catch (err) {
       console.error('fetchClassDetails error:', err);
@@ -184,7 +170,6 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
   const sortedStudents = useMemo(() => sortEntities(students, { type: 'student' }), [students]);
 
-  // Use searchFilteredRows from the hook instead of manual filtering
   const filteredStudents = useMemo(() => {
     return sortedStudents.filter(student => 
       searchFilteredRows.some(filtered => filtered.id === student.id)
@@ -214,18 +199,10 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     const studentCount = filteredStudents.length;
     if (!currentClassDetails) return '';
 
-    const { grade, section, isAdvisory, subjects } = currentClassDetails;
+    const { grade, section, isAdvisory } = currentClassDetails;
 
     let classInfo = `Grade ${grade} - Section ${section}`;
-
-    if (subjects.length > 0) {
-      const subjectCodes = subjects.map(s => s.subject_code).join(', ');
-      classInfo += ` (${subjectCodes}`;
-      if (isAdvisory) classInfo += ', Advisory Class';
-      classInfo += ')';
-    } else if (isAdvisory) {
-      classInfo += ' (Advisory Class)';
-    }
+    if (isAdvisory) classInfo += ' (Advisory Class)';
 
     let message = `Showing ${studentCount} student/s in ${classInfo}`;
     if (searchTerm) message += ` matching "${searchTerm}"`;
@@ -354,9 +331,6 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
           <div className={styles.sectionTabActive}>
             <span className={styles.sectionTabGrade}>Grade {currentClassDetails.grade} -</span>
             <span className={styles.sectionTabName}>{currentClassDetails.section}</span>
-            {currentClassDetails.subjectDisplay && (
-              <span className={styles.sectionTabSubject}>· {currentClassDetails.subjectDisplay}</span>
-            )}
             {currentClassDetails.isAdvisory && (
               <span className={styles.sectionTabAdvisory}>· Advisory Class</span>
             )}

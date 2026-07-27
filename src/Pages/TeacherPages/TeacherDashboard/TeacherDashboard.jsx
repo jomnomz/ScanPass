@@ -12,7 +12,6 @@ import { useTeacherClasses } from '../../../Components/Hooks/useTeacherClasses.j
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faUserGraduate,
-  faBook,
   faClock,
   faUsers,
   faChartSimple
@@ -24,7 +23,6 @@ function TeacherDashboard() {
   const { 
     teacherClasses, 
     teacherSections, 
-    teacherSubjects,
     teacherSchedule,
     loading: teacherLoading,
     currentTeacher 
@@ -98,12 +96,6 @@ function TeacherDashboard() {
     return `${startTime}-${endTime}`;
   };
 
-  // Get unique subjects count
-  const uniqueSubjectsCount = React.useMemo(() => {
-    const uniqueSubjectIds = [...new Set(teacherSubjects.map(subject => subject.subject_id))];
-    return uniqueSubjectIds.length;
-  }, [teacherSubjects]);
-
   if (isLoading) return <div className={styles.loading}>Loading dashboard...</div>;
 
   return (
@@ -128,16 +120,6 @@ function TeacherDashboard() {
             </div>
           </DashboardCard>
 
-          {/* Total Subjects Card */}
-          <DashboardCard colors={{bg: '#4ECDC4'}}>
-            <div className={styles.card}>
-              <div className={styles.label}>
-                 Total Subjects
-              </div>
-              <div className={styles.number}>{uniqueSubjectsCount}</div>
-            </div>
-          </DashboardCard>
-
           {/* My Classes Card */}
           <DashboardCard colors={{bg: '#FFD166'}}>
             <div className={styles.card}>
@@ -145,6 +127,16 @@ function TeacherDashboard() {
                  My Classes
               </div>
               <div className={styles.number}>{teacherClasses.length}</div>
+            </div>
+          </DashboardCard>
+
+          {/* Schedule Card */}
+          <DashboardCard colors={{bg: '#4ECDC4'}}>
+            <div className={styles.card}>
+              <div className={styles.label}>
+                 My Schedule
+              </div>
+              <div className={styles.number}>{formatScheduleForCard()}</div>
             </div>
           </DashboardCard>
         </div>

@@ -23,9 +23,7 @@ const getPHDateIso = (date = new Date()) => {
 };
 
 function TeacherAttendanceTable({
-  className,
-  subject,
-  schoolYear
+  className
 }) {
   const [attendances, setAttendances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +40,6 @@ function TeacherAttendanceTable({
 
   const activeDate = selectedDate || getPHDateIso();
 
-  // FIX: Combine name parts with filter(Boolean) to avoid double spaces
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
     attendances,
     [
@@ -53,7 +50,6 @@ function TeacherAttendanceTable({
     ]
   );
 
-  // Parse className into grade and section
   const parsedClass = useMemo(() => {
     if (!className) return { grade: null, section: null };
     const match = className.match(/^(\d+)[-\s](.+)$/);
@@ -327,7 +323,6 @@ function TeacherAttendanceTable({
     return dateString === getPHDateIso();
   }, []);
 
-  // Combine search filter with status filter
   const filteredAttendances = useMemo(() => {
     let filtered = searchFilteredRows;
 
@@ -489,7 +484,6 @@ function TeacherAttendanceTable({
     };
   }, [className, fetchAvailableDates, fetchClassAttendance]);
 
-  // Close calendar on click outside
   useEffect(() => {
     if (!calendarOpen) return;
     function handleClick(e) {
@@ -503,18 +497,11 @@ function TeacherAttendanceTable({
 
   return (
     <div className={styles.attendanceTableContainer}>
-      <section className={styles.summaryCard}>
-        {/* Top row: eyebrow + meta chips */}
-        <div className={styles.summaryHeader}>
-          <div>
-            <p className={styles.eyebrow}>Daily attendance snapshot</p>
-          </div>
-          <div className={styles.metaCluster}>
-            {subject && <span className={styles.metaChip}>{subject}</span>}
-            {schoolYear && <span className={styles.metaChip}>{schoolYear}</span>}
-          </div>
-        </div>
+      <div className={styles.pageHeader}>
+        <h2 className={styles.pageTitle}>Daily Attendance</h2>
+      </div>
 
+      <section className={styles.summaryCard}>
         {/* Controls row: search + calendar close together */}
         <div className={styles.controlsRow}>
           <div className={styles.searchContainer}>

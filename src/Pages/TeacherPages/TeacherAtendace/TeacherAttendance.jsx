@@ -77,7 +77,6 @@ function TeacherAttendance() {
 
   const getTeacherId = useCallback(async () => {
     try {
-      // Use the proxy - relative URL
       if (user?.id) {
         console.log(`🔍 Trying auth user ID: ${user.id}`);
         const response = await fetch(
@@ -86,7 +85,7 @@ function TeacherAttendance() {
             headers: {
               'Content-Type': 'application/json',
             },
-            credentials: 'include' // Important for cookies/sessions
+            credentials: 'include'
           }
         );
         
@@ -105,7 +104,6 @@ function TeacherAttendance() {
         }
       }
       
-      // Fallback to email
       if (profile?.email) {
         console.log(`🔍 Falling back to email: ${profile.email}`);
         const response = await fetch(
@@ -251,19 +249,15 @@ function TeacherAttendance() {
     }
   }, [authLoading, cacheKey, fetchTeacherClasses, profile, user]);
 
-  // Handler for when a card is clicked
   const handleCardClick = (className) => {
     console.log(`Card clicked: ${className}`);
     const selectedClass = classes.find(cls => cls.className === className);
     if (selectedClass) {
       console.log('Selected class:', selectedClass);
       localStorage.setItem('selectedClass', JSON.stringify(selectedClass));
-      // You can navigate to attendance page here
-      // Example: window.location.href = `/attendance/${selectedClass.id}`;
     }
   };
 
-  // Show loading while auth is loading
   if (authLoading) {
     return (
       <main className={styles.main}>
@@ -279,7 +273,6 @@ function TeacherAttendance() {
     );
   }
 
-  // Show loading while fetching classes
   if (loading) {
     return (
       <main className={styles.main}>
@@ -334,8 +327,6 @@ function TeacherAttendance() {
             <AttendanceCard
               key={classItem.id}
               className={classItem.className}
-              subject={classItem.subject}
-              schoolYear={classItem.schoolYear}
               initialColor={classItem.initialColor}
               onCardClick={handleCardClick}
             />
