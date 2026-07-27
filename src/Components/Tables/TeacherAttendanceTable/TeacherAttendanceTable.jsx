@@ -9,6 +9,7 @@ import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import DatePickerCalendar from '../../../Components/UI/Buttons/DatePickerCalendar/DatePickerCalendar';
 import Button from '../../../Components/UI/Buttons/Button/Button.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
+import useSearchFilter from '../../Hooks/useSearchFilter.js';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -30,7 +31,6 @@ function TeacherAttendanceTable({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [displayDate, setDisplayDate] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
   const [availableDates, setAvailableDates] = useState([]);
@@ -41,6 +41,17 @@ function TeacherAttendanceTable({
   const calendarBtnRef = useRef(null);
 
   const activeDate = selectedDate || getPHDateIso();
+
+  // FIX: Combine name parts with filter(Boolean) to avoid double spaces
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
+    attendances,
+    [
+      (row) => [row.first_name, row.middle_name, row.last_name]
+        .filter(Boolean)
+        .join(' '),
+      'lrn'
+    ]
+  );
 
   // Parse className into grade and section
   const parsedClass = useMemo(() => {
@@ -316,17 +327,9 @@ function TeacherAttendanceTable({
     return dateString === getPHDateIso();
   }, []);
 
+  // Combine search filter with status filter
   const filteredAttendances = useMemo(() => {
-    let filtered = attendances;
-
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter((attendance) => {
-        const fullName = `${attendance.first_name || ''} ${attendance.last_name || ''} ${attendance.middle_name || ''}`.toLowerCase();
-        const lrn = attendance.lrn?.toLowerCase() || '';
-        return fullName.includes(searchLower) || lrn.includes(searchLower);
-      });
-    }
+    let filtered = searchFilteredRows;
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter(
@@ -335,7 +338,7 @@ function TeacherAttendanceTable({
     }
 
     return sortEntities(filtered, { type: 'student' });
-  }, [attendances, searchTerm, statusFilter]);
+  }, [searchFilteredRows, statusFilter]);
 
   const ROWS_PER_PAGE = 20;
   const totalPages = Math.ceil(filteredAttendances.length / ROWS_PER_PAGE);
@@ -516,7 +519,7 @@ function TeacherAttendanceTable({
         <div className={styles.controlsRow}>
           <div className={styles.searchContainer}>
             <Input
-              placeholder="Search students by name or LRN"
+              placeholder="Search Students..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               search={true}

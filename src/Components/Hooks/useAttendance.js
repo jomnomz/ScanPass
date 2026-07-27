@@ -106,7 +106,6 @@ export const useAttendance = () => {
           time_out: null,
           date: targetDate,
           status: 'absent',
-          student_lrn: studentRecord.student_lrn,
           student_lrn: student.lrn,
           created_at: null,
           scan_type: null,

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../Components/Authentication/AuthProvider/AuthProvider";
 import styles from "./LoginPage.module.css";
 import LoginForm from "../../Components/Forms/LoginForm/LoginForm";
+import LoginSection from "../../Components/UI/Sections/LoginSection/LoginSection";
 import stoninoschool from "../../assets/sto nino school.png";
 
 const LoginPage = () => {
@@ -20,7 +21,7 @@ const LoginPage = () => {
           navigate("/");
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [loading, user, profile, navigate]);
@@ -35,24 +36,14 @@ const LoginPage = () => {
   }
 
   return (
-    <div
-      className={styles.body}
-      style={{
-        backgroundImage: `
-          linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-          url(${stoninoschool})
-        `
-      }}
-    >
-      <div className={styles.tagLineContainer}>
-        <div className={styles.tagLine}>
-          <h1>Welcome!</h1>
-          <h6>Login to your account to continue.</h6>
-        </div>
-      </div>
+    <div className={styles.body}>
 
       <div className={styles.formContainer}>
         <LoginForm />
+      </div>
+
+      <div className={styles.loginShowCaseSectionContainer}>
+        <LoginSection title='" Less time on attendance means more time learning. "' />
       </div>
     </div>
   );

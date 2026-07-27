@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import { apiClient } from "../../../config/api"; 
 import styles from "./LoginForm.module.css";
-import Button from "../../UI/Buttons/Button/Button";
 import stonino from "../../../assets/sto nino.png";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import ReportGmailerrorredIcon from '@mui/icons-material/ReportGmailerrorred';
-import minimalistic1_stonino from "../../../assets/minimalistic1_stonino.png";
+import minimalist_stonino from "../../../assets/minimalist_stonino.png";
+import LoginIcon from '@mui/icons-material/Login';
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -178,17 +178,18 @@ function LoginForm() {
   return (
     <form className={styles.form} onSubmit={handleLogin}>
       <div className={styles.top}>
+        <div className={styles.title}><p>Welcome Back!</p></div>
+        <div className={styles.subTitle}><p>Sign in to your account</p></div>
           <div className={styles.logo}>
-          <img src={minimalistic1_stonino} alt="minimalist1_stonino" />
+          <img src={minimalist_stonino} alt="minimalist_stonino" />
         </div>
-        <div><p>Sign in</p></div>
       </div>
 
       <div className={styles.inputWrapper}>
+        <label className={styles.inputLabel}>Email</label>
         <input
           className={styles.input}
           type="email"
-          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -197,10 +198,10 @@ function LoginForm() {
 
       <div className={styles.inputWrapper}>
         <div className={styles.passwordContainer}>
+          <label className={styles.inputLabel}>Password</label>
           <input
             className={styles.input}
             type={showPassword ? "text" : "password"}
-            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -219,13 +220,16 @@ function LoginForm() {
       </div>
 
       <div className={styles.inputWrapper}>
-        <Button
-          label={loading ? "Logging in..." : "Login"}
-          color="nav"
-          width="full"
+        <button
           type="submit"
+          className={styles.loginButton}
           disabled={loading}
-        />
+        >
+          <span className={styles.loginIcon}>
+            <LoginIcon fontSize="small" />
+          </span>
+          <span className={styles.loginLabel}>Login</span>
+        </button>
       </div>
 
       {error && <div className={styles.error}><ReportGmailerrorredIcon/> {error}</div>}

@@ -158,6 +158,13 @@ function Button(props) {
             color: '#ffffff', 
             border: '#1098d7',
         },
+        white: { 
+            backgroundColor: '#ffffff', 
+            activeBackground: '#475669', 
+            hoverBackground: '#475669', 
+            color: '#1a2236',
+            border: '1px solid #2e3d5c'
+        },
     };
 
     const getBorderRadius = (pill, pillLeft, pillRight) => {

@@ -4,6 +4,7 @@ import ClassAttendanceReportTable from '../../Tables/ClassAttendanceReportTable/
 import Button from '../../UI/Buttons/Button/Button.jsx';
 import Input from '../../UI/Inputs/Input/Input.jsx';
 import { exportClassAttendanceReportToExcel } from '../../../Utils/exportEntity';
+import useSearchFilter from '../../Hooks/useSearchFilter.js';
 import styles from './ClassAttendanceReportModal.module.css';
 import DownloadIcon from '@mui/icons-material/Download';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -14,19 +15,36 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
   const currentMonthIdx = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return { month: now.getMonth(), year: now.getFullYear() };
-  });
+  const [selectedMonth, setSelectedMonth] = useState(() => ({
+    month: now.getMonth(),
+    year: now.getFullYear(),
+  }));
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const [attendanceRows, setAttendanceRows] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
+
+  const { searchTerm, setSearchTerm, filteredRows } = useSearchFilter(
+  attendanceRows,
+  ['name', 'lrn']
+);
 
   const isFutureMonth = (monthIdx, year) => {
     if (year > currentYear) return true;
@@ -34,39 +52,53 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
     return false;
   };
 
-  const canGoNext = !(selectedMonth.year === currentYear && selectedMonth.month === currentMonthIdx);
+  const canGoNext =
+    !(
+      selectedMonth.year === currentYear &&
+      selectedMonth.month === currentMonthIdx
+    );
 
   const handlePrevMonth = () => {
-    setSelectedMonth(prev => {
+    setSelectedMonth((prev) => {
       let month = prev.month - 1;
       let year = prev.year;
-      if (month < 0) { month = 11; year -= 1; }
+
+      if (month < 0) {
+        month = 11;
+        year -= 1;
+      }
+
       return { month, year };
     });
   };
 
   const handleNextMonth = () => {
-    setSelectedMonth(prev => {
+    setSelectedMonth((prev) => {
       let month = prev.month + 1;
       let year = prev.year;
-      if (month > 11) { month = 0; year += 1; }
+
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+
       return { month, year };
     });
   };
 
   const handleMonthDropdown = (e) => {
-    setSelectedMonth(prev => ({ ...prev, month: Number(e.target.value) }));
+    setSelectedMonth((prev) => ({
+      ...prev,
+      month: Number(e.target.value),
+    }));
   };
-
-  const [attendanceRows, setAttendanceRows] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   const handleExport = () => {
     exportClassAttendanceReportToExcel({
-      attendanceRows,
+      attendanceRows: filteredRows,
       selectedMonth: selectedMonth.month,
       year: selectedMonth.year,
-      className: currentClass
+      className: currentClass,
     });
   };
 
@@ -80,9 +112,9 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
         <div className={styles.secondControlsRow}>
           <Button
             onClick={handleExport}
-            disabled={loading || attendanceRows.length === 0}
+            disabled={loading || filteredRows.length === 0}
             height="sm"
-            icon={<DownloadIcon/>}
+            icon={<DownloadIcon />}
             width="auto"
             label="Export"
             color="teaGreen"
@@ -91,7 +123,7 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
           <div className={styles.rightControlsGroup}>
             <Input
               search
-              placeholder="Search by name, LRN, or section..."
+              placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -113,15 +145,20 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
                   className={styles.monthTriggerButton}
                   icon={
                     <span className={styles.monthTriggerInner}>
-                      <CalendarTodayIcon style={{ fontSize: '16px', opacity: 0.8 }} />
+                      <CalendarTodayIcon
+                        style={{ fontSize: '16px', opacity: 0.8 }}
+                      />
                       <span className={styles.monthTriggerDivider} />
                       <span className={styles.monthTriggerLabel}>
                         {monthNames[selectedMonth.month]} ({selectedMonth.year})
                       </span>
-                      <KeyboardArrowDownIcon style={{ fontSize: '16px', opacity: 0.7 }} />
+                      <KeyboardArrowDownIcon
+                        style={{ fontSize: '16px', opacity: 0.7 }}
+                      />
                     </span>
                   }
                 />
+
                 <select
                   className={styles.monthDropdownOverlay}
                   value={selectedMonth.month}
@@ -130,7 +167,9 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
                 >
                   {monthNames
                     .map((name, idx) => ({ name, idx }))
-                    .filter(({ idx }) => !isFutureMonth(idx, selectedMonth.year))
+                    .filter(({ idx }) =>
+                      !isFutureMonth(idx, selectedMonth.year)
+                    )
                     .map(({ name, idx }) => (
                       <option key={name} value={idx}>
                         {name} ({selectedMonth.year})
@@ -154,7 +193,7 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
         <ClassAttendanceReportTable
           currentClass={currentClass}
           selectedMonth={selectedMonth}
-          attendanceRows={attendanceRows}
+          attendanceRows={filteredRows}
           setAttendanceRows={setAttendanceRows}
           loading={loading}
           setLoading={setLoading}
@@ -163,7 +202,6 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
           totalPages={totalPages}
           setTotalPages={setTotalPages}
           monthNames={monthNames}
-          searchTerm={searchTerm}
         />
       </div>
     </Modal>

@@ -8,6 +8,7 @@ import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelper
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import styles from './AttendanceTable.module.css';
 import { useAttendance } from '../../Hooks/useAttendance';
+import useSearchFilter from '../../Hooks/useSearchFilter.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from '../../Toast/ToastContext/ToastContext';
@@ -15,7 +16,8 @@ import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
-import Button from '../../UI/Buttons/Button/Button.jsx'; // ADDED THIS IMPORT
+import Button from '../../UI/Buttons/Button/Button.jsx';
+import Input from '../../UI/Inputs/Input/Input.jsx';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -112,7 +114,6 @@ const TimePicker = ({ value, onChange, name }) => {
 };
 
 const AttendanceTable = ({
-  searchTerm = '',
   selectedSection = '',
   onSectionsUpdate,
   onGradeUpdate,
@@ -127,7 +128,8 @@ const AttendanceTable = ({
   onPageChange = () => {},
   rowsPerPage = 20,
   gradesData = [],
-  sectionsData = []
+  sectionsData = [],
+  dateControls = null
 }) => {
   const { 
     currentClass,
@@ -150,7 +152,20 @@ const AttendanceTable = ({
   const [validationErrors, setValidationErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState(externalStatusFilter || 'all');
-  
+
+  // ===== SEARCH (shared hook — owns its own state, no prop sync needed) =====
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
+    attendances,
+    [
+      'lrn',
+      (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+      'grade',
+      'section',
+      'status',
+      'scan_type'
+    ]
+  );
+
   // ===== BUILD GRADE-SECTIONS MAP (same as StudentTable) =====
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
 
@@ -520,7 +535,7 @@ const AttendanceTable = ({
   }, [currentGradeSections]);
 
   const sortedAttendances = useMemo(() => {
-    let filtered = attendances;
+    let filtered = searchFilteredRows;
     
     if (selectedDate) {
       filtered = filtered.filter(attendance => attendance.date === selectedDate);
@@ -540,21 +555,8 @@ const AttendanceTable = ({
       filtered = filtered.filter(attendance => attendance.section === selectedSection);
     }
     
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(attendance => 
-        attendance.lrn?.toLowerCase().includes(searchLower) ||
-        attendance.first_name?.toLowerCase().includes(searchLower) ||
-        attendance.last_name?.toLowerCase().includes(searchLower) ||
-        attendance.grade?.toString().toLowerCase().includes(searchLower) ||
-        attendance.section?.toString().toLowerCase().includes(searchLower) ||
-        attendance.status?.toLowerCase().includes(searchLower) ||
-        attendance.scan_type?.toLowerCase().includes(searchLower)
-      );
-    }
-    
     return sortEntities(filtered, { type: 'student' });
-  }, [attendances, selectedDate, statusFilter, currentClass, selectedSection, searchTerm]);
+  }, [searchFilteredRows, selectedDate, statusFilter, currentClass, selectedSection]);
 
   // ===== STATS FOR KPI CARDS (same as teacher table) =====
   const stats = useMemo(() => {
@@ -580,6 +582,11 @@ const AttendanceTable = ({
       onPageChange={onPageChange}
     />
   ) : null;
+
+  // Reset to page 1 whenever search term changes
+  useEffect(() => {
+    onPageChange(1);
+  }, [searchTerm]);
 
   // SETUP REALTIME SUBSCRIPTION FOR AUTO-UPDATE
   useEffect(() => {
@@ -996,6 +1003,18 @@ const AttendanceTable = ({
     <div className={styles.attendanceTableContainer}>
       {/* === STATS CARDS (same style as teacher table) === */}
       <section className={styles.summaryCard}>
+        {/* === SEARCH + DATE (same row) === */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
+          <div className={styles.searchContainer} style={{ flex: '0 1 320px', minWidth: '240px' }}>
+            <Input
+              placeholder="Search Students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              search={true}
+            />
+          </div>
+          {dateControls}
+        </div>
 
         <div className={styles.statsGrid}>
           <article className={styles.statCard}>

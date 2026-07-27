@@ -223,61 +223,50 @@ function AdminAttendance() {
   const handleSectionsUpdate = (sections) => setAvailableSections(sections);
   const handleGradeUpdate = (grade) => setCurrentGrade(grade);
 
+  // ===== BUILD DATE CONTROLS (moved from top section) =====
+  const dateControls = (
+    <div ref={calendarBtnRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <Button
+        color="nav"
+        height="sm"
+        width="auto"
+        onClick={() => setCalendarOpen((v) => !v)}
+        icon={
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="material-icons" style={{ fontSize: '16px', opacity: 0.6 }}>calendar_today</span>
+            <span style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
+            <span style={{ fontSize: '13px', fontWeight: 400 }}>{getDateLabel()}</span>
+            <span className="material-icons" style={{ fontSize: '16px', opacity: 0.5 }}>
+              {calendarOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+            </span>
+          </span>
+        }
+      />
+
+      {calendarOpen && (
+        <div style={{
+          position: 'absolute',
+          zIndex: 100,
+          top: 'calc(100% + 8px)',
+          right: 0,
+          left: 'auto',
+        }}>
+          <DatePickerCalendar
+            selectedDateKey={selectedDate}
+            hasDataDates={availableDates}
+            onSelect={({ key }) => {
+              setSelectedDate(key);
+              setCalendarOpen(false);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <main className={styles.main}>
       <SectionLabel label="Attendance Records" />
-      <div className={styles.top}>
-        <div className={styles.searchAndFilter}>
-          <div className={styles.searchContainer}>
-            <Input
-              placeholder="Search Attendance Records"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              search="true"
-            />
-          </div>
-
-          <div className={styles.filtersContainer}>
-            <div ref={calendarBtnRef} style={{ position: 'relative', display: 'inline-block' }}>
-              <Button
-                color="nav"
-                height="sm"
-                width="auto"
-                onClick={() => setCalendarOpen((v) => !v)}
-                icon={
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.6 }}>calendar_today</span>
-                    <span style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 400 }}>{getDateLabel()}</span>
-                    <span className="material-icons" style={{ fontSize: '16px', opacity: 0.5 }}>
-                      {calendarOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
-                    </span>
-                  </span>
-                }
-              />
-
-              {calendarOpen && (
-                <div style={{
-                  position: 'absolute',
-                  zIndex: 100,
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  left: 'auto',
-                }}>
-                  <DatePickerCalendar
-                    selectedDateKey={selectedDate}
-                    hasDataDates={availableDates}
-                    onSelect={({ key }) => {
-                      setSelectedDate(key);
-                      setCalendarOpen(false);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       <AttendanceTable
         searchTerm={searchTerm}
@@ -294,6 +283,7 @@ function AdminAttendance() {
         rowsPerPage={20}
         gradesData={gradesData}
         sectionsData={sectionsData}
+        dateControls={dateControls}
       />
     </main>
   );

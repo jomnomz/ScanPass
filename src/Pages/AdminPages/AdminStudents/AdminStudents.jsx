@@ -381,7 +381,7 @@ function AdminStudents() {
         
         <div className={styles.topRight}>
           <Input 
-            placeholder="Search Student Records" 
+            placeholder="Search Students..." 
             value={searchTerm}
             onChange={handleSearchChange}
             search="true"

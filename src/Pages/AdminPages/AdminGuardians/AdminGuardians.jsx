@@ -208,7 +208,7 @@ function AdminGuardians() {
         <div className={styles.top}>
           <div className={styles.searchAndFilter}>
             <Input 
-              placeholder="Search Guardian Records" 
+              placeholder="Search Guardians..." 
               value={searchTerm}
               onChange={handleSearchChange}
               search="true"

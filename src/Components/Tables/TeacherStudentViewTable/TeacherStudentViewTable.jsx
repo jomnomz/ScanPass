@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { sortEntities } from '../../../Utils/SortEntities';
 import styles from './TeacherStudentViewTable.module.css';
@@ -11,19 +12,32 @@ import ReportGenerationModal from '../../Modals/ReportGenerationModal/ReportGene
 import ClassAttendanceReportModal from '../../Modals/ClassAttendanceReportModal/ClassAttendanceReportModal';
 import Table from '../Table/Table.jsx';
 import Pagination from '../../UI/Buttons/Pagination/Pagination.jsx';
+import { faFileAlt } from '@fortawesome/free-solid-svg-icons';
+import useSearchFilter from '../../Hooks/useSearchFilter.js';
 
 const TeacherStudentViewTable = ({ selectedClass = '' }) => {
   const [students, setStudents] = useState([]);
   const [currentClassDetails, setCurrentClassDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
 
   const [showReportGeneration, setShowReportGeneration] = useState(false);
   const [showClassAttendanceReport, setShowClassAttendanceReport] = useState(false);
 
   const { expandedRow, tableRef, toggleRow } = useRowExpansion();
+
+  // FIX: Combine name parts with filter(Boolean) to avoid double spaces
+  const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
+    students,
+    [
+      (row) => [row.first_name, row.middle_name, row.last_name]
+        .filter(Boolean)
+        .join(' '),
+      'lrn',
+      'email'
+    ]
+  );
 
   const parseClassName = (className) => {
     const match = className.match(/^(\d+)[-\s](.+)$/);
@@ -170,17 +184,12 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
   const sortedStudents = useMemo(() => sortEntities(students, { type: 'student' }), [students]);
 
+  // Use searchFilteredRows from the hook instead of manual filtering
   const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return sortedStudents;
-    const searchLower = searchTerm.toLowerCase().trim();
-    return sortedStudents.filter(student =>
-      student.lrn?.toLowerCase().includes(searchLower) ||
-      student.first_name?.toLowerCase().includes(searchLower) ||
-      student.middle_name?.toLowerCase().includes(searchLower) ||
-      student.last_name?.toLowerCase().includes(searchLower) ||
-      student.email?.toLowerCase().includes(searchLower)
+    return sortedStudents.filter(student => 
+      searchFilteredRows.some(filtered => filtered.id === student.id)
     );
-  }, [sortedStudents, searchTerm]);
+  }, [sortedStudents, searchFilteredRows]);
 
   const ROWS_PER_PAGE = 20;
   const [currentPage, setCurrentPage] = useState(1);
@@ -323,7 +332,7 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
       <div className={styles.searchContainer}>
         <div className={styles.searchRow}>
           <Input
-            placeholder="Search students..."
+            placeholder="Search Students..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             search={true}
@@ -335,6 +344,7 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
             height="sm"
             width="auto"
             title="Show class attendance report"
+            icon={<FontAwesomeIcon icon={faFileAlt} />}
           />
         </div>
       </div>

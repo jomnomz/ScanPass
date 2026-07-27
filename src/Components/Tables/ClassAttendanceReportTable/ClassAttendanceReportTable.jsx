@@ -41,8 +41,9 @@ const ClassAttendanceReportTable = ({
           .from('grades').select('id, grade_level').eq('grade_level', grade).single();
         if (gradeError) throw gradeError;
 
+        // Fetch LRN along with student details
         const { data: students, error: studentsError } = await supabase
-          .from('students').select('id, first_name, last_name, middle_name')
+          .from('students').select('id, lrn, first_name, last_name, middle_name')
           .eq('grade_id', gradeData.id).eq('section_id', sectionData.id);
         if (studentsError) throw studentsError;
 
@@ -67,8 +68,11 @@ const ClassAttendanceReportTable = ({
             const absent = records.filter(r => r.status === 'absent').length;
             const attendanceRate = schoolDays > 0
               ? (((present + late) / schoolDays) * 100).toFixed(2) : '0.00';
+            
+            // Store LRN along with other student data
             newAttendanceRows.push({
               id: student.id,
+              lrn: student.lrn,
               name: formatStudentName(student),
               schoolDays, present, late, absent,
               attendanceRate: `${attendanceRate}%`
@@ -77,7 +81,6 @@ const ClassAttendanceReportTable = ({
         }
 
         setAttendanceRows(newAttendanceRows);
-        // Removed setTotalPages and setCurrentPage from here
       } catch (err) {
         setError(err.message || 'Failed to load attendance data');
       } finally {
@@ -87,11 +90,14 @@ const ClassAttendanceReportTable = ({
     fetchAttendanceData();
   }, [currentClass, selectedMonth]);
 
-  // Filter rows based on search term
+  // Filter rows based on search term - now checks both name and LRN
   const filteredRows = useMemo(() => {
     if (!searchTerm.trim()) return attendanceRows;
     const term = searchTerm.trim().toLowerCase();
-    return attendanceRows.filter(row => row.name.toLowerCase().includes(term));
+    return attendanceRows.filter(row =>
+      row.name.toLowerCase().includes(term) ||
+      (row.lrn && row.lrn.toLowerCase().includes(term))
+    );
   }, [attendanceRows, searchTerm]);
 
   // Reset pagination based on filtered results

@@ -27,6 +27,5 @@
 
 .modalTableScroll {
   max-height: 62vh;
-  min-height: 200px;
   overflow-y: auto;
 }

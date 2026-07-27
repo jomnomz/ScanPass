@@ -1,0 +1,143 @@
+.section {
+  font-family: Arial, sans-serif;
+  display: flex;
+    align-items: flex-start;
+  justify-content: flex-start;
+    width: 85%;
+  height: 95%;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 0 10px rgba(160, 159, 159, 0.5);
+  position: relative;
+  overflow: hidden;
+  color: rgb(244, 246, 249);
+
+  background-color: rgb(244, 246, 249);
+  background-image:
+    /* subtle vertical lines */
+    repeating-linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 48px
+    ),
+    /* vignette: darker top & bottom, lighter middle */
+    linear-gradient(
+      to bottom,
+      rgba(20, 30, 45, 0.35) 0%,
+      rgba(20, 30, 45, 0.05) 35%,
+      rgba(20, 30, 45, 0.05) 65%,
+      rgba(20, 30, 45, 0.35) 100%
+    ),
+    /* base tone */
+    linear-gradient(rgb(120, 128, 140), rgb(120, 128, 140));
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.overlayContent {
+  position: relative;
+  z-index: 2; /* bumped so title stays above laptop */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.title {
+  margin: 0;
+  color: white;
+  font-weight: bold;
+  font-size: 48px;
+  line-height: 1.2;
+  text-shadow: 0 0 50px rgb(0, 0, 0);
+  max-width: 600px;
+  text-align: left;
+  padding: 50px;
+
+  /* animation */
+  opacity: 0;
+  animation: fadeSlideUp 0.9s ease-out forwards;
+  animation-delay: 0.15s;
+}
+
+.laptopWrapper {
+  position: absolute;
+  bottom: -40px;
+  right: -150px;
+  width: 100%;
+  z-index: 1;
+  pointer-events: none;
+  transform-origin: bottom right;
+
+  /* animation */
+  opacity: 0;
+  animation: laptopEntrance 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.4s;
+}
+
+.laptopImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.6));
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes laptopEntrance {
+  from {
+    opacity: 0;
+    transform: rotate(-3deg) translateY(50px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-3deg) translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .laptopWrapper {
+    width: 90%;
+    bottom: -40px;
+    right: -30px;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1105px) {
+  .laptopWrapper {
+    width: 75%;
+  }
+}
+
+@media (max-width: 720px) {
+  .title {
+    font-size: 32px;
+    max-width: 90%;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1105px) {
+  .title {
+    font-size: 42px;
+    max-width: 85%;
+  }
+}
+
+@media (min-width: 1104px) and (max-width: 1300px) {
+  .title {
+    font-size: 48px;
+  }
+}

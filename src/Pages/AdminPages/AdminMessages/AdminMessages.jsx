@@ -109,7 +109,7 @@ function AdminMessages() {
         <div className={styles.searchAndFilter}>
           <div className={styles.searchContainer}>
             <Input
-              placeholder="Search SMS Messages"
+              placeholder="Search SMS Messages..."
               value={searchTerm}
               onChange={handleSearchChange}
               search="true"
