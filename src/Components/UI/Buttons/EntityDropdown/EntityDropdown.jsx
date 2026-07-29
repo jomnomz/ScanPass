@@ -24,7 +24,7 @@ function EntityDropdown({
     }
 
     if (typeof option === 'object' && option !== null) {
-      return option.label || option.name || option.section_name || option.subject_name || option.status || String(option.value || '');
+      return option.label || option.name || option.section_name || option.status || String(option.value || '');
     }
 
     return String(option ?? '');
@@ -36,7 +36,7 @@ function EntityDropdown({
     }
 
     if (typeof option === 'object' && option !== null) {
-      return option.value ?? option.id ?? option.name ?? option.section_name ?? option.subject_name ?? option.status ?? '';
+      return option.value ?? option.id ?? option.name ?? option.section_name ?? option.status ?? '';
     }
 
     return option ?? '';

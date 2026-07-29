@@ -13,10 +13,8 @@ const csvHeaders = {
   employee_id: ['Employee ID', 'employee_id', 'Employee_ID', 'ID Number', 'ID_Number', 'ID'],
   first_name: ['First Name', 'first_name', 'First_Name', 'Given Name', 'Given_Name', 'First'],
   last_name: ['Last Name', 'last_name', 'Last_Name', 'Surname', 'Family Name', 'Family_Name', 'Last'],
-  middle_name: ['Middle Name', 'middle_name', 'Middle_Name', 'Middle Initial', 'Middle_Initial', 'Middle', 'MI'],
   email_address: ['Email', 'Email Address', 'email_address', 'Email_Address', 'email', 'E-mail'],
   phone_no: ['Phone', 'Phone Number', 'phone_no', 'Phone_Number', 'Contact Number', 'Contact_Number', 'Mobile', 'Cell', 'Cellphone'],
-  subjects: ['Subjects', 'subjects', 'Subject Codes', 'Subject_Codes'],
   grade_sections_teaching: ['Grade-Sections (Teaching)', 'grade_sections_teaching', 'Grade-Sections', 'Teaching Assignments', 'Grade-Sections (Teaching)'],
   adviser_grade_section: ['Adviser Grade-Section', 'adviser_grade_section', 'Advisory Class', 'Adviser Grade-Section']
 };
@@ -32,7 +30,7 @@ const getCsvValue = (data, keys) => {
 
 const cleanTeacherData = (teacher) => {
   const cleaned = {};
-  const optionalFields = ['email_address', 'phone_no', 'middle_name', 'subjects', 'grade_sections_teaching', 'adviser_grade_section'];
+  const optionalFields = ['email_address', 'phone_no', 'grade_sections_teaching', 'adviser_grade_section'];
   
   Object.keys(teacher).forEach(key => {
     if (teacher[key] !== undefined && teacher[key] !== null) {
@@ -89,31 +87,6 @@ const parseGradeSection = (gradeSectionStr) => {
   
   console.warn(`⚠️ Could not parse grade-section: "${trimmed}"`);
   return null;
-};
-
-const findSubjectIds = async (subjectCodes) => {
-  if (!subjectCodes || subjectCodes.length === 0) return [];
-  
-  console.log(`🔍 Looking for subjects:`, subjectCodes);
-  
-  const { data: subjects, error } = await supabase
-    .from('subjects')
-    .select('id, subject_code, subject_name')
-    .in('subject_code', subjectCodes);
-    
-  if (error) {
-    console.error('Error finding subjects:', error);
-    return [];
-  }
-  
-  const subjectMap = {};
-  subjects?.forEach(subject => {
-    subjectMap[subject.subject_code] = subject.id;
-  });
-  
-  console.log(`✅ Found ${subjects?.length || 0} subjects`);
-  
-  return { subjectMap, foundSubjects: subjects || [] };
 };
 
 const findGradeSectionIds = async (gradeSectionStrings) => {
@@ -253,27 +226,6 @@ const findGradeSectionIds = async (gradeSectionStrings) => {
   };
 };
 
-const assignTeacherSubjects = async (teacherId, subjectIds) => {
-  if (!subjectIds || subjectIds.length === 0) return { assigned: 0, errors: [] };
-  
-  const assignments = subjectIds.map(subjectId => ({
-    teacher_id: teacherId,
-    subject_id: subjectId
-  }));
-  
-  const { error } = await supabase
-    .from('teacher_subjects')
-    .upsert(assignments, { onConflict: 'teacher_id,subject_id' })
-    .select();
-    
-  if (error) {
-    console.error('Error assigning subjects to teacher:', error);
-    return { assigned: 0, errors: [error.message] };
-  }
-  
-  return { assigned: subjectIds.length, errors: [] };
-};
-
 const assignTeacherSections = async (teacherId, sectionIds, adviserSectionId = null) => {
   if (!sectionIds || sectionIds.length === 0) return { assigned: 0, errors: [] };
   
@@ -294,38 +246,6 @@ const assignTeacherSections = async (teacherId, sectionIds, adviserSectionId = n
   }
   
   return { assigned: sectionIds.length, errors: [] };
-};
-
-const assignTeacherSubjectSections = async (teacherId, subjectIds, sectionIds) => {
-  if (!subjectIds || !sectionIds || subjectIds.length === 0 || sectionIds.length === 0) {
-    return { assigned: 0, errors: [] };
-  }
-  
-  const assignments = [];
-  
-  for (const subjectId of subjectIds) {
-    for (const sectionId of sectionIds) {
-      assignments.push({
-        teacher_id: teacherId,
-        subject_id: subjectId,
-        section_id: sectionId
-      });
-    }
-  }
-  
-  if (assignments.length === 0) return { assigned: 0, errors: [] };
-  
-  const { error } = await supabase
-    .from('teacher_subject_sections')
-    .upsert(assignments, { onConflict: 'teacher_id,subject_id,section_id' })
-    .select();
-    
-  if (error) {
-    console.error('Error assigning teacher-subject-sections:', error);
-    return { assigned: 0, errors: [error.message] };
-  }
-  
-  return { assigned: assignments.length, errors: [] };
 };
 
 router.post('/upload', excelUpload.single('file'), async (req, res) => {
@@ -382,10 +302,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           employee_id: getValue(csvHeaders.employee_id),
           first_name: getValue(csvHeaders.first_name),
           last_name: getValue(csvHeaders.last_name),
-          middle_name: getValue(csvHeaders.middle_name),
           email_address: getValue(csvHeaders.email_address),
           phone_no: getValue(csvHeaders.phone_no),
-          subjects: getValue(csvHeaders.subjects),
           grade_sections_teaching: getValue(csvHeaders.grade_sections_teaching),
           adviser_grade_section: getValue(csvHeaders.adviser_grade_section)
         };
@@ -406,10 +324,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
               employee_id: getCsvValue(data, csvHeaders.employee_id),
               first_name: getCsvValue(data, csvHeaders.first_name),
               last_name: getCsvValue(data, csvHeaders.last_name),
-              middle_name: getCsvValue(data, csvHeaders.middle_name),
               email_address: getCsvValue(data, csvHeaders.email_address),
               phone_no: getCsvValue(data, csvHeaders.phone_no),
-              subjects: getCsvValue(data, csvHeaders.subjects),
               grade_sections_teaching: getCsvValue(data, csvHeaders.grade_sections_teaching),
               adviser_grade_section: getCsvValue(data, csvHeaders.adviser_grade_section)
             };
@@ -442,7 +358,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       console.log(`Row ${index + 2}:`, {
         employee_id: teacher.employee_id,
         name: `${teacher.first_name} ${teacher.last_name}`,
-        subjects: teacher.subjects,
         grade_sections_teaching: teacher.grade_sections_teaching,
         adviser_grade_section: teacher.adviser_grade_section
       });
@@ -523,16 +438,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       });
     }
 
-    // Row number kept only for error reporting below — stripped before insert.
     const allTeachers = validationResults.map(r => ({ ...r.teacher, _row: r.row }));
 
-    // ------------------------------------------------------------------
-    // DB-level email conflict check: does this email already belong to a
-    // DIFFERENT teacher already in the database? Mirrors the same check
-    // added to the student upload route. Without this, a single insert()
-    // with N rows fails ENTIRELY if even one row collides with an existing
-    // teacher's email, with no indication of which row caused it.
-    // ------------------------------------------------------------------
     const teacherEmailsToCheck = allTeachers
       .map(t => t.email_address)
       .filter(email => email);
@@ -557,10 +464,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       }
     }
 
-    // A conflict only counts if the existing row's employee_id is DIFFERENT
-    // from this row's employee_id — if they match, this is just a
-    // legitimate re-upload of the same teacher (handled by the
-    // existingEmployeeIds skip-logic below), not a genuine email collision.
     const teacherEmailConflicts = allTeachers.filter(t => {
       const existingEmployeeIdForEmail = existingEmailToEmployeeId.get(t.email_address);
       return existingEmployeeIdForEmail && existingEmployeeIdForEmail !== t.employee_id;
@@ -620,8 +523,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       }
     }
 
-    // Strip the internal _row field before these objects touch the DB —
-    // it's not a real column and Supabase would reject the insert otherwise.
     const stripRowMeta = (teacher) => {
       const { _row, ...rest } = teacher;
       return rest;
@@ -640,17 +541,11 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
 
     let uploadedData = [];
     let assignmentSummary = {
-      subjectsAssigned: 0,
       sectionsAssigned: 0,
-      teachingAssignmentsCreated: 0,
       assignmentErrors: []
     };
 
-    console.log('\n🔍 Pre-fetching all subjects and grade-sections...');
-    
-    const allSubjectCodes = [...new Set(newTeachers.flatMap(t => 
-      parseCommaSeparated(t.subjects)
-    ).filter(code => code))];
+    console.log('\n🔍 Pre-fetching all grade-sections...');
     
     const allGradeSections = [...new Set(newTeachers.flatMap(t => {
       const teaching = parseCommaSeparated(t.grade_sections_teaching);
@@ -658,20 +553,17 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       return [...teaching, ...adviser].filter(gs => gs);
     }))];
     
-    console.log(`📚 Unique subject codes to find: ${allSubjectCodes.length}`, allSubjectCodes);
     console.log(`🏫 Unique grade-sections to find: ${allGradeSections.length}`, allGradeSections);
 
-    const { subjectMap, foundSubjects } = await findSubjectIds(allSubjectCodes);
     const { sectionIds: allSectionIds, gradeSectionMap } = await findGradeSectionIds(allGradeSections);
 
-    console.log(`✅ Found ${foundSubjects?.length || 0} subjects in database`);
     console.log(`✅ Found ${allSectionIds?.length || 0} grade-sections in database`);
 
     if (newTeachers.length > 0) {
       console.log(`\n💾 Adding ${newTeachers.length} new teachers to database...`);
       
       const teachersToInsert = newTeachers.map(teacher => {
-        const { subjects, grade_sections_teaching, adviser_grade_section, ...teacherData } = teacher;
+        const { grade_sections_teaching, adviser_grade_section, ...teacherData } = teacher;
         return teacherData;
       });
       
@@ -696,29 +588,11 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         
         console.log(`\n👨‍🏫 Teacher ${teacher.employee_id}: ${teacher.first_name} ${teacher.last_name}`);
         
-        const subjectCodes = parseCommaSeparated(originalTeacher.subjects);
         const teachingGradeSections = parseCommaSeparated(originalTeacher.grade_sections_teaching);
         const adviserGradeSection = originalTeacher.adviser_grade_section;
         
-        console.log(`   Subjects: ${subjectCodes.join(', ') || 'None'}`);
         console.log(`   Teaching: ${teachingGradeSections.join(', ') || 'None'}`);
         console.log(`   Adviser: ${adviserGradeSection || 'None'}`);
-        
-        const subjectIds = subjectCodes.map(code => subjectMap[code]).filter(id => id);
-        const missingSubjects = subjectCodes.filter(code => !subjectMap[code]);
-        
-        if (missingSubjects.length > 0) {
-          console.log(`   ⚠️ Subjects not found: ${missingSubjects.join(', ')}`);
-          assignmentSummary.assignmentErrors.push(
-            `Teacher ${teacher.employee_id}: Subjects not found - ${missingSubjects.join(', ')}`
-          );
-        }
-        
-        if (subjectIds.length > 0) {
-          const result = await assignTeacherSubjects(teacher.id, subjectIds);
-          assignmentSummary.subjectsAssigned += result.assigned;
-          console.log(`   ✅ Assigned ${result.assigned} subjects`);
-        }
         
         const teachingSectionIds = teachingGradeSections
           .map(gradeSectionStr => {
@@ -763,16 +637,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         } else {
           console.log(`   ℹ️ No sections assigned (none found in database)`);
         }
-        
-        if (subjectIds.length > 0 && teachingSectionIds.length > 0) {
-          const result = await assignTeacherSubjectSections(
-            teacher.id,
-            subjectIds,
-            teachingSectionIds
-          );
-          assignmentSummary.teachingAssignmentsCreated += result.assigned;
-          console.log(`   ✅ Created ${result.assigned} teaching assignments`);
-        }
       }
     } else {
       console.log('ℹ️ No new teachers to add');
@@ -794,9 +658,7 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         totalRecords: rawTeacherData.length,
         newRecordsCreated: newRecordsCreated,
         existingRecordsSkipped: existingRecordsSkipped,
-        subjectsAssigned: assignmentSummary.subjectsAssigned,
         sectionsAssigned: assignmentSummary.sectionsAssigned,
-        teachingAssignmentsCreated: assignmentSummary.teachingAssignmentsCreated,
         assignmentErrors: assignmentSummary.assignmentErrors.length
       },
       newTeachers: uploadedData || []
@@ -808,16 +670,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       messageParts.push(`Added ${newRecordsCreated} new teacher(s)`);
     }
     
-    if (assignmentSummary.subjectsAssigned > 0) {
-      messageParts.push(`assigned ${assignmentSummary.subjectsAssigned} subject(s)`);
-    }
-    
     if (assignmentSummary.sectionsAssigned > 0) {
       messageParts.push(`assigned ${assignmentSummary.sectionsAssigned} section(s)`);
-    }
-    
-    if (assignmentSummary.teachingAssignmentsCreated > 0) {
-      messageParts.push(`created ${assignmentSummary.teachingAssignmentsCreated} teaching assignment(s)`);
     }
     
     if (existingRecordsSkipped > 0) {

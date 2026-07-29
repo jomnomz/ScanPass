@@ -9,12 +9,12 @@ import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import GradeSectionTable from '../../../Components/Tables/GradeSectionTable/GradeSectionTable.jsx';
-import SubjectTable from '../../../Components/Tables/SubjectTable/SubjectTable.jsx';
 import GradeSchedulesTable from '../../../Components/Tables/GradeSchedulesTable/GradeSchedulesTable.jsx';
 import { useToast } from '../../../Components/Toast/ToastContext/ToastContext.jsx';
 import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
+import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 const ROWS_PER_PAGE = 20;
 
@@ -35,29 +35,20 @@ function AdminMasterData() {
   
   const [activeTab, setActiveTab] = useState('gradeSections');
   
-  // Search per tab
-  const [gradeSectionSearch, setGradeSectionSearch] = useState('');
-  const [subjectSearch, setSubjectSearch] = useState('');
-  const [scheduleSearch, setScheduleSearch] = useState('');
-  
   // Selection per tab
   const [selectedGradeSections, setSelectedGradeSections] = useState([]);
-  const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [selectedSchedules, setSelectedSchedules] = useState([]);
   
   // Raw data from tables (full datasets)
   const [gradeSectionData, setGradeSectionData] = useState([]);
-  const [subjectData, setSubjectData] = useState([]);
   const [scheduleData, setScheduleData] = useState([]);
   
   // Pagination per tab
   const [gradeSectionPage, setGradeSectionPage] = useState(1);
-  const [subjectPage, setSubjectPage] = useState(1);
   const [schedulePage, setSchedulePage] = useState(1);
   
   // "Select all pages" per tab
   const [isAllGradeSectionsSelected, setIsAllGradeSectionsSelected] = useState(false);
-  const [isAllSubjectsSelected, setIsAllSubjectsSelected] = useState(false);
   const [isAllSchedulesSelected, setIsAllSchedulesSelected] = useState(false);
   
   // Delete modal
@@ -67,13 +58,30 @@ function AdminMasterData() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteEntityType, setDeleteEntityType] = useState('');
 
+  // Apply search filter to grade sections
+  const { 
+    searchTerm: gradeSectionSearch, 
+    setSearchTerm: setGradeSectionSearch, 
+    filteredRows: gradeSectionFilteredRows 
+  } = useSearchFilter(gradeSectionData, [
+    'grade',
+    'section'
+  ]);
+
+  // Apply search filter to schedules
+  const { 
+    searchTerm: scheduleSearch, 
+    setSearchTerm: setScheduleSearch, 
+    filteredRows: scheduleFilteredRows 
+  } = useSearchFilter(scheduleData, [
+    'grade_level',
+    'subject_code',
+    'teacher_name'
+  ]);
+
   // Stable callbacks for data updates - wrap in useCallback
   const handleGradeSectionDataUpdate = useCallback((data) => {
     setGradeSectionData(data);
-  }, []);
-
-  const handleSubjectDataUpdate = useCallback((data) => {
-    setSubjectData(data);
   }, []);
 
   const handleScheduleDataUpdate = useCallback((data) => {
@@ -87,11 +95,6 @@ function AdminMasterData() {
   }, [gradeSectionSearch]);
 
   useEffect(() => {
-    setSubjectPage(1);
-    setIsAllSubjectsSelected(false);
-  }, [subjectSearch]);
-
-  useEffect(() => {
     setSchedulePage(1);
     setIsAllSchedulesSelected(false);
   }, [scheduleSearch]);
@@ -99,10 +102,8 @@ function AdminMasterData() {
   useEffect(() => {
     // Also reset when switching tabs
     setGradeSectionPage(1);
-    setSubjectPage(1);
     setSchedulePage(1);
     setIsAllGradeSectionsSelected(false);
-    setIsAllSubjectsSelected(false);
     setIsAllSchedulesSelected(false);
   }, [activeTab]);
 
@@ -112,21 +113,18 @@ function AdminMasterData() {
   const handleUploadSuccess = () => {
     setRefreshKey(prev => prev + 1);
     setSelectedGradeSections([]);
-    setSelectedSubjects([]);
     setSelectedSchedules([]);
   };
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
     if (activeTab === 'gradeSections') setGradeSectionSearch(value);
-    else if (activeTab === 'subjects') setSubjectSearch(value);
     else if (activeTab === 'schedules') setScheduleSearch(value);
   };
 
   const getCurrentSearch = () => {
     switch (activeTab) {
       case 'gradeSections': return gradeSectionSearch;
-      case 'subjects': return subjectSearch;
       case 'schedules': return scheduleSearch;
       default: return '';
     }
@@ -134,14 +132,8 @@ function AdminMasterData() {
 
   // ==================== GRADE SECTIONS PAGINATION ====================
 
-  const filteredGradeSections = useMemo(() => {
-    if (!gradeSectionSearch.trim()) return gradeSectionData;
-    const q = gradeSectionSearch.toLowerCase().trim();
-    return gradeSectionData.filter(item => 
-      (item.grade?.toString() || '').toLowerCase().includes(q) ||
-      (item.section?.toString() || '').toLowerCase().includes(q)
-    );
-  }, [gradeSectionData, gradeSectionSearch]);
+  // Use filtered rows from the hook directly
+  const filteredGradeSections = gradeSectionFilteredRows;
 
   const sortedGradeSections = useMemo(() => {
     return sortGradeSections(filteredGradeSections);
@@ -162,8 +154,7 @@ function AdminMasterData() {
   const allGradeSectionsOnPageSelected = paginatedGradeSections.length > 0 && 
     paginatedGradeSections.every(gs => selectedGradeSections.includes(gs.id));
 
-    const gradeSectionInfoText = (() => {
-    // All grade sections selected
+  const gradeSectionInfoText = (() => {
     if (selectedGradeSections.length === sortedGradeSections.length && sortedGradeSections.length > 0)
       return `All ${sortedGradeSections.length} grade sections selected`;
     if (selectedGradeSections.length > 0) return `${selectedGradeSections.length} grade section/s selected`;
@@ -171,131 +162,49 @@ function AdminMasterData() {
   })();
 
   const gradeSectionSelectAllBanner = (() => {
-  // All selected AND multiple pages exist — show Clear all
-  if (selectedGradeSections.length === sortedGradeSections.length && sortedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
-    return (
-      <button
-        onClick={() => { setIsAllGradeSectionsSelected(false); setSelectedGradeSections([]); }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        Clear all
-      </button>
-    );
-  }
-  if (selectedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
-    return (
-      <button
-        onClick={() => { 
-          setIsAllGradeSectionsSelected(true); 
-          setSelectedGradeSections(sortedGradeSections.map(gs => gs.id)); 
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-        Select all {sortedGradeSections.length} grade sections
-      </button>
-    );
-  }
-  return null;
-})();
-
-  // ==================== SUBJECTS PAGINATION ====================
-
-  const filteredSubjects = useMemo(() => {
-    if (!subjectSearch.trim()) return subjectData;
-    const q = subjectSearch.toLowerCase().trim();
-    return subjectData.filter(item =>
-      (item.subject_code || '').toLowerCase().includes(q) ||
-      (item.subject_name || '').toLowerCase().includes(q)
-    );
-  }, [subjectData, subjectSearch]);
-
-  const sortedSubjects = useMemo(() => {
-    return [...filteredSubjects].sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || ''));
-  }, [filteredSubjects]);
-
-  const subjectTotalPages = Math.ceil(sortedSubjects.length / ROWS_PER_PAGE);
-
-  const paginatedSubjects = useMemo(() => {
-    const start = (subjectPage - 1) * ROWS_PER_PAGE;
-    return sortedSubjects.slice(start, start + ROWS_PER_PAGE);
-  }, [sortedSubjects, subjectPage]);
-
-  const visibleSelectedSubjects = useMemo(() => {
-    const visibleIds = new Set(paginatedSubjects.map(s => s.id));
-    return selectedSubjects.filter(id => visibleIds.has(id));
-  }, [selectedSubjects, paginatedSubjects]);
-
-  const allSubjectsOnPageSelected = paginatedSubjects.length > 0 &&
-    paginatedSubjects.every(s => selectedSubjects.includes(s.id));
-
-    const subjectInfoText = (() => {
-    // All subjects selected
-    if (selectedSubjects.length === sortedSubjects.length && sortedSubjects.length > 0)
-      return `All ${sortedSubjects.length} subjects selected`;
-    if (selectedSubjects.length > 0) return `${selectedSubjects.length} subject/s selected`;
-    return '';
+    if (selectedGradeSections.length === sortedGradeSections.length && sortedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
+      return (
+        <button
+          onClick={() => { setIsAllGradeSectionsSelected(false); setSelectedGradeSections([]); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (selectedGradeSections.length > 0 && sortedGradeSections.length > paginatedGradeSections.length) {
+      return (
+        <button
+          onClick={() => { 
+            setIsAllGradeSectionsSelected(true); 
+            setSelectedGradeSections(sortedGradeSections.map(gs => gs.id)); 
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {sortedGradeSections.length} grade sections
+        </button>
+      );
+    }
+    return null;
   })();
-
-  const subjectSelectAllBanner = (() => {
-  // All selected AND multiple pages exist — show Clear all
-  if (selectedSubjects.length === sortedSubjects.length && sortedSubjects.length > 0 && sortedSubjects.length > paginatedSubjects.length) {
-    return (
-      <button
-        onClick={() => { setIsAllSubjectsSelected(false); setSelectedSubjects([]); }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        Clear all
-      </button>
-    );
-  }
-  if (selectedSubjects.length > 0 && sortedSubjects.length > paginatedSubjects.length) {
-    return (
-      <button
-        onClick={() => { setIsAllSubjectsSelected(true); setSelectedSubjects(sortedSubjects.map(s => s.id)); }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-        Select all {sortedSubjects.length} subjects
-      </button>
-    );
-  }
-  return null;
-})();
 
   // ==================== SCHEDULES PAGINATION ====================
 
-  const filteredSchedules = useMemo(() => {
-    if (!scheduleSearch.trim()) return scheduleData;
-    const q = scheduleSearch.toLowerCase().trim();
-    return scheduleData.filter(item =>
-      (item.grade_level?.toString() || '').toLowerCase().includes(q)
-    );
-  }, [scheduleData, scheduleSearch]);
+  // Use filtered rows from the hook directly
+  const filteredSchedules = scheduleFilteredRows;
 
   const sortedSchedules = useMemo(() => {
     return [...filteredSchedules].sort((a, b) => (parseInt(a.grade_level) || 0) - (parseInt(b.grade_level) || 0));
@@ -316,8 +225,7 @@ function AdminMasterData() {
   const allSchedulesOnPageSelected = paginatedSchedules.length > 0 &&
     paginatedSchedules.every(s => selectedSchedules.includes(s.id));
 
-    const scheduleInfoText = (() => {
-    // All schedules selected
+  const scheduleInfoText = (() => {
     if (selectedSchedules.length === sortedSchedules.length && sortedSchedules.length > 0)
       return `All ${sortedSchedules.length} schedules selected`;
     if (selectedSchedules.length > 0) return `${selectedSchedules.length} schedule/s selected`;
@@ -325,66 +233,54 @@ function AdminMasterData() {
   })();
 
   const scheduleSelectAllBanner = (() => {
-  // All selected AND multiple pages exist — show Clear all
-  if (selectedSchedules.length === sortedSchedules.length && sortedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
-    return (
-      <button
-        onClick={() => { setIsAllSchedulesSelected(false); setSelectedSchedules([]); }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        Clear all
-      </button>
-    );
-  }
-  if (selectedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
-    return (
-      <button
-        onClick={() => { setIsAllSchedulesSelected(true); setSelectedSchedules(sortedSchedules.map(s => s.id)); }}
-        onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
-        onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
-        style={{
-          background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
-          cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
-          padding: '6px 12px', transition: 'background 0.2s ease'
-        }}
-      >
-        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
-        Select all {sortedSchedules.length} schedules
-      </button>
-    );
-  }
-  return null;
-})();
+    if (selectedSchedules.length === sortedSchedules.length && sortedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
+      return (
+        <button
+          onClick={() => { setIsAllSchedulesSelected(false); setSelectedSchedules([]); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          Clear all
+        </button>
+      );
+    }
+    if (selectedSchedules.length > 0 && sortedSchedules.length > paginatedSchedules.length) {
+      return (
+        <button
+          onClick={() => { setIsAllSchedulesSelected(true); setSelectedSchedules(sortedSchedules.map(s => s.id)); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
+          onMouseLeave={e => e.currentTarget.style.background = '#0f6b58'}
+          style={{
+            background: '#0f6b58', border: '1px solid #0f6b58', borderRadius: '999px',
+            cursor: 'pointer', color: 'white', fontSize: '0.85rem', fontWeight: 600,
+            padding: '6px 12px', transition: 'background 0.2s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px', fontSize: '0.75rem' }} />
+          Select all {sortedSchedules.length} schedules
+        </button>
+      );
+    }
+    return null;
+  })();
 
   // ==================== SELECTION HANDLERS WITH GUARDS ====================
 
-  // FIX: Guard against overwriting when all pages are selected
   const handleGradeSectionsSelectedUpdate = (selected) => {
-    if (isAllGradeSectionsSelected) return; // ← Don't let the table clobber the full selection
+    if (isAllGradeSectionsSelected) return;
     setSelectedGradeSections(selected);
     if (selected.length === 0) {
       setIsAllGradeSectionsSelected(false);
     }
   };
 
-  // FIX: Guard against overwriting when all pages are selected
-  const handleSubjectsSelectedUpdate = (selected) => {
-    if (isAllSubjectsSelected) return; // ← Don't let the table clobber the full selection
-    setSelectedSubjects(selected);
-    if (selected.length === 0) {
-      setIsAllSubjectsSelected(false);
-    }
-  };
-
-  // FIX: Guard against overwriting when all pages are selected
   const handleSchedulesSelectedUpdate = (selected) => {
-    if (isAllSchedulesSelected) return; // ← Don't let the table clobber the full selection
+    if (isAllSchedulesSelected) return;
     setSelectedSchedules(selected);
     if (selected.length === 0) {
       setIsAllSchedulesSelected(false);
@@ -396,7 +292,6 @@ function AdminMasterData() {
   const getSelectedCount = () => {
     switch (activeTab) {
       case 'gradeSections': return selectedGradeSections.length;
-      case 'subjects': return selectedSubjects.length;
       case 'schedules': return selectedSchedules.length;
       default: return 0;
     }
@@ -417,21 +312,18 @@ function AdminMasterData() {
 
   const normalizeDeleteEntityType = (type) => {
     if (type === 'gradeSections' || type === 'gradeSection' || type === 'grade section') return 'gradeSections';
-    if (type === 'subjects' || type === 'subject') return 'subjects';
     if (type === 'schedules' || type === 'schedule' || type === 'grade schedule' || type === 'gradeSchedule') return 'schedules';
     return type;
   };
 
   const getModalEntityType = () => {
     if (deleteEntityType === 'gradeSections') return 'grade section';
-    if (deleteEntityType === 'subjects') return 'subject';
     if (deleteEntityType === 'schedules') return 'grade schedule';
     return 'entity';
   };
 
   const getModalEntityData = () => {
     if (deleteEntityType === 'gradeSections') return gradeSectionData;
-    if (deleteEntityType === 'subjects') return subjectData;
     if (deleteEntityType === 'schedules') return scheduleData;
     return [];
   };
@@ -439,7 +331,6 @@ function AdminMasterData() {
   const getSelectedEntitiesForModal = () => {
     const data = getModalEntityData();
     const selectedIds = deleteEntityType === 'gradeSections' ? selectedGradeSections
-      : deleteEntityType === 'subjects' ? selectedSubjects
       : selectedSchedules;
     return selectedIds.map(id => data.find(item => String(item.id) === String(id))).filter(Boolean);
   };
@@ -447,13 +338,11 @@ function AdminMasterData() {
   const handleConfirmDelete = async (idOrIds) => {
     setIsDeleting(true);
     try {
-      // Import services dynamically or use EntityService
       const { EntityService } = await import('../../../Utils/EntityService.js');
       
       if (deleteModalMode === 'single') {
         const service = new EntityService(
           deleteEntityType === 'gradeSections' ? 'sections' 
-          : deleteEntityType === 'subjects' ? 'subjects' 
           : 'grade_schedules'
         );
         await service.delete(idOrIds);
@@ -461,7 +350,6 @@ function AdminMasterData() {
       } else {
         const service = new EntityService(
           deleteEntityType === 'gradeSections' ? 'sections' 
-          : deleteEntityType === 'subjects' ? 'subjects' 
           : 'grade_schedules'
         );
         for (const id of idOrIds) {
@@ -469,7 +357,6 @@ function AdminMasterData() {
         }
         success(`${idOrIds.length} ${getModalEntityType()}s deleted successfully`);
         if (deleteEntityType === 'gradeSections') setSelectedGradeSections([]);
-        else if (deleteEntityType === 'subjects') setSelectedSubjects([]);
         else if (deleteEntityType === 'schedules') setSelectedSchedules([]);
       }
       
@@ -489,12 +376,11 @@ function AdminMasterData() {
 
   const getAllMasterData = () => ({
     gradeSections: gradeSectionData,
-    subjects: subjectData,
     schedules: scheduleData,
   });
 
   const hasAnyMasterData = () => {
-    return gradeSectionData.length > 0 || subjectData.length > 0 || scheduleData.length > 0;
+    return gradeSectionData.length > 0 || scheduleData.length > 0;
   };
 
   const handleExportMasterData = () => {
@@ -515,7 +401,6 @@ function AdminMasterData() {
   const getSearchPlaceholder = () => {
     switch (activeTab) {
       case 'gradeSections': return "Search Grade and Section Records...";
-      case 'subjects': return "Search Subject Records...";
       case 'schedules': return "Search Grade Schedules Records...";
       default: return "Search...";
     }
@@ -524,7 +409,6 @@ function AdminMasterData() {
   const getNewEntityButtonLabel = () => {
     switch (activeTab) {
       case 'gradeSections': return '+ New Sections';
-      case 'subjects': return '+ New Subject';
       case 'schedules': return '+ New Schedules';
       default: return '+ New Entity';
     }
@@ -535,9 +419,6 @@ function AdminMasterData() {
       case 'gradeSections':
         if (gradeSectionSearch) return `Found ${sortedGradeSections.length} grade section/s matching "${gradeSectionSearch}"`;
         return `Showing ${sortedGradeSections.length} grade section/s`;
-      case 'subjects':
-        if (subjectSearch) return `Found ${sortedSubjects.length} subject/s matching "${subjectSearch}"`;
-        return `Showing ${sortedSubjects.length} subject/s`;
       case 'schedules':
         if (scheduleSearch) return `Found ${sortedSchedules.length} schedule/s matching "${scheduleSearch}"`;
         return `Showing ${sortedSchedules.length} grade schedule/s`;
@@ -613,14 +494,6 @@ function AdminMasterData() {
               onClick={() => setActiveTab('gradeSections')}
             />
             <Button
-              label="Subjects"
-              line={true}
-              height="xs"
-              width="auto"
-              active={activeTab === 'subjects'}
-              onClick={() => setActiveTab('subjects')}
-            />
-            <Button
               label="Grade & Schedules"
               line={true}
               height="xs"
@@ -657,33 +530,6 @@ function AdminMasterData() {
                     currentPage={gradeSectionPage} 
                     totalPages={gradeSectionTotalPages} 
                     onPageChange={setGradeSectionPage} 
-                  />
-                )}
-              </>
-            )}
-            
-            {activeTab === 'subjects' && (
-              <>
-                {subjectInfoText && (
-                  <span style={{
-                    color: '#3f4f67',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    padding: '6px 10px',
-                    borderRadius: '999px',
-                    background: '#e8f4ef',
-                    border: '1px solid #cae6dd',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {subjectInfoText}
-                  </span>
-                )}
-                {subjectSelectAllBanner}
-                {subjectTotalPages > 1 && (
-                  <Pagination 
-                    currentPage={subjectPage} 
-                    totalPages={subjectTotalPages} 
-                    onPageChange={setSubjectPage} 
                   />
                 )}
               </>
@@ -740,29 +586,6 @@ function AdminMasterData() {
               }}
               currentPage={gradeSectionPage}
               refreshTrigger={refreshKey}
-            />
-          </div>
-
-          <div style={{ display: activeTab === 'subjects' ? 'block' : 'none' }}>
-            <SubjectTable 
-              key={`subject-${refreshKey}`}
-              searchTerm={subjectSearch}
-              subjects={paginatedSubjects}
-              totalFilteredCount={sortedSubjects.length}
-              selectedSubjects={selectedSubjects}
-              onSelectedSubjectsUpdate={handleSubjectsSelectedUpdate}
-              onSingleDeleteClick={handleSingleDeleteClick}
-              onEntityDataUpdate={handleSubjectDataUpdate}
-              isAllPagesSelected={isAllSubjectsSelected}
-              onSelectAllPages={() => {
-                setIsAllSubjectsSelected(true);
-                setSelectedSubjects(sortedSubjects.map(s => s.id));
-              }}
-              onClearAllPages={() => {
-                setIsAllSubjectsSelected(false);
-                setSelectedSubjects([]);
-              }}
-              currentPage={subjectPage}
             />
           </div>
 

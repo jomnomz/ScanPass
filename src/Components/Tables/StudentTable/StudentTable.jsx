@@ -444,12 +444,10 @@ const StudentTable = ({
           const updateData = {
             lrn: data.lrn,
             first_name: data.first_name,
-            middle_name: data.middle_name,
             last_name: data.last_name,
             email: data.email,
             phone_number: data.phone_number,
             guardian_first_name: data.guardian_first_name,
-            guardian_middle_name: data.guardian_middle_name,
             guardian_last_name: data.guardian_last_name,
             guardian_phone_number: data.guardian_phone_number,
             guardian_email: data.guardian_email,
@@ -704,7 +702,6 @@ const StudentTable = ({
                 </div>
                 <div className={styles.studentInfo}>LRN: {student.lrn}</div>
                 <div className={styles.studentInfo}>Grade & Section: {student.grade} - {student.section}</div>
-                <div className={styles.studentInfo}>Full Name: {formatStudentName(student)}</div>
                 <div className={styles.studentInfo}>Email: {formatNA(student.email)}</div>
                 <div className={styles.studentInfo}>Phone: {formatNA(student.phone_number)}</div>
               </div>
@@ -714,7 +711,7 @@ const StudentTable = ({
                   <strong>Guardian Information</strong>
                 </div>
                 <div className={styles.studentInfo}>
-                  Name: {formatNA(student.guardian_first_name)} {(student.guardian_middle_name)} {formatNA(student.guardian_last_name)}
+                  Name: {formatNA(student.guardian_first_name)} {formatNA(student.guardian_last_name)}
                 </div>
                 <div className={styles.studentInfo}>
                   Phone: {formatNA(student.guardian_phone_number)}

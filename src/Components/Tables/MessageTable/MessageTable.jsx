@@ -142,10 +142,9 @@ const MessageTable = ({
     if (!student) return 'N/A';
 
     const firstName = student.guardian_first_name || '';
-    const middleName = student.guardian_middle_name ? ` ${student.guardian_middle_name}` : '';
     const lastName = student.guardian_last_name || '';
 
-    const fullName = `${firstName}${middleName} ${lastName}`.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
     return fullName || 'N/A';
   };
 
@@ -170,7 +169,6 @@ const MessageTable = ({
             grade:grades(grade_level),
             section:sections(section_name),
             guardian_first_name,
-            guardian_middle_name,
             guardian_last_name,
             guardian_phone_number,
             guardian_email
@@ -207,7 +205,6 @@ const MessageTable = ({
           id: log.id,
           guardian_name: guardianName,
           guardian_first_name: student?.guardian_first_name || '',
-          guardian_middle_name: student?.guardian_middle_name || '',
           guardian_last_name: student?.guardian_last_name || '',
           phone_number: guardianPhone,
           formatted_phone: formattedPhone,

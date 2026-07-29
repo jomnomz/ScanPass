@@ -78,17 +78,18 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
           .eq('teacher_id', teacherData.id)
           .eq('is_adviser', true);
 
-        const { data: subjectSections } = await supabase
-          .from('teacher_subject_sections')
+        // Get teaching sections (non-advisory)
+        const { data: teachingSections } = await supabase
+          .from('teacher_sections')
           .select(`
-            subject:subjects ( id, subject_name, subject_code ),
             section:sections (
               id,
               section_name,
               grade:grades ( id, grade_level )
             )
           `)
-          .eq('teacher_id', teacherData.id);
+          .eq('teacher_id', teacherData.id)
+          .eq('is_adviser', false);
 
         const classMap = new Map();
 
@@ -98,20 +99,19 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
           const section = item.section.section_name || '';
           const key = `${grade}-${section}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { key, grade, section, isAdvisory: false, subjects: [] });
+            classMap.set(key, { key, grade, section, isAdvisory: false });
           }
           classMap.get(key).isAdvisory = true;
         });
 
-        (subjectSections || []).forEach(item => {
-          if (!item.section || !item.subject) return;
+        (teachingSections || []).forEach(item => {
+          if (!item.section) return;
           const grade = item.section.grade?.grade_level || '';
           const section = item.section.section_name || '';
           const key = `${grade}-${section}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { key, grade, section, isAdvisory: false, subjects: [] });
+            classMap.set(key, { key, grade, section, isAdvisory: false });
           }
-          classMap.get(key).subjects.push(item.subject.subject_code);
         });
 
         const classes = Array.from(classMap.values()).sort((a, b) => {
@@ -219,11 +219,7 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
             <span className={styles.accordionEmpty}>No classes assigned</span>
           )}
           {teacherClasses.map(cls => {
-            const nonAdvisorySubjects = cls.subjects.filter(s => s !== 'ADV');
-            const subjectPart = nonAdvisorySubjects.length > 0
-              ? ` | ${nonAdvisorySubjects.join(' | ')}`
-              : '';
-            const label = `${cls.key}${subjectPart}`;
+            const label = cls.key;
 
             return (
               <Link
@@ -337,11 +333,7 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
                     <span className={styles.accordionEmpty}>No classes assigned</span>
                   )}
                   {teacherClasses.map(cls => {
-                    const nonAdvisorySubjects = cls.subjects.filter(s => s !== 'ADV');
-                    const subjectPart = nonAdvisorySubjects.length > 0
-                      ? ` | ${nonAdvisorySubjects.join(' | ')}`
-                      : '';
-                    const label = `${cls.key}${subjectPart}`;
+                    const label = cls.key;
 
                     return (
                       <Link

@@ -1,3 +1,4 @@
+// src/components/List/EntityList/EntityList.jsx
 import React from 'react';
 import {
   formatGradeSection,
@@ -43,29 +44,6 @@ function EntityList({
     }
 
     return display;
-  };
-
-  const formatSubjectDisplay = (subject) => {
-    if (!subject) return '';
-
-    if (typeof subject === 'string') {
-      return subject;
-    }
-
-    const code = subject.subject_code || subject.code || '';
-    const name = subject.subject_name || subject.name || subject.displayName || '';
-
-    if (code && name) {
-      return `${code} - ${name}`;
-    }
-    if (code) {
-      return code;
-    }
-    if (name) {
-      return name;
-    }
-
-    return '';
   };
 
   const formatGradeScheduleDisplay = (schedule) => {
@@ -125,13 +103,6 @@ function EntityList({
           details: entity.email_address || 'NA'
         };
 
-      case 'subject':
-        return {
-          identifier: entity.subject_code || entity.code || '',
-          name: entity.subject_name || entity.name || '',
-          details: formatSubjectDisplay(entity)
-        };
-
       case 'gradeSection':
       case 'section':
       case 'grade section':
@@ -169,8 +140,17 @@ function EntityList({
       // Validation errors from a failed file upload — entities here look like
       // { row: 5, message: "Email is invalid, LRN is duplicated in the file" }
       case 'validationError':
+        // Enhanced to handle sheet/record type disambiguation
+        // If the entity has a displayLabel, use it; otherwise build a label
+        let displayLabel = `Row ${entity.row}`;
+        if (entity.displayLabel) {
+          displayLabel = entity.displayLabel;
+        } else if (entity.sheet) {
+          displayLabel = `${entity.sheet} — Row ${entity.row}`;
+        }
+        
         return {
-          identifier: `Row ${entity.row}`,
+          identifier: displayLabel,
           name: entity.message || '',
           details: ''
         };
@@ -188,13 +168,6 @@ function EntityList({
             identifier: entity.employee_id || '',
             name: formatTeacherDisplayName(entity),
             details: entity.email_address || 'NA'
-          };
-        }
-        if (entity.subject_code) {
-          return {
-            identifier: entity.subject_code || '',
-            name: entity.subject_name || '',
-            details: formatSubjectDisplay(entity)
           };
         }
         if (entity.grade || entity.grade_level) {
@@ -230,7 +203,6 @@ function EntityList({
     const entityTypeText = {
       student: 'Student',
       teacher: 'Teacher',
-      subject: 'Subject',
       gradeSection: 'Grade Section',
       section: 'Section',
       grade: 'Grade',
@@ -256,10 +228,6 @@ function EntityList({
       return `${details.identifier} | ${details.name} | ${details.details}`;
     }
 
-    if (entityType === 'subject') {
-      return details.details || `${details.identifier} - ${details.name}`;
-    }
-
     if (entityType === 'gradeSection' || entityType === 'section' || isGradeSectionType) {
       return details.name;
     }
@@ -273,6 +241,8 @@ function EntityList({
     }
 
     if (entityType === 'validationError') {
+      // For validation errors, show the row/identifier and the error message
+      // The identifier already includes the sheet/row info
       return `${details.identifier}: ${details.name}`;
     }
 

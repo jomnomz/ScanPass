@@ -1,4 +1,4 @@
-/* AttendanceTable.module.css - Add/update these styles */
+/* AttendanceTable.module.css */
 
 .summaryCard {
   background: linear-gradient(180deg, #f8fafc 0%, #f4f8fc 100%);
@@ -56,7 +56,7 @@
 }
 
 .statCard {
-  background-color: #ffffff; /* transparent !important */
+  background-color: #ffffff;
   border: solid 1px #CACED6;
   box-shadow: 0 2px 10px rgba(207, 207, 207, 0.1);
   border-radius: 14px;
@@ -146,7 +146,7 @@
   margin-bottom: 5px;
 }
 
-/* ===== EXPANDED ROW STYLING ===== */
+/* ===== EXPANDED ROW STYLING WITH PROFILE ===== */
 .attendanceCard {
   position: relative;
   background-color: #edf7f3;
@@ -173,6 +173,18 @@
   padding: 20px 20px 20px;
   opacity: 1;
   transform: scaleY(1);
+}
+
+/* ===== EXPANDED LAYOUT - Same as StudentTable ===== */
+.expandedLayout {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
 }
 
 .attendanceHeader {
@@ -226,7 +238,96 @@
   background-color: inherit;
 }
 
-/* ===== STATUS PILL STYLES - MATCHES TEACHER TABLE ===== */
+/* ===== CLOSE EXPAND BUTTON ===== */
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
+}
+
+/* ===== PROFILE STYLES ===== */
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.profileLarge {
+  aspect-ratio: 1 / 1;
+  height: 160px;
+  align-self: stretch;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 4rem;
+  flex-shrink: 0;
+  min-width: 170px;
+  max-width: 150px;
+}
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.studentCellText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studentCellName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a2332;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentCellLrn {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ===== STATUS PILL STYLES ===== */
 .status {
   display: inline-block;
   padding: 4px 10px;
@@ -356,7 +457,6 @@
   align-items: center;
 }
 
-/* ===== UPDATED: editActions with Button component ===== */
 .editActions {
   display: flex;
   gap: 8px;
@@ -451,80 +551,6 @@
   cursor: pointer;
 }
 
-.closeExpandBtn {
-  position: absolute;
-  top: 15px;
-  right: 35px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #1a2332;
-  color: #ffffff;
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: background-color 0.2s ease, transform 0.15s ease;
-  z-index: 5;
-}
-
-.closeExpandBtn:hover {
-  background-color: #2d3a4f;
-  transform: scale(1.05);
-}
-
-.closeExpandBtn:active {
-  transform: scale(0.95);
-}
-
-/* ===== ADD to AttendanceTable.module.css ===== */
-
-.studentCell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-}
-
-.studentCellText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.studentCellName {
-  font-weight: 600;
-  font-size: 14px;
-  color: #1a2332;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.studentCellLrn {
-  font-size: 12px;
-  color: #6c757d;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-.profileSmall {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1400px) {
   .details {
@@ -537,8 +563,8 @@
   }
 }
 
-@media (min-width: 1400px) {
-    .tableWrapper {
+@media (min-width: 1600px) {
+  .tableWrapper {
     max-height: 55vh;
   }
 }
@@ -553,5 +579,28 @@
   .timeDisplay {
     font-size: 12px;
     min-width: 80px;
+  }
+
+  .expandedLayout {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .profileLarge {
+    height: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    font-size: 3rem;
+  }
+
+  .attendanceHeader {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .closeExpandBtn {
+    right: 15px;
+    top: 10px;
   }
 }

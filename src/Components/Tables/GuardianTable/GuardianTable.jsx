@@ -268,7 +268,6 @@ const GuardianTable = ({
       // Prepare the update data
       const updateData = {
         guardian_first_name: editFormData.first_name,
-        guardian_middle_name: editFormData.middle_name || '',
         guardian_last_name: editFormData.last_name,
         guardian_email: editFormData.email || '',
         guardian_phone_number: editFormData.phone_number || '',
@@ -293,7 +292,6 @@ const GuardianTable = ({
         ...updatedGuardian,
         // Map the guardian fields back to what the table expects
         first_name: updatedGuardian.guardian_first_name,
-        middle_name: updatedGuardian.guardian_middle_name,
         last_name: updatedGuardian.guardian_last_name,
         email: updatedGuardian.guardian_email,
         phone_number: updatedGuardian.guardian_phone_number,
@@ -382,7 +380,7 @@ const GuardianTable = ({
         </button>
 
         <div className={styles.guardianHeader}>
-          {guardian.first_name} {guardian.middle_name} {guardian.last_name}
+          {guardian.first_name} {guardian.last_name}
         </div>
 
         <div className={styles.details}>
@@ -391,7 +389,7 @@ const GuardianTable = ({
               <strong>Guardian Details</strong>
             </div>
             <div className={styles.guardianInfo}>
-              Full Name: {guardian.first_name} {guardian.middle_name || ''} {guardian.last_name}
+              Full Name: {guardian.first_name} {guardian.last_name}
             </div>
             <div className={styles.guardianInfo}>
               Email: {formatNA(guardian.email)}
@@ -469,7 +467,7 @@ const GuardianTable = ({
       if (currentClass === 'all') {
         message = `Showing ${guardianCount} guardian/s across all grades`;
       } else {
-        message += `Showing ${guardianCount} guardian/s in Grade ${currentClass}`;
+        message = `Showing ${guardianCount} guardian/s in Grade ${currentClass}`;
       }
     }
 
@@ -494,8 +492,8 @@ const GuardianTable = ({
     {
       key: 'guardian',
       label: 'GUARDIAN',
-      headerStyle: withColumnWidth('20%', 200), textAlign: 'left' ,
-      cellStyle: withColumnWidth('20%', 200), textAlign: 'left' ,
+      headerStyle: withColumnWidth('20%', 200),
+      cellStyle: withColumnWidth('20%', 200),
       renderCell: ({ row }) => (
         <div className={styles.guardianCellText}>
           <div className={styles.guardianCellName}>
@@ -554,8 +552,8 @@ const GuardianTable = ({
     {
       key: 'edit',
       label: 'EDIT',
-      headerStyle: { ...withColumnWidth('8%', 70),  },
-      cellStyle: { ...withColumnWidth('8%', 70),  },
+      headerStyle: { ...withColumnWidth('8%', 70) },
+      cellStyle: { ...withColumnWidth('8%', 70) },
       renderCell: ({ row }) => (
         <div className={styles.icon}>
           <FontAwesomeIcon

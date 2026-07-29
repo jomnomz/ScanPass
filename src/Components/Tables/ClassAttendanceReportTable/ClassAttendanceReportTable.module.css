@@ -26,6 +26,6 @@
 }
 
 .modalTableScroll {
-  max-height: 62vh;
+  max-height: 58vh;
   overflow-y: auto;
 }

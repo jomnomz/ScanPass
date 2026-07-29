@@ -13,14 +13,12 @@ const csvHeaders = {
   lrn: ['LRN', 'lrn', 'Student LRN', 'student_lrn'],
   first_name: ['First Name', 'first_name', 'First_Name', 'Given Name', 'Given_Name', 'First'],
   last_name: ['Last Name', 'last_name', 'Last_Name', 'Surname', 'Family Name', 'Family_Name', 'Last'],
-  middle_name: ['Middle Name', 'middle_name', 'Middle_Name', 'Middle Initial', 'Middle_Initial', 'Middle', 'MI'],
   grade: ['Grade', 'grade', 'Grade Level', 'Grade_Level'],
   section: ['Section', 'section', 'Class Section', 'Class_Section'],
   email: ['Email', 'email', 'Student Email', 'Student_Email'],
   phone_number: ['Phone Number', 'phone_number', 'Phone', 'Student Phone', 'Student_Phone'],
   
   guardian_first_name: ['Guardian First Name', 'guardian_first_name', 'Parent First Name', 'Parent_First_Name'],
-  guardian_middle_name: ['Guardian Middle Name', 'guardian_middle_name', 'Parent Middle Name', 'Parent_Middle_Name'],
   guardian_last_name: ['Guardian Last Name', 'guardian_last_name', 'Parent Last Name', 'Parent_Last_Name'],
   guardian_phone_number: ['Guardian Phone Number', 'guardian_phone_number', 'Parent Phone', 'Parent_Phone', 'Guardian Phone'],
   guardian_email: ['Guardian Email', 'guardian_email', 'Parent Email', 'Parent_Email']
@@ -37,8 +35,8 @@ const getCsvValue = (data, keys) => {
 
 const cleanStudentData = (student) => {
   const cleaned = {};
-  const optionalFields = ['email', 'phone_number', 'middle_name', 'guardian_first_name', 
-                         'guardian_middle_name', 'guardian_last_name', 'guardian_phone_number', 'guardian_email'];
+  const optionalFields = ['email', 'phone_number', 'guardian_first_name', 
+                         'guardian_last_name', 'guardian_phone_number', 'guardian_email'];
   
   Object.keys(student).forEach(key => {
     if (student[key] !== undefined && student[key] !== null) {
@@ -162,13 +160,11 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
           lrn: getValue(['LRN', 'lrn', 'Student LRN', 'student_lrn']),
           first_name: getValue(['First Name', 'first_name', 'First Name', 'First_Name']),
           last_name: getValue(['Last Name', 'last_name', 'Last Name', 'Last_Name']),
-          middle_name: getValue(['Middle Name', 'middle_name', 'Middle Name', 'Middle_Name']),
           grade: getValue(['Grade', 'grade', 'Grade Level', 'Grade_Level']),
           section: getValue(['Section', 'section', 'Class Section', 'Class_Section']),
           email: getValue(['Email', 'email', 'Student Email', 'Student_Email']),
           phone_number: getValue(['Phone Number', 'phone_number', 'Phone', 'Student Phone', 'Student_Phone']),
           guardian_first_name: getValue(['Guardian First Name', 'guardian_first_name', 'Parent First Name', 'Parent_First_Name']),
-          guardian_middle_name: getValue(['Guardian Middle Name', 'guardian_middle_name', 'Parent Middle Name', 'Parent_Middle_Name']),
           guardian_last_name: getValue(['Guardian Last Name', 'guardian_last_name', 'Parent Last Name', 'Parent_Last_Name']),
           guardian_phone_number: getValue(['Guardian Phone Number', 'guardian_phone_number', 'Parent Phone', 'Parent_Phone', 'Guardian Phone']),
           guardian_email: getValue(['Guardian Email', 'guardian_email', 'Parent Email', 'Parent_Email'])
@@ -190,13 +186,11 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
               lrn: getCsvValue(data, csvHeaders.lrn),
               first_name: getCsvValue(data, csvHeaders.first_name),
               last_name: getCsvValue(data, csvHeaders.last_name),
-              middle_name: getCsvValue(data, csvHeaders.middle_name),
               grade: getCsvValue(data, csvHeaders.grade),
               section: getCsvValue(data, csvHeaders.section),
               email: getCsvValue(data, csvHeaders.email),
               phone_number: getCsvValue(data, csvHeaders.phone_number),
               guardian_first_name: getCsvValue(data, csvHeaders.guardian_first_name),
-              guardian_middle_name: getCsvValue(data, csvHeaders.guardian_middle_name),
               guardian_last_name: getCsvValue(data, csvHeaders.guardian_last_name),
               guardian_phone_number: getCsvValue(data, csvHeaders.guardian_phone_number),
               guardian_email: getCsvValue(data, csvHeaders.guardian_email)

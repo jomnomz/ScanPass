@@ -6,7 +6,6 @@ export const grades = ['7', '8', '9', '10'];
 export const studentTableColumns = [
   { key: 'lrn', label: 'LRN' },
   { key: 'first_name', label: 'FIRST NAME' },
-  { key: 'middle_name', label: 'MIDDLE NAME' },
   { key: 'last_name', label: 'LAST NAME' },
   { key: 'grade', label: 'GRADE' },
   { key: 'section', label: 'SECTION' },
@@ -61,14 +60,6 @@ export const gradeSectionTableColumns = [
   { key: 'grade', label: 'GRADE' },
   { key: 'section', label: 'SECTION' },
   { key: 'room', label: 'ROOM' },
-  { key: 'edit', label: 'EDIT', isAction: true },
-  { key: 'delete', label: 'DELETE', isAction: true }
-];
-
-// Subject table configuration
-export const subjectTableColumns = [
-  { key: 'subject_code', label: 'CODE' },
-  { key: 'subject_name', label: 'SUBJECT NAME' },
   { key: 'edit', label: 'EDIT', isAction: true },
   { key: 'delete', label: 'DELETE', isAction: true }
 ];

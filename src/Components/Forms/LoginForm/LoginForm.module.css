@@ -180,3 +180,15 @@
 .loginLabel {
   white-space: nowrap;
 }
+
+@media (max-width: 720px) {
+  .title{
+    color: white;
+    font-size: 30px;
+  }
+
+  .subTitle{
+    color: white;
+    font-size: 15px;
+  }
+}

@@ -239,17 +239,6 @@ function getEntityTypeLabels(entityType = '') {
     };
   }
 
-  if (['subject', 'subjects'].includes(normalized)) {
-    return {
-      singularKey: 'subject',
-      titleSingular: 'Subject',
-      titlePlural: 'Subjects',
-      sentenceSingular: 'subject',
-      sentencePlural: 'subjects',
-      listEntityType: 'subject'
-    };
-  }
-
   if (['gradesection', 'grade section', 'gradesections', 'grade sections'].includes(normalized)) {
     return {
       singularKey: 'grade section',
@@ -297,30 +286,24 @@ function getEntityConfig(entityType) {
       hasQRCode: false,
       hasContextInfo: false
     },
-    subject: {
-      warningMessage: 'This will permanently delete the subject from the system.',
-      hasAccountField: false,
-      hasQRCode: false,
-      hasContextInfo: false
-    },
     gradeSection: {
       warningMessage: 'This will permanently delete the grade section from the system.',
       hasAccountField: false,
       hasQRCode: false,
       hasContextInfo: false
-      },
-      'grade schedule': {
-        warningMessage: 'This will permanently delete the grade schedule from the system.',
-        hasAccountField: false,
-        hasQRCode: false,
-        hasContextInfo: false
-      },
-      'grade section': {
-        warningMessage: 'This will permanently delete the grade section from the system.',
-        hasAccountField: false,
-        hasQRCode: false,
-        hasContextInfo: false
-      }
+    },
+    'grade schedule': {
+      warningMessage: 'This will permanently delete the grade schedule from the system.',
+      hasAccountField: false,
+      hasQRCode: false,
+      hasContextInfo: false
+    },
+    'grade section': {
+      warningMessage: 'This will permanently delete the grade section from the system.',
+      hasAccountField: false,
+      hasQRCode: false,
+      hasContextInfo: false
+    }
   };
   
   return configs[entityType] || configs.entity;

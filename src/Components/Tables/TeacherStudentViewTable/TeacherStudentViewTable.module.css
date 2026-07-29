@@ -118,6 +118,79 @@
   border: none;
 }
 
+/* ── Student cell (copied from StudentTable) ── */
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.studentCellText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studentCellName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a2332;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentCellLrn {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Contact cell (copied from StudentTable) ── */
+
+.contactCell {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 4px;
+}
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contactIcon {
+  color: #909796;
+  font-size: 14px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.contactText {
+  font-size: 14px;
+  color: #1a2332;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .studentCard {
   position: relative;
   background-color: #E8F4EF;
@@ -270,7 +343,6 @@
 
 .sectionTabGrade,
 .sectionTabName,
-.sectionTabSubject,
 .sectionTabAdvisory {
   font-weight: 600;
 }
@@ -283,6 +355,98 @@
 .sectionTabPagination {
   display: flex;
   align-items: center;
+}
+
+.expandedLayout {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.profileLarge {
+  aspect-ratio: 1 / 1;
+  height: 160px;
+  align-self: stretch;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 4rem;
+  flex-shrink: 0;
+  min-width: 160px;
+  max-width: 160px;
+}
+
+/* ===== UPDATED STUDENT CARD ===== */
+
+.studentCard {
+  position: relative;
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
+  box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
+  text-align: left;
+  padding: 0px;
+  cursor: default;
+}
+
+/* ===== CLOSE BUTTON ===== */
+
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1400px) {
+  .details {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .expandedLayout {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .profileLarge {
+    min-width: 120px;
+    max-width: 120px;
+    height: 120px;
+    font-size: 3rem;
+  }
 }
 
 @media (max-width: 1024px) {

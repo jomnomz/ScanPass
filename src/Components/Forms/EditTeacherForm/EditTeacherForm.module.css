@@ -180,7 +180,7 @@
   cursor: not-allowed;
 }
 
-.subjectAddRow {
+/* .subjectAddRow {
   display: flex;
   gap: 10px;
 }
@@ -224,7 +224,7 @@
 
 .subjectChip button:hover:not(:disabled) {
   color: #d32f2f;
-}
+} */
 
 .required {
   color: #FF4930;

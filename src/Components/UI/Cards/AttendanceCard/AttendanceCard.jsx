@@ -6,12 +6,10 @@ import AttendanceTableModal from '../../../Modals/AttendanceTableModal/Attendanc
 
 const AttendanceCard = ({ 
   className, 
-  subject, 
-  schoolYear, 
   initialColor = '#FFB73B'
 }) => {
   // Generate a unique key for localStorage based on class name
-  const storageKey = `attendance-card-color-${className}-${subject}`;
+  const storageKey = `attendance-card-color-${className}`;
   
   // Load color from localStorage on initial render
   const [color, setColor] = useState(() => {
@@ -81,8 +79,6 @@ const AttendanceCard = ({
           <div className={styles.classCardBottom}>
             <div className={styles.classInfo}>
               <div className={styles.classGrade}>{className}</div>
-              <div className={styles.classSubject}>{subject}</div>
-              <div className={styles.classSy}>{schoolYear}</div>
             </div>
           </div>
         </div>
@@ -129,8 +125,6 @@ const AttendanceCard = ({
         isOpen={showAttendanceModal}
         onClose={handleCloseModal}
         className={className}
-        subject={subject}
-        schoolYear={schoolYear}
       />
     </>
   );

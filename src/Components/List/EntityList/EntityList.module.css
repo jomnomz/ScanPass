@@ -109,10 +109,6 @@
   border-left: 3px solid #10b981;
 }
 
-.entityItem[data-entity-type="subject"] {
-  border-left: 3px solid #8b5cf6;
-}
-
 .entityItem[data-entity-type="gradeSection"],
 .entityItem[data-entity-type="section"] {
   border-left: 3px solid #f59e0b;

@@ -178,10 +178,9 @@ export const useGuardians = () => {
 };
 
 // ===== HELPER: Normalize teacher assignments to match expected shape =====
-// The service returns { subjects, sections, assignments }
-// The UI expects { subjects, sections, teachingAssignments }
+// The service returns { sections, assignments }
+// The UI expects { sections, teachingAssignments }
 const normalizeTeacherAssignments = (result) => ({
-  subjects: result.subjects || [],
   sections: result.sections || [],
   teachingAssignments: result.assignments || []
 });
@@ -290,7 +289,7 @@ export const useTeachers = () => {
   };
 
   const getTeacherAssignments = (teacherId) => {
-    return teacherAssignments[teacherId] || { subjects: [], sections: [], teachingAssignments: [] };
+    return teacherAssignments[teacherId] || { sections: [], teachingAssignments: [] };
   };
 
   // ===== fetch ONE teacher's assignments fresh from the DB, on demand =====
@@ -309,6 +308,7 @@ export const useTeachers = () => {
 
   const updateTeacherAssignments = async (teacherId, assignments) => {
     try {
+      // assignments now only contains sectionIds and adviserSectionId
       const result = await teacherService.updateTeacherAssignments(teacherId, assignments);
       if (result.success) {
         // Refresh assignments for this teacher

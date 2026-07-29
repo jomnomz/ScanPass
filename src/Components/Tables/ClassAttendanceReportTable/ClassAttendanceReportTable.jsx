@@ -42,7 +42,7 @@ const ClassAttendanceReportTable = ({
         if (gradeError) throw gradeError;
 
         const { data: students, error: studentsError } = await supabase
-          .from('students').select('id, lrn, first_name, last_name, middle_name')
+          .from('students').select('id, lrn, first_name, last_name')
           .eq('grade_id', gradeData.id).eq('section_id', sectionData.id);
         if (studentsError) throw studentsError;
 

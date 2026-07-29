@@ -104,10 +104,9 @@ const TeacherTable = ({
   const [editModalState, setEditModalState] = useState('closed');
   const [editingEntity, setEditingEntity] = useState(null);
   const [saveError, setSaveError] = useState('');
-  const [editLoadingId, setEditLoadingId] = useState(null); // disable Edit while fetching
+  const [editLoadingId, setEditLoadingId] = useState(null);
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
-  const [allSubjects, setAllSubjects] = useState([]);
-  const [sectionIdMap, setSectionIdMap] = useState({}); // key: `${gradeLevel}|${sectionName}` -> section.id
+  const [sectionIdMap, setSectionIdMap] = useState({});
 
   const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit, validateForm } = useEntityEdit(
   teachers, setEntities, 'teacher', refreshTeachers
@@ -118,36 +117,10 @@ const TeacherTable = ({
   const { user, profile } = useAuth();
 
   const [selectedGrade, setSelectedGrade] = useState('all');
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
 
-  const filterRef = useRef({ selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter });
-
-  // ===== FETCH ALL SUBJECTS CATALOG DIRECTLY FROM SUPABASE (including IDs) =====
-  useEffect(() => {
-    const fetchAllSubjects = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('subjects')
-          .select('id, subject_code, subject_name')
-          .order('subject_name');
-
-        if (error) throw error;
-
-        const list = (data || []).map((s) => ({
-          id: s.id,
-          code: s.subject_code,
-          name: s.subject_name,
-        }));
-        setAllSubjects(list);
-        console.log('📚 Subject catalog loaded with IDs:', list);
-      } catch (err) {
-        console.error('Error fetching subject catalog:', err);
-      }
-    };
-    fetchAllSubjects();
-  }, []);
+  const filterRef = useRef({ selectedGrade, selectedSectionFilter, selectedStatusFilter });
 
   // ===== BUILD GRADE-SECTIONS MAP AND SECTION ID MAP =====
   useEffect(() => {
@@ -164,19 +137,16 @@ const TeacherTable = ({
       sectionsData.forEach(section => {
         const gradeLevel = gradeIdToLevel[section.grade_id];
         if (gradeLevel) {
-          // For the dropdown UI
           if (!map[gradeLevel]) {
             map[gradeLevel] = [];
           }
           map[gradeLevel].push(section.section_name);
           
-          // For ID resolution
           const key = `${gradeLevel}|${section.section_name}`;
           idMap[key] = section.id;
         }
       });
       
-      // Sort sections for each grade
       Object.keys(map).forEach(grade => {
         map[grade] = map[grade].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       });
@@ -193,10 +163,9 @@ const TeacherTable = ({
 
   // Reset page when filters change
   useEffect(() => {
-    const current = { selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter };
+    const current = { selectedGrade, selectedSectionFilter, selectedStatusFilter };
     const prev = filterRef.current;
     const changed = prev.selectedGrade !== current.selectedGrade ||
-      prev.selectedSubjectFilter !== current.selectedSubjectFilter ||
       prev.selectedSectionFilter !== current.selectedSectionFilter ||
       prev.selectedStatusFilter !== current.selectedStatusFilter;
 
@@ -206,7 +175,7 @@ const TeacherTable = ({
       setFullySelectedSnapshots(new Map());
       filterRef.current = current;
     }
-  }, [selectedGrade, selectedSubjectFilter, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
+  }, [selectedGrade, selectedSectionFilter, selectedStatusFilter, onPageChange, onClearAllPages]);
 
   useEffect(() => {
     if (onTeacherDataUpdate) onTeacherDataUpdate(teachers);
@@ -218,30 +187,18 @@ const TeacherTable = ({
     return teachers.filter(teacher => 
       teacher.employee_id?.toLowerCase().includes(searchLower) ||
       teacher.first_name?.toLowerCase().includes(searchLower) ||
-      teacher.middle_name?.toLowerCase().includes(searchLower) ||
       teacher.last_name?.toLowerCase().includes(searchLower) ||
       teacher.email_address?.toLowerCase().includes(searchLower) ||
       teacher.phone_no?.toLowerCase().includes(searchLower) ||
-      teacher.status?.toLowerCase().includes(searchLower) ||
-      teacherAssignments[teacher.id]?.subjects?.some(subject => 
-        subject.subject?.subject_name?.toLowerCase().includes(searchLower) ||
-        subject.subject?.subject_code?.toLowerCase().includes(searchLower)
-      )
+      teacher.status?.toLowerCase().includes(searchLower)
     );
-  }, [teachers, searchTerm, teacherAssignments]);
+  }, [teachers, searchTerm]);
 
   const teacherGradeOptions = useMemo(() => {
     const allGrades = Object.values(teacherAssignments)
       .flatMap(a => (a.sections || []).map(s => s?.section?.grade?.grade_level))
       .filter(g => g !== null && g !== undefined && g !== '');
     return [...new Set(allGrades.map(String))].sort((a, b) => Number(a) - Number(b));
-  }, [teacherAssignments]);
-
-  const teacherSubjectOptions = useMemo(() => {
-    const allSubjects = Object.values(teacherAssignments)
-      .flatMap(a => (a.subjects || []).map(s => s?.subject?.subject_code || ''))
-      .filter(Boolean);
-    return [...new Set(allSubjects)].sort((a, b) => a.localeCompare(b));
   }, [teacherAssignments]);
 
   const teacherSectionOptions = useMemo(() => {
@@ -264,15 +221,13 @@ const TeacherTable = ({
       const assignments = teacherAssignments[teacher.id] || {};
       const gradeLevels = (assignments.sections || []).map(s => String(s?.section?.grade?.grade_level || '')).filter(Boolean);
       const sectionNames = (assignments.sections || []).map(s => s?.section?.section_name || '').filter(Boolean);
-      const subjectNames = (assignments.subjects || []).map(s => String(s?.subject?.subject_code || '').trim()).filter(Boolean);
 
       if (selectedGrade !== 'all' && !gradeLevels.includes(String(selectedGrade))) return false;
       if (selectedSectionFilter && !sectionNames.includes(selectedSectionFilter)) return false;
-      if (selectedSubjectFilter && !subjectNames.includes(selectedSubjectFilter)) return false;
       if (selectedStatusFilter && String(teacher.status || '').toLowerCase() !== selectedStatusFilter.toLowerCase()) return false;
       return true;
     });
-  }, [searchFilteredTeachers, teacherAssignments, selectedGrade, selectedSectionFilter, selectedSubjectFilter, selectedStatusFilter]);
+  }, [searchFilteredTeachers, teacherAssignments, selectedGrade, selectedSectionFilter, selectedStatusFilter]);
 
   const sortedTeachers = useMemo(() => sortTeachers(filteredTeachers, teacherAssignments), [filteredTeachers, teacherAssignments]);
 
@@ -408,7 +363,7 @@ const TeacherTable = ({
     if (shouldHandleRowClick(editingTeacher, e.target)) toggleRow(teacherId);
   };
 
-  // ===== HELPER: Build teacher edit data with assignments/subjects =====
+  // ===== HELPER: Build teacher edit data with assignments =====
   const buildTeacherEditData = (teacher, assignmentsDataOverride) => {
     const assignmentsData = assignmentsDataOverride || teacherAssignments[teacher.id] || {};
 
@@ -421,20 +376,13 @@ const TeacherTable = ({
       }))
       .filter((row) => row.grade && row.section);
 
-    const subjects = (assignmentsData.subjects || [])
-      .map((s) => ({
-        id: `existing-${s.subject_id ?? Math.random()}`,
-        code: s.subject?.subject_code || '',
-      }))
-      .filter((row) => row.code);
-
-    return { ...teacher, assignments, subjects };
+    return { ...teacher, assignments };
   };
 
   // ===== UPDATED: Open modal with fresh data =====
   const handleEditClick = async (teacher, e) => {
     e.stopPropagation();
-    if (editLoadingId) return; // guard against double-clicks
+    if (editLoadingId) return;
 
     setEditLoadingId(teacher.id);
     try {
@@ -473,22 +421,17 @@ const TeacherTable = ({
 
   const errors = validateForm();
   if (Object.keys(errors).length > 0) {
-    // Don't proceed — validateForm() already populated validationErrors,
-    // and EditTeacherForm renders each one under its corresponding field.
     return;
   }
 
   performTeacherUpdate(teacher.id);
 };
 
-  // ===== FIXED: performTeacherUpdate now saves assignments too =====
+  // ===== FIXED: performTeacherUpdate now saves assignments only =====
   const performTeacherUpdate = async (teacherId) => {
-    // CRITICAL: Capture form data BEFORE saveEdit can reset it
     const capturedAssignments = [...(editFormData.assignments || [])];
-    const capturedSubjects = [...(editFormData.subjects || [])];
     
     console.log('📝 Captured assignments for save:', capturedAssignments);
-    console.log('📝 Captured subjects for save:', capturedSubjects);
     
     try {
       // 1. Update basic teacher info
@@ -499,7 +442,6 @@ const TeacherTable = ({
           const updateData = {
             employee_id: data.employee_id,
             first_name: data.first_name,
-            middle_name: data.middle_name,
             last_name: data.last_name,
             email_address: data.email_address,
             phone_no: data.phone_no,
@@ -509,8 +451,6 @@ const TeacherTable = ({
           
           console.log('💾 Updating teacher basic info:', updateData);
           
-          // Use the teacherService from the hook's internal state
-          // We need to use the hook's update method or create a new service instance
           const { TeacherService } = await import('../../../Utils/EntityService');
           const teacherService = new TeacherService();
           const result = await teacherService.update(id, updateData);
@@ -525,16 +465,7 @@ const TeacherTable = ({
       }
       
       // 2. Now handle assignments using captured data
-      console.log('📋 Processing assignments:', { capturedAssignments, capturedSubjects });
-      
-      const subjectIds = capturedSubjects
-        .map(row => {
-          const subject = allSubjects.find(s => s.code === row.code);
-          return subject?.id;
-        })
-        .filter(Boolean);
-      
-      console.log('📚 Resolved subject IDs:', subjectIds);
+      console.log('📋 Processing assignments:', capturedAssignments);
       
       const sectionIds = capturedAssignments
         .map(row => {
@@ -554,7 +485,6 @@ const TeacherTable = ({
       
       // 3. Update teacher assignments using the hook's method
       const assignResult = await updateTeacherAssignmentsViaHook(teacherId, {
-        subjectIds,
         sectionIds,
         adviserSectionId
       });
@@ -618,10 +548,7 @@ const TeacherTable = ({
 
   const getTeacherAssignments = (teacherId) => {
     const assignments = teacherAssignments[teacherId] || {};
-    const subjects = assignments.subjects?.map(s => String(s.subject?.subject_name || '').trim())
-      .filter(name => name && name !== 'Unknown').join(', ') || 'None';
 
-    // Get teaching sections as an array for wrapped display
     const teachingSectionsArray = assignments.teachingAssignments?.map(assignment => {
       const section = assignments.sections?.find(s => s.section_id === assignment.section_id);
       if (section?.section) {
@@ -635,8 +562,7 @@ const TeacherTable = ({
       `Grade ${adviserSection.section.grade?.grade_level || '?'}-${adviserSection.section.section_name || '?'}` : 
       'None';
 
-    // Return the array separately so it can be rendered with wrapping
-    return { subjects, teachingSectionsArray, teachingSections: teachingSectionsArray.join(', ') || 'None', adviserDisplay };
+    return { teachingSectionsArray, teachingSections: teachingSectionsArray.join(', ') || 'None', adviserDisplay };
   };
 
   const getTeacherFilterData = (teacher) => {
@@ -646,10 +572,9 @@ const TeacherTable = ({
       .filter(item => item.sectionName);
 
     const gradeLevels = [...new Set(sections.map(s => s.gradeLevel).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
-    const subjects = [...new Set((assignments.subjects || []).map(s => String(s?.subject?.subject_code || '').trim()).filter(Boolean))];
     const primarySection = sections.find(s => s.isAdviser) || sections[0] || null;
 
-    return { sections, gradeLevels, subjects, primarySection };
+    return { sections, gradeLevels, primarySection };
   };
 
   const handleDeactivateClick = async (teacher) => {
@@ -782,7 +707,6 @@ const TeacherTable = ({
 
   const renderField = (teacher, fieldName) => {
     if (fieldName === 'status') return renderStatusBadge(teacher.status);
-    // email_address and phone_no now render in the dedicated CONTACT column
     if (fieldName === 'email_address' || fieldName === 'phone_no') {
       return formatNA(teacher[fieldName]);
     }
@@ -847,14 +771,12 @@ const TeacherTable = ({
               <div>
                 <div className={styles.teacherInfo}><strong>Teacher Details</strong></div>
                 <div className={styles.teacherInfo}>Employee ID: {teacher.employee_id}</div>
-                <div className={styles.teacherInfo}>Full Name: {formatTeacherName(teacher)}</div>
                 <div className={styles.teacherInfo}>Email: {formatNA(teacher.email_address)}</div>
                 <div className={styles.teacherInfo}>Phone: {formatNA(teacher.phone_no)}</div>
                 <div className={styles.teacherInfo}>Status: {formatStatusText(teacher.status)}</div>
               </div>
               <div>
                 <div className={styles.teacherInfo}><strong>Teaching Assignments</strong></div>
-                <div className={styles.teacherInfo}>Subjects: {assignments.subjects}</div>
                 <div className={styles.teacherInfo}>
                   Teaching Sections:{' '}
                   <span className={styles.teachingSectionsContainer}>
@@ -863,7 +785,6 @@ const TeacherTable = ({
                         <React.Fragment key={index}>
                           {index > 0 && ', '}
                           <span className={styles.sectionItem}>{section}</span>
-                          {/* Add line break after every 3 sections for visual grouping */}
                           {(index + 1) % 3 === 0 && index < assignments.teachingSectionsArray.length - 1 && (
                             <br />
                           )}
@@ -899,7 +820,6 @@ const TeacherTable = ({
 
   const withColumnWidth = (width, minWidth) => ({ width, minWidth: `${minWidth}px` });
 
-  // ===== UPDATED COLUMNS: Replaced profile/employee_id/first_name/last_name/email_address with teacher + contact =====
   const columns = [
     {
       key: 'select', 
@@ -933,8 +853,8 @@ const TeacherTable = ({
     {
       key: 'teacher',
       label: 'TEACHER',
-      headerStyle: withColumnWidth('26%', 200),
-      cellStyle: withColumnWidth('26%', 200),
+      headerStyle: withColumnWidth('30%', 200),
+      cellStyle: withColumnWidth('30%', 200),
       renderCell: ({ row }) => (
         <div className={styles.teacherCell}>
           {renderProfileCircle(row, styles.profileSmall)}
@@ -952,8 +872,8 @@ const TeacherTable = ({
     {
       key: 'contact',
       label: 'CONTACT',
-      headerStyle: { ...withColumnWidth('18%', 160), textAlign: 'left' },
-      cellStyle: { ...withColumnWidth('18%', 160), textAlign: 'left' },
+      headerStyle: { ...withColumnWidth('20%', 160), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('20%', 160), textAlign: 'left' },
       renderCell: ({ row }) => (
         <div className={styles.contactCell}>
           <div className={styles.contactRow}>
@@ -970,45 +890,26 @@ const TeacherTable = ({
     {
       key: 'grade', 
       label: 'GRADE', 
-      headerStyle: { ...withColumnWidth('8%', 80), textAlign: 'left' },
-      cellStyle: { ...withColumnWidth('8%', 80), textAlign: 'left' },
+      headerStyle: { ...withColumnWidth('10%', 80), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('10%', 80), textAlign: 'left' },
+      renderHeader: () => (
+        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
+          <span>GRADE</span>
+          <EntityDropdown options={teacherGradeOptions} selectedValue={selectedGrade}
+            onSelect={(value) => { setSelectedGrade(value); onPageChange(1); }}
+            allLabel="All Grades" buttonTitle="Filter by grade" />
+        </div>
+      ),
       renderCell: ({ row }) => {
         const teacherData = getTeacherFilterData(row);
         return teacherData.gradeLevels.length > 0 ? teacherData.gradeLevels.join(' | ') : 'N/A';
       }
     },
     {
-      key: 'subject', 
-      label: 'SUBJECT', 
-      headerStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
-      cellStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
-      renderHeader: () => (
-        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
-          <span>SUBJECT</span>
-          <EntityDropdown options={teacherSubjectOptions} selectedValue={selectedSubjectFilter}
-            onSelect={(value) => { setSelectedSubjectFilter(value); onPageChange(1); }}
-            allLabel="All Subjects" buttonTitle="Filter by subject" />
-        </div>
-      ),
-      renderCell: ({ row }) => {
-        const teacherData = getTeacherFilterData(row);
-        const subjects = teacherData.subjects;
-        if (subjects.length === 0) return 'N/A';
-        const displaySubject = selectedSubjectFilter && subjects.includes(selectedSubjectFilter) ? selectedSubjectFilter : subjects[0];
-        const remainingCount = Math.max(subjects.length - 1, 0);
-        return (
-          <div className={styles.entityCellWithBadge} style={{ justifyContent: 'flex-start' }}>
-            <span>{displaySubject}</span>
-            {remainingCount > 0 && <span className={styles.entityCountBadge} title="Click row to see all subjects">+{remainingCount}</span>}
-          </div>
-        );
-      }
-    },
-    {
       key: 'section', 
       label: 'SECTION', 
-      headerStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
-      cellStyle: { ...withColumnWidth('12%', 130), textAlign: 'left' },
+      headerStyle: { ...withColumnWidth('15%', 130), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('15%', 130), textAlign: 'left' },
       renderHeader: () => (
         <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
           <span>SECTION</span>
@@ -1133,7 +1034,6 @@ const TeacherTable = ({
           onFieldChange={updateEditField}
           validationErrors={validationErrors}
           gradeSectionsMap={gradeSectionsMap}
-          availableSubjects={allSubjects}
           disabled={saving}
         />
       </EditEntityFormModal>

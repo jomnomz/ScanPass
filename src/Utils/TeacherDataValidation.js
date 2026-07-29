@@ -44,10 +44,6 @@ export const validateAndNormalizeTeacher = (cleanedTeacher, options = {}) => {
     errors.last_name = 'Last name must be 100 characters or less';
   }
 
-  if (teacher.middle_name && teacher.middle_name.trim().length > 100) {
-    errors.middle_name = 'Middle name must be 100 characters or less';
-  }
-
   // ---- Email (validate once, use the formatted value only if valid) ----
   if (teacher.email_address) {
     const result = validateAndFormatEmail(teacher.email_address);

@@ -385,7 +385,7 @@
 
 .profileLarge {
   aspect-ratio: 1 / 1;
-  height: 180px;
+  height: 160px;
   align-self: stretch;
   border-radius: 50%;
   display: flex;
@@ -394,7 +394,7 @@
   font-weight: 700;
   font-size: 4rem;
   flex-shrink: 0;
-  min-width: 180px;
+  min-width: 170px;
   max-width: 150px;
 }
 

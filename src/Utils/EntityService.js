@@ -118,25 +118,7 @@ export class TeacherService extends EntityService {
     return data;
   }
 
-  // NEW: Get teacher's assigned subjects - UPDATED
-  async getTeacherSubjects(teacherId) {
-    const { data, error } = await supabase
-      .from('teacher_subjects')
-      .select(`
-        subject_id,
-        subject:subjects(subject_code, subject_name)
-      `)
-      .eq('teacher_id', teacherId);
-    
-    if (error) {
-      console.error('Error fetching teacher subjects:', error);
-      return { data: [], error };
-    }
-    
-    return { data: data || [], error: null };
-  }
-
-  // NEW: Get teacher's assigned sections - UPDATED
+  // Get teacher's assigned sections
   async getTeacherSections(teacherId) {
     const { data, error } = await supabase
       .from('teacher_sections')
@@ -159,55 +141,24 @@ export class TeacherService extends EntityService {
     return { data: data || [], error: null };
   }
 
-  // NEW: Get teacher's subject-section assignments - UPDATED
-  async getTeacherSubjectSections(teacherId) {
-    const { data, error } = await supabase
-      .from('teacher_subject_sections')
-      .select(`
-        subject_id,
-        section_id,
-        subject:subjects(subject_code, subject_name),
-        section:sections(
-          section_name,
-          grade:grades(grade_level)
-        )
-      `)
-      .eq('teacher_id', teacherId);
-    
-    if (error) {
-      console.error('Error fetching teacher subject-sections:', error);
-      return { data: [], error };
-    }
-    
-    return { data: data || [], error: null };
-  }
-
-  // NEW: Get teacher's complete assignments - UPDATED
+  // Get teacher's complete assignments (sections only)
   async getTeacherAssignments(teacherId) {
     try {
-      const [subjectsResult, sectionsResult, assignmentsResult] = await Promise.all([
-        this.getTeacherSubjects(teacherId),
-        this.getTeacherSections(teacherId),
-        this.getTeacherSubjectSections(teacherId)
-      ]);
+      const sectionsResult = await this.getTeacherSections(teacherId);
 
       console.log('📊 Teacher assignments fetched:', {
         teacherId,
-        subjects: subjectsResult.data?.length || 0,
-        sections: sectionsResult.data?.length || 0,
-        assignments: assignmentsResult.data?.length || 0
+        sections: sectionsResult.data?.length || 0
       });
 
       return {
-        subjects: subjectsResult.data || [],
         sections: sectionsResult.data || [],
-        assignments: assignmentsResult.data || [],
+        assignments: sectionsResult.data || [], // For backward compatibility
         error: null
       };
     } catch (error) {
       console.error('Error fetching teacher assignments:', error);
       return {
-        subjects: [],
         sections: [],
         assignments: [],
         error
@@ -215,20 +166,12 @@ export class TeacherService extends EntityService {
     }
   }
 
-  // NEW: Update teacher assignments - FIXED to always delete first
+  // Update teacher assignments (sections only)
   async updateTeacherAssignments(teacherId, assignments) {
     try {
-      // ALWAYS delete existing assignments first (clears everything)
+      // ALWAYS delete existing assignments first
       
-      // 1. Delete all subject assignments
-      const { error: deleteSubjectsError } = await supabase
-        .from('teacher_subjects')
-        .delete()
-        .eq('teacher_id', teacherId);
-      
-      if (deleteSubjectsError) throw deleteSubjectsError;
-
-      // 2. Delete all section assignments
+      // 1. Delete all section assignments
       const { error: deleteSectionsError } = await supabase
         .from('teacher_sections')
         .delete()
@@ -236,29 +179,7 @@ export class TeacherService extends EntityService {
       
       if (deleteSectionsError) throw deleteSectionsError;
 
-      // 3. Delete all subject-section assignments
-      const { error: deleteAssignmentsError } = await supabase
-        .from('teacher_subject_sections')
-        .delete()
-        .eq('teacher_id', teacherId);
-      
-      if (deleteAssignmentsError) throw deleteAssignmentsError;
-
-      // 4. Insert new subject assignments (if any)
-      if (assignments.subjectIds && assignments.subjectIds.length > 0) {
-        const subjectAssignments = assignments.subjectIds.map(subjectId => ({
-          teacher_id: teacherId,
-          subject_id: subjectId
-        }));
-        
-        const { error: subjectsError } = await supabase
-          .from('teacher_subjects')
-          .insert(subjectAssignments);
-        
-        if (subjectsError) throw subjectsError;
-      }
-
-      // 5. Insert new section assignments with adviser flag (if any)
+      // 2. Insert new section assignments with adviser flag (if any)
       if (assignments.sectionIds && assignments.sectionIds.length > 0) {
         const sectionAssignments = assignments.sectionIds.map(sectionId => ({
           teacher_id: teacherId,
@@ -273,27 +194,6 @@ export class TeacherService extends EntityService {
         if (sectionsError) throw sectionsError;
       }
 
-      // 6. Insert new subject-section assignments (if both exist)
-      if (assignments.subjectIds?.length > 0 && assignments.sectionIds?.length > 0) {
-        const teachingAssignments = [];
-        
-        assignments.subjectIds.forEach(subjectId => {
-          assignments.sectionIds.forEach(sectionId => {
-            teachingAssignments.push({
-              teacher_id: teacherId,
-              subject_id: subjectId,
-              section_id: sectionId
-            });
-          });
-        });
-        
-        const { error: assignmentsError } = await supabase
-          .from('teacher_subject_sections')
-          .insert(teachingAssignments);
-        
-        if (assignmentsError) throw assignmentsError;
-      }
-
       return { success: true, message: 'Teacher assignments updated successfully' };
     } catch (error) {
       console.error('Error updating teacher assignments:', error);
@@ -302,7 +202,7 @@ export class TeacherService extends EntityService {
   }
 }
 
-// Student-specific service - UPDATED WITH PROPER SYNC BETWEEN TEXT AND FOREIGN KEYS
+// Student-specific service
 export class StudentService extends EntityService {
   constructor() {
     super('students');
@@ -342,10 +242,7 @@ export class StudentService extends EntityService {
     
     if (error) throw error;
     
-    // Transform data - prioritize text fields for display
     const transformedData = (data || []).map(student => {
-      // Use text fields first (these are what Excel uploads use)
-      // If text fields are empty, use the relational data
       const gradeText = student.grade || student.grade_info?.grade_level || 'N/A';
       const sectionText = student.section || student.section_info?.section_name || 'N/A';
       
@@ -353,10 +250,8 @@ export class StudentService extends EntityService {
         ...student,
         grade: gradeText,
         section: sectionText,
-        // Keep the foreign keys
         grade_id: student.grade_id,
         section_id: student.section_id,
-        // Also keep the relational data for reference
         grade_info: student.grade_info,
         section_info: student.section_info
       };
@@ -396,11 +291,10 @@ export class StudentService extends EntityService {
           last_name
         )
       `)
-      .eq('grade', grade); // Filter by text field
+      .eq('grade', grade);
     
     if (error) throw error;
     
-    // Transform data - prioritize text fields for display
     const transformedData = (data || []).map(student => {
       const gradeText = student.grade || student.grade_info?.grade_level || 'N/A';
       const sectionText = student.section || student.section_info?.section_name || 'N/A';
@@ -422,14 +316,10 @@ export class StudentService extends EntityService {
   async update(id, updates) {
     console.log('🔄 StudentService.update() called with:', { id, updates });
     
-    // Prepare final updates with sync between text fields and foreign keys
     let finalUpdates = { ...updates };
     
-    // SYNC LOGIC: Keep text fields and foreign keys in sync
-    
-    // 1. If grade_id is being updated, update the text grade field too
+    // Sync grade text with grade_id
     if (updates.grade_id !== undefined && updates.grade_id !== null) {
-      console.log('🔍 Fetching grade text for grade_id:', updates.grade_id);
       const { data: grade, error: gradeError } = await supabase
         .from('grades')
         .select('grade_level')
@@ -439,13 +329,9 @@ export class StudentService extends EntityService {
       if (gradeError) {
         console.error('❌ Error fetching grade:', gradeError);
       } else if (grade) {
-        finalUpdates.grade = grade.grade_level; // Sync text field
-        console.log('✅ Synced grade text to:', grade.grade_level);
+        finalUpdates.grade = grade.grade_level;
       }
-    } 
-    // 2. If grade (text) is being updated, find the matching grade_id
-    else if (updates.grade !== undefined && updates.grade !== null && updates.grade !== '') {
-      console.log('🔍 Finding grade_id for grade text:', updates.grade);
+    } else if (updates.grade !== undefined && updates.grade !== null && updates.grade !== '') {
       const { data: grade, error: gradeError } = await supabase
         .from('grades')
         .select('id')
@@ -455,18 +341,14 @@ export class StudentService extends EntityService {
       if (gradeError) {
         console.error('❌ Error finding grade:', gradeError);
       } else if (grade) {
-        finalUpdates.grade_id = grade.id; // Sync foreign key
-        console.log('✅ Found grade_id:', grade.id, 'for grade:', updates.grade);
+        finalUpdates.grade_id = grade.id;
       } else {
-        console.error('❌ Grade not found for text:', updates.grade);
-        // Keep grade text but set grade_id to null
         finalUpdates.grade_id = null;
       }
     }
     
-    // 3. If section_id is being updated, update the text section field too
+    // Sync section text with section_id
     if (updates.section_id !== undefined && updates.section_id !== null) {
-      console.log('🔍 Fetching section text for section_id:', updates.section_id);
       const { data: section, error: sectionError } = await supabase
         .from('sections')
         .select('section_name')
@@ -476,17 +358,12 @@ export class StudentService extends EntityService {
       if (sectionError) {
         console.error('❌ Error fetching section:', sectionError);
       } else if (section) {
-        finalUpdates.section = section.section_name; // Sync text field
-        console.log('✅ Synced section text to:', section.section_name);
+        finalUpdates.section = section.section_name;
       }
-    } 
-    // 4. If section (text) is being updated, we need grade_id to find the correct section
-    else if (updates.section !== undefined && updates.section !== null && updates.section !== '') {
-      // We need grade_id to find the correct section
+    } else if (updates.section !== undefined && updates.section !== null && updates.section !== '') {
       const gradeId = finalUpdates.grade_id;
       
       if (gradeId) {
-        console.log('🔍 Finding section_id for section text:', updates.section, 'in grade_id:', gradeId);
         const { data: section, error: sectionError } = await supabase
           .from('sections')
           .select('id')
@@ -497,21 +374,15 @@ export class StudentService extends EntityService {
         if (sectionError && sectionError.code !== 'PGRST116') {
           console.error('❌ Error finding section:', sectionError);
         } else if (section) {
-          finalUpdates.section_id = section.id; // Sync foreign key
-          console.log('✅ Found section_id:', section.id, 'for section:', updates.section);
+          finalUpdates.section_id = section.id;
         } else {
-          console.error('❌ Section not found for text:', updates.section, 'in grade_id:', gradeId);
-          // Keep section text but set section_id to null
           finalUpdates.section_id = null;
         }
       } else {
-        console.log('⚠️ Cannot find section without grade_id');
-        // Keep section text but set section_id to null
         finalUpdates.section_id = null;
       }
     }
     
-    // Clean up: remove any undefined or null values that might cause errors
     Object.keys(finalUpdates).forEach(key => {
       if (finalUpdates[key] === undefined || finalUpdates[key] === '') {
         finalUpdates[key] = null;
@@ -520,7 +391,6 @@ export class StudentService extends EntityService {
     
     console.log('💾 Final updates to save:', finalUpdates);
     
-    // Perform the update
     const { data, error } = await supabase
       .from(this.tableName)
       .update(finalUpdates)
@@ -562,10 +432,8 @@ export class StudentService extends EntityService {
     
     console.log('✅ Student updated successfully:', data);
     
-    // Transform the single student record
-    const transformedStudent = {
+    return {
       ...data,
-      // Use text fields for display (they should now be synced)
       grade: data.grade || data.grade_info?.grade_level || 'N/A',
       section: data.section || data.section_info?.section_name || 'N/A',
       grade_id: data.grade_id,
@@ -573,8 +441,6 @@ export class StudentService extends EntityService {
       grade_info: data.grade_info,
       section_info: data.section_info
     };
-    
-    return transformedStudent;
   }
 
   async generateTokenForStudent(id) {
@@ -582,12 +448,10 @@ export class StudentService extends EntityService {
     return this.update(id, { qr_verification_token: token });
   }
   
-  // NEW: Method to sync ALL students' text fields with foreign keys
   async syncAllStudentsTextFields() {
     console.log('🔄 Starting sync of all students text fields with foreign keys...');
     
     try {
-      // Get all students with their current data
       const { data: students, error: fetchError } = await supabase
         .from(this.tableName)
         .select('*');
@@ -597,13 +461,11 @@ export class StudentService extends EntityService {
       let updatedCount = 0;
       let errorCount = 0;
       
-      // Update each student
       for (const student of students) {
         try {
           const updates = {};
           let needsUpdate = false;
           
-          // Sync grade text from grade_id
           if (student.grade_id) {
             const { data: grade } = await supabase
               .from('grades')
@@ -617,7 +479,6 @@ export class StudentService extends EntityService {
             }
           }
           
-          // Sync section text from section_id
           if (student.section_id) {
             const { data: section } = await supabase
               .from('sections')
@@ -631,7 +492,6 @@ export class StudentService extends EntityService {
             }
           }
           
-          // Update if needed
           if (needsUpdate) {
             await supabase
               .from(this.tableName)
@@ -657,10 +517,10 @@ export class StudentService extends EntityService {
   }
 }
 
-// Guardian service - UPDATED TO USE TRANSFORMED DATA
+// Guardian service
 export class GuardianService extends EntityService {
   constructor() {
-    super('students'); // Still uses students table but transforms data
+    super('students');
   }
 
   async fetchAll() {
@@ -675,7 +535,6 @@ export class GuardianService extends EntityService {
         grade_id,
         section_id,
         guardian_first_name,
-        guardian_middle_name,
         guardian_last_name,
         guardian_phone_number,
         guardian_email,
@@ -691,7 +550,6 @@ export class GuardianService extends EntityService {
     
     if (error) throw error;
     
-    // Transform data first, then convert to guardian format
     const transformedData = (data || []).map(student => {
       const gradeText = student.grade || student.grade_info?.grade_level || 'N/A';
       const sectionText = student.section || student.section_info?.section_name || 'N/A';
@@ -718,7 +576,6 @@ export class GuardianService extends EntityService {
         grade_id,
         section_id,
         guardian_first_name,
-        guardian_middle_name,
         guardian_last_name,
         guardian_phone_number,
         guardian_email,
@@ -735,7 +592,6 @@ export class GuardianService extends EntityService {
     
     if (error) throw error;
     
-    // Transform data first, then convert to guardian format
     const transformedData = (data || []).map(student => {
       const gradeText = student.grade || student.grade_info?.grade_level || 'N/A';
       const sectionText = student.section || student.section_info?.section_name || 'N/A';
@@ -753,7 +609,6 @@ export class GuardianService extends EntityService {
   async updateGuardian(studentId, guardianData) {
     const updates = {
       guardian_first_name: guardianData.first_name,
-      guardian_middle_name: guardianData.middle_name,
       guardian_last_name: guardianData.last_name,
       guardian_phone_number: guardianData.phone_number,
       guardian_email: guardianData.email
@@ -778,7 +633,6 @@ export class GuardianService extends EntityService {
     
     if (error) throw error;
     
-    // Transform the updated student
     const transformedStudent = {
       ...data,
       grade: data.grade || data.grade_info?.grade_level || 'N/A',
@@ -792,7 +646,6 @@ export class GuardianService extends EntityService {
     return students.map(student => ({
       id: student.id,
       first_name: student.guardian_first_name,
-      middle_name: student.guardian_middle_name,
       last_name: student.guardian_last_name,
       phone_number: student.guardian_phone_number,
       email: student.guardian_email,

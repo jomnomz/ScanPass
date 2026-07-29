@@ -5,7 +5,6 @@ import { useAuth } from '../Authentication/AuthProvider/AuthProvider';
 export const useTeacherClasses = () => {
   const [teacherClasses, setTeacherClasses] = useState([]);
   const [teacherSections, setTeacherSections] = useState([]);
-  const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherSchedule, setTeacherSchedule] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,13 +61,13 @@ export const useTeacherClasses = () => {
     const teacherId = teacherData.id;
     console.log('Processing teacher data for ID:', teacherId);
 
-    const { data: teacherSubjectsData, error: subjectsError } = await supabase
-      .from('teacher_subject_sections')
+    // Fetch teacher sections from teacher_sections table 
+    const { data: teacherSectionsData, error: sectionsError } = await supabase
+      .from('teacher_sections')
       .select(`
         id,
-        subject_id,
         section_id,
-        subject:subjects(subject_code, subject_name),
+        is_adviser,
         section:sections(
           id,
           section_name,
@@ -77,45 +76,39 @@ export const useTeacherClasses = () => {
       `)
       .eq('teacher_id', teacherId);
 
-    if (subjectsError) {
-      console.error('Error fetching teacher subjects:', subjectsError);
+    if (sectionsError) {
+      console.error('Error fetching teacher sections:', sectionsError);
       return;
     }
 
-    console.log('Teacher subjects data:', teacherSubjectsData);
+    console.log('Teacher sections data:', teacherSectionsData);
 
-    const classes = teacherSubjectsData?.map(item => ({
+    // Format sections as classes
+    const classes = teacherSectionsData?.map(item => ({
       id: item.id,
-      subject_id: item.subject_id,
-      subject_code: item.subject?.subject_code,
-      subject_name: item.subject?.subject_name,
       section_id: item.section_id,
       section_name: item.section?.section_name,
       grade_id: item.section?.grade?.id,
       grade_level: item.section?.grade?.grade_level,
+      is_adviser: item.is_adviser || false,
       display_name: `${item.section?.grade?.grade_level?.replace('Grade ', '') || ''}-${item.section?.section_name || ''}`
     })) || [];
 
     console.log('Formatted classes:', classes);
     setTeacherClasses(classes);
 
+    // Set unique sections
     const uniqueSections = [...new Map(classes.map(cls => [cls.section_id, {
       section_id: cls.section_id,
       section_name: cls.section_name,
       grade_id: cls.grade_id,
-      grade_level: cls.grade_level
+      grade_level: cls.grade_level,
+      is_adviser: cls.is_adviser
     }])).values()];
     
     setTeacherSections(uniqueSections);
 
-    const uniqueSubjects = [...new Map(classes.map(cls => [cls.subject_id, {
-      subject_id: cls.subject_id,
-      subject_code: cls.subject_code,
-      subject_name: cls.subject_name
-    }])).values()];
-    
-    setTeacherSubjects(uniqueSubjects);
-
+    // Fetch grade schedules for the sections
     if (uniqueSections.length > 0) {
       const gradeIds = [...new Set(uniqueSections.map(section => section.grade_id).filter(Boolean))];
       
@@ -170,11 +163,9 @@ export const useTeacherClasses = () => {
     }
 
     console.log('✅ Teacher data loaded successfully');
-    console.log('- Classes:', classes.length);
-    console.log('- Sections:', uniqueSections.length);
-    console.log('- Subjects:', uniqueSubjects.length);
+    console.log('- Classes (sections):', classes.length);
+    console.log('- Unique Sections:', uniqueSections.length);
     console.log('- Schedule entries:', teacherSchedule.length);
-    console.log('- Schedule data:', teacherSchedule);
   };
 
   useEffect(() => {
@@ -188,7 +179,7 @@ export const useTeacherClasses = () => {
           {
             event: '*',
             schema: 'public',
-            table: 'teacher_subject_sections'
+            table: 'teacher_sections'
           },
           () => {
             fetchTeacherData();
@@ -216,7 +207,6 @@ export const useTeacherClasses = () => {
   return {
     teacherClasses,
     teacherSections,
-    teacherSubjects,
     teacherSchedule,
     loading,
     error,

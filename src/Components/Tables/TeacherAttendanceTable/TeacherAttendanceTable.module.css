@@ -16,10 +16,9 @@
 
 .summaryHeader {
   display: flex;
-  justify-content: flex-start;  /* was space-between */
+  justify-content: flex-start;
   align-items: flex-start;
-  gap: 16px;  /* space between label and chips */
-  
+  gap: 16px;
 }
 
 .pageTitle{
@@ -59,7 +58,6 @@
   color: #42536d;
 }
 
-/* ── Controls row: search + calendar close together ── */
 .controlsRow {
   display: flex;
   align-items: center;
@@ -81,13 +79,11 @@
   flex: 0 0 auto;
 }
 
-/* ── Calendar wrapper (positioning for dropdown) ── */
 .calendarWrapper {
   position: relative;
   display: inline-block;
 }
 
-/* ── Calendar trigger button inner layout ── */
 .calendarTriggerInner {
   display: flex;
   align-items: center;
@@ -105,7 +101,6 @@
   font-weight: 400;
 }
 
-/* ── Calendar dropdown ── */
 .calendarDropdown {
   position: absolute;
   z-index: 100;
@@ -114,7 +109,6 @@
   left: auto;
 }
 
-/* ── Keep old dateSelector styles for backward compat ── */
 .dateSelector {
   display: flex;
   align-items: center;
@@ -191,7 +185,7 @@
 }
 
 .statCard {
-  background-color: #ffffff; /* transparent !important */
+  background-color: #ffffff;
   border: solid 1px #CACED6;
   box-shadow: 0 2px 10px rgba(207, 207, 207, 0.1);
   border-radius: 14px;
@@ -227,7 +221,6 @@
   color: #bc4749;
 }
 
-/* ── Section Tab Bar — floating between stats and table ── */
 .sectionTabBar {
   display: flex;
   align-items: center;
@@ -304,15 +297,12 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-
 }
 
 .statusHeader span {
   font-weight: 800;
   white-space: nowrap;
 }
-
-/* REPLACE the current statusPill block with this */
 
 .status {
   display: inline-block;
@@ -327,27 +317,347 @@
 }
 
 .statusPresent {
-  background-color: #10b981; /* Green - matches Active status */
+  background-color: #10b981;
 }
 
 .statusLate {
-  background-color: #f59e0b; /* Orange/Amber - matches Pending status */
+  background-color: #f59e0b;
 }
 
 .statusAbsent {
-  background-color: #ef4444; /* Red - matches Inactive status */
+  background-color: #ef4444;
 }
-/* ── Responsive ── */
+
+.studentCellContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.studentCellText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studentCellName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a2332;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentCellLrn {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.profileSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.profileLarge {
+  aspect-ratio: 1 / 1;
+  height: 160px;
+  align-self: stretch;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 4rem;
+  flex-shrink: 0;
+  min-width: 170px;
+  max-width: 150px;
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.editCell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.icon {
+  font-size: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.icon svg {
+  transition: color 0.2s;
+  color: #6C757D;
+}
+
+.icon svg:hover {
+  color: white;
+}
+
+.editingRow {
+  cursor: default !important;
+}
+
+.editingRow:hover {
+  background-color: inherit !important;
+}
+
+.timeInputContainer {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  justify-content: center;
+}
+
+.timeInput {
+  flex: 1;
+  padding: 2px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  height: 26px;
+  min-width: 88px;
+  max-width: 104px;
+}
+
+.timeInput:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.timeInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  filter: invert(0.5);
+}
+
+.timeInput::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.clearTimeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  color: #dc3545;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.clearTimeButton:hover {
+  background-color: #ffebee;
+  color: #c82333;
+}
+
+.clearTimeButton svg {
+  font-size: 12px;
+}
+
+.timeCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.timeDisplay {
+  padding: 4px 8px;
+  font-family: monospace;
+  font-weight: 500;
+  font-size: 13px;
+  color: #333;
+  min-width: 100px;
+}
+
+.errorMessage {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.attendanceCard {
+  position: relative;
+  background-color: #edf7f3;
+  border: 1px solid #cae6dd;
+  box-shadow: 0 12px 28px rgba(15, 35, 58, 0.08);
+  text-align: left;
+  padding: 0px;
+  cursor: default;
+}
+
+.expandableCard {
+  max-height: 0;
+  padding: 0 20px;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  transform: scaleY(0.8);
+  transform-origin: top;
+}
+
+.expandRowActive .expandableCard {
+  max-height: 500px;
+  padding: 20px 20px 20px;
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.expandedLayout {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendanceHeader {
+  font-weight: bold;
+  font-size: 30px;
+  margin-bottom: 10px;
+  margin-top: 0;
+}
+
+.details {
+  display: flex;
+  flex-direction: row;
+  gap: 50px;
+}
+
+.attendanceInfo {
+  font-size: 15px;
+  margin: 4px 0;
+}
+
+.attendanceInfo strong {
+  font-weight: 600;
+  color: #1a2a3a;
+}
+
+.expandRow {
+  height: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.expandRowActive {
+  height: auto;
+  max-height: 500px;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.expandRow td {
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.expandRow:hover {
+  background-color: inherit;
+}
+
+.closeExpandBtn {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a2332;
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.closeExpandBtn:hover {
+  background-color: #2d3a4f;
+  transform: scale(1.05);
+}
+
+.closeExpandBtn:active {
+  transform: scale(0.95);
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.controlsRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+
+.searchContainer {
+  flex: 0 1 320px;
+  min-width: 240px;
+  max-width: 380px;
+}
+
 @media (max-width: 1024px) {
-  .summaryHeader {
+  .controlsRow {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .controlsRow {
+  .controlsRight {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    margin-left: 0;
+    width: 100%;
   }
 
   .searchContainer {
@@ -359,17 +669,14 @@
     flex: 0 0 auto;
   }
 
-  .calendarWrapper {
-    width: auto;
+  .details {
+    flex-direction: column;
+    gap: 20px;
   }
 
-  .calendarWrapper > button,
-  .calendarWrapper > [class*="Button"] {
-    width: auto;
-  }
-
-  .dateSelector {
-    width: 100%;
+  .summaryHeader {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .statsGrid {
@@ -378,11 +685,7 @@
 }
 
 @media (max-width: 640px) {
-  .summaryCard {
-    padding: 16px;
-  }
-
-  .controlsRow {
+  .controlsRight {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
@@ -407,14 +710,8 @@
     width: 100%;
   }
 
-  .dateSelector {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .dateSelect {
-    width: 100%;
-    min-width: 0;
+  .summaryCard {
+    padding: 16px;
   }
 
   .statsGrid {
@@ -423,5 +720,28 @@
 
   .tableWrapper {
     max-height: 48vh;
+  }
+
+  .expandedLayout {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .profileLarge {
+    height: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    font-size: 3rem;
+  }
+
+  .attendanceHeader {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .closeExpandBtn {
+    right: 15px;
+    top: 10px;
   }
 }

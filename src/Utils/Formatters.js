@@ -1,5 +1,5 @@
 export const formatStudentName = (student) => {
-  return `${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`.trim();
+  return `${student.first_name} ${student.last_name}`.trim();
 };
 
 export const formatStudentDisplayName = (student) => {
@@ -7,7 +7,7 @@ export const formatStudentDisplayName = (student) => {
 };
 
 export const formatTeacherName = (teacher) => {
-  return `${teacher.first_name} ${teacher.middle_name ? teacher.middle_name + ' ' : ''}${teacher.last_name}`.trim();
+  return `${teacher.first_name} ${teacher.last_name}`.trim();
 };
 
 export const formatTeacherDisplayName = (teacher, includeTitle = false) => {

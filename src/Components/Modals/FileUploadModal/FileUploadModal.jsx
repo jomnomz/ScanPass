@@ -133,10 +133,25 @@ function FileUploadModal({
     };
 
     const buildValidationErrorEntities = (invalidRecords) => {
-        return invalidRecords.map(record => ({
-            row: record.row,
-            message: Object.values(record.errors || {}).join(', ')
-        }));
+        return invalidRecords.map(record => {
+            // Build error message from all field errors
+            const errorMessages = Object.values(record.errors || {}).join(', ');
+            
+            // Create a display label that includes sheet/record type if available
+            let displayLabel = `Row ${record.row}`;
+            if (record.sheet) {
+                displayLabel = `${record.sheet} — Row ${record.row}`;
+            }
+            
+            return {
+                row: record.row,
+                sheet: record.sheet,
+                message: errorMessages,
+                displayLabel: displayLabel,
+                // Keep original data for potential debugging
+                data: record.data || {}
+            };
+        });
     };
 
     async function handleUpload() {
@@ -185,14 +200,8 @@ function FileUploadModal({
                     const summary = response.data.summary;
                     const assignmentMsg = [];
                     
-                    if (summary.subjectsAssigned > 0) {
-                        assignmentMsg.push(`${summary.subjectsAssigned} subjects assigned`);
-                    }
                     if (summary.sectionsAssigned > 0) {
                         assignmentMsg.push(`${summary.sectionsAssigned} sections assigned`);
-                    }
-                    if (summary.teachingAssignmentsCreated > 0) {
-                        assignmentMsg.push(`${summary.teachingAssignmentsCreated} teaching assignments created`);
                     }
                     if (summary.assignmentErrors > 0) {
                         assignmentMsg.push(`${summary.assignmentErrors} assignment errors`);

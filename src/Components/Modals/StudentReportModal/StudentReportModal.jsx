@@ -496,7 +496,7 @@ const StudentReportModal = ({ isOpen, onClose, student, currentClass }) => {
           <div>
             <h2>Attendance Report</h2>
             <p className={styles.studentInfo}>
-              {student.last_name}, {student.first_name} {student.middle_name ? student.middle_name.charAt(0) + '.' : ''}
+              {student.last_name}, {student.first_name}
               <span className={styles.lrn}> • LRN: {student.lrn}</span>
               <span className={styles.class}> • Class: {currentClass}</span>
             </p>

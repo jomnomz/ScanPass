@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { sortEntities } from '../../../Utils/SortEntities';
+import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import styles from './TeacherStudentViewTable.module.css';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
@@ -12,8 +13,31 @@ import ReportGenerationModal from '../../Modals/ReportGenerationModal/ReportGene
 import ClassAttendanceReportModal from '../../Modals/ClassAttendanceReportModal/ClassAttendanceReportModal';
 import Table from '../Table/Table.jsx';
 import Pagination from '../../UI/Buttons/Pagination/Pagination.jsx';
-import { faFileAlt } from '@fortawesome/free-solid-svg-icons';
+import { faFileAlt, faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons';
 import useSearchFilter from '../../Hooks/useSearchFilter.js';
+
+// ===== SHARED PROFILE CIRCLE RENDERER =====
+const renderProfileCircle = (student, sizeClassName) => {
+  const { bg, text } = getProfileColor(student.id ?? `${student.first_name}${student.last_name}`);
+
+  // Check if photo_url exists and has a value
+  if (student.photo_url) {
+    return (
+      <img
+        src={student.photo_url}
+        alt={formatStudentName(student)}
+        className={sizeClassName}
+        style={{ objectFit: 'cover' }}
+      />
+    );
+  }
+
+  return (
+    <div className={sizeClassName} style={{ backgroundColor: bg, color: text }}>
+      {getProfileInitial(student.first_name)}
+    </div>
+  );
+};
 
 const TeacherStudentViewTable = ({ selectedClass = '' }) => {
   const [students, setStudents] = useState([]);
@@ -30,7 +54,7 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
     students,
     [
-      (row) => [row.first_name, row.middle_name, row.last_name]
+      (row) => [row.first_name, row.last_name]
         .filter(Boolean)
         .join(' '),
       'lrn',
@@ -122,24 +146,57 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
       if (gradeError) throw new Error(`Grade "${grade}" not found`);
 
+      // Try to get photo_url if it exists, but don't fail if it doesn't
+      let selectFields = `
+        id,
+        lrn,
+        first_name,
+        last_name,
+        email,
+        phone_number,
+        guardian_first_name,
+        guardian_last_name,
+        guardian_phone_number,
+        guardian_email,
+        created_at,
+        grade:grades(grade_level),
+        section:sections(section_name)
+      `;
+      
+      // Check if photo_url column exists by trying to select it
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('students')
+          .select('photo_url')
+          .limit(1);
+        
+        // If no error, photo_url exists
+        if (!testError) {
+          selectFields = `
+            id,
+            lrn,
+            first_name,
+            last_name,
+            email,
+            phone_number,
+            guardian_first_name,
+            guardian_last_name,
+            guardian_phone_number,
+            guardian_email,
+            created_at,
+            photo_url,
+            grade:grades(grade_level),
+            section:sections(section_name)
+          `;
+        }
+      } catch (err) {
+        // photo_url doesn't exist, use the basic fields
+        console.log('photo_url column not found in students table, using fallback');
+      }
+
       const { data: classStudents, error: studentsError } = await supabase
         .from('students')
-        .select(`
-          id,
-          lrn,
-          first_name,
-          last_name,
-          middle_name,
-          email,
-          phone_number,
-          guardian_first_name,
-          guardian_last_name,
-          guardian_phone_number,
-          guardian_email,
-          created_at,
-          grade:grades(grade_level),
-          section:sections(section_name)
-        `)
+        .select(selectFields)
         .eq('grade_id', gradeData.id)
         .eq('section_id', sectionData.id)
         .order('last_name');
@@ -150,6 +207,7 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         ...student,
         grade: student.grade?.grade_level || 'N/A',
         section: student.section?.section_name || 'N/A',
+        photo_url: student.photo_url || null, // Will be undefined if column doesn't exist
       }));
 
       setStudents(transformedData);
@@ -214,34 +272,44 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     minWidth: `${minWidth}px`,
   });
 
+  // ===== COLUMNS: STUDENT and CONTACT =====
   const columns = useMemo(() => [
     {
-      key: 'lrn',
-      label: 'STUDENT ID',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => formatNA(row.lrn),
+      key: 'student',
+      label: 'STUDENT',
+      headerStyle: withColumnWidth('50%', 220),
+      cellStyle: withColumnWidth('50%', 220),
+      renderCell: ({ row }) => (
+        <div className={styles.studentCell}>
+          {renderProfileCircle(row, styles.profileSmall)}
+          <div className={styles.studentCellText}>
+            <div className={styles.studentCellName}>
+              {formatStudentName(row)}
+            </div>
+            <div className={styles.studentCellLrn}>
+              LRN: {formatNA(row.lrn)}
+            </div>
+          </div>
+        </div>
+      ),
     },
     {
-      key: 'name',
-      label: 'NAME',
-      headerStyle: withColumnWidth('25%', 180),
-      cellStyle: withColumnWidth('25%', 180),
-      renderCell: ({ row }) => formatStudentName(row),
-    },
-    {
-      key: 'section',
-      label: 'SECTION',
-      headerStyle: withColumnWidth('15%', 120),
-      cellStyle: withColumnWidth('15%', 120),
-      renderCell: ({ row }) => row.section,
-    },
-    {
-      key: 'email',
-      label: 'EMAIL',
-      headerStyle: withColumnWidth('35%', 180),
-      cellStyle: withColumnWidth('35%', 180),
-      renderCell: ({ row }) => formatNA(row.email),
+      key: 'contact',
+      label: 'CONTACT',
+      headerStyle: { ...withColumnWidth('50%', 220), textAlign: 'left' },
+      cellStyle: { ...withColumnWidth('50%', 220), textAlign: 'left' },
+      renderCell: ({ row }) => (
+        <div className={styles.contactCell}>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faEnvelope} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.email)}</span>
+          </div>
+          <div className={styles.contactRow}>
+            <FontAwesomeIcon icon={faPhone} className={styles.contactIcon} />
+            <span className={styles.contactText}>{formatNA(row.phone_number)}</span>
+          </div>
+        </div>
+      ),
     },
   ], []);
 
@@ -283,22 +351,42 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         ✕
       </button>
 
-      <div className={styles.studentHeader}>{formatStudentName(student)}</div>
-
-      <div className={styles.details}>
-        <div>
-          <div className={styles.studentInfo}><strong>Student Details</strong></div>
-          <div className={styles.studentInfo}>Student ID: {formatNA(student.lrn)}</div>
-          <div className={styles.studentInfo}>Section: {student.section}</div>
-          <div className={styles.studentInfo}>Phone Number: {formatNA(student.phone_number)}</div>
-        </div>
-        <div>
-          <div className={styles.studentInfo}><strong>Guardian Information</strong></div>
-          <div className={styles.studentInfo}>
-            Name of Parent: {formatNA(student.guardian_first_name)} {formatNA(student.guardian_last_name)}
+      <div className={styles.expandedLayout}>
+        {renderProfileCircle(student, styles.profileLarge)}
+        
+        <div className={styles.cardBody}>
+          <div className={styles.studentHeader}>
+            {formatStudentName(student)}
           </div>
-          <div className={styles.studentInfo}>Phone Number: {formatNA(student.guardian_phone_number)}</div>
-          <div className={styles.studentInfo}>Email address: {formatNA(student.guardian_email)}</div>
+          
+          <div className={styles.details}>
+            <div>
+              <div className={styles.studentInfo}>
+                <strong>Student Details</strong>
+              </div>
+              <div className={styles.studentInfo}>LRN: {formatNA(student.lrn)}</div>
+              <div className={styles.studentInfo}>
+                Grade & Section: {formatNA(student.grade)} - {formatNA(student.section)}
+              </div>
+              <div className={styles.studentInfo}>Email: {formatNA(student.email)}</div>
+              <div className={styles.studentInfo}>Phone: {formatNA(student.phone_number)}</div>
+            </div>
+
+            <div>
+              <div className={styles.studentInfo}>
+                <strong>Guardian Information</strong>
+              </div>
+              <div className={styles.studentInfo}>
+                Name: {formatNA(student.guardian_first_name)} {formatNA(student.guardian_last_name)}
+              </div>
+              <div className={styles.studentInfo}>
+                Phone: {formatNA(student.guardian_phone_number)}
+              </div>
+              <div className={styles.studentInfo}>
+                Email: {formatNA(student.guardian_email)}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

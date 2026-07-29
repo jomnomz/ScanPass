@@ -16,7 +16,6 @@ const ReportTable = () => {
         grade:'7',
         section:'1',
         first_name: 'John',
-        middle_name: 'Michael',
         last_name: 'Smith',
         total_students: '35',
       }
@@ -88,7 +87,7 @@ const ReportTable = () => {
                     onClick={() => toggleCard(report.id)}
                   >
                     <td>{report.grade}-{report.section}</td>
-                    <td>{report.first_name}{report.last_name}</td>
+                    <td>{report.first_name} {report.last_name}</td>
                     <td>{report.total_students}</td>
                     <td>
                       <div className={styles.icon}>
@@ -111,7 +110,7 @@ const ReportTable = () => {
                             <strong>Report Details</strong>
                           </div>
                           <div className={styles.reportInfo}>Class: {report.grade}-{report.section}</div>
-                          <div className={styles.reportInfo}>Adviser's Full Name: {report.first_name} {report.middle_name} {report.last_name}</div>
+                          <div className={styles.reportInfo}>Adviser's Full Name: {report.first_name} {report.last_name}</div>
                           <div className={styles.reportInfo}>Total Students: {report.total_students}</div>
                         </div>
                       </td>
@@ -126,6 +125,5 @@ const ReportTable = () => {
     </div>
   );
 };
-
 
 export default ReportTable;

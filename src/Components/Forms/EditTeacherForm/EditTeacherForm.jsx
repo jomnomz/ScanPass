@@ -13,11 +13,9 @@ function EditTeacherForm({
   onFieldChange,
   validationErrors = {},
   gradeSectionsMap = {},
-  availableSubjects = [],
   disabled = false,
 }) {
   const assignments = formData.assignments || [];
-  const subjectRows = formData.subjects || [];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -60,39 +58,6 @@ function EditTeacherForm({
       assignments.map((row) => ({ ...row, isAdviser: row.id === rowId }))
     );
   };
-
-  // ===== SUBJECTS (row-based, same interaction pattern as assignments) =====
-
-  const formatSubjectLabel = (s) => `${s.name} (${s.code})`;
-
-  const getSubjectOptionsForRow = (currentCode) => {
-    const usedElsewhere = subjectRows
-      .filter((r) => r.code && r.code !== currentCode)
-      .map((r) => r.code);
-    return availableSubjects.filter((s) => !usedElsewhere.includes(s.code));
-  };
-
-  const handleAddSubjectRow = () => {
-    const usedCodes = subjectRows.map((r) => r.code).filter(Boolean);
-    const firstAvailable = availableSubjects.find((s) => !usedCodes.includes(s.code));
-    const newRow = { id: nextRowId('subj'), code: firstAvailable?.code || '' };
-    onFieldChange('subjects', [...subjectRows, newRow]);
-  };
-
-  const handleSubjectRowChange = (rowId, newCode) => {
-    onFieldChange(
-      'subjects',
-      subjectRows.map((row) => (row.id === rowId ? { ...row, code: newCode } : row))
-    );
-  };
-
-  const handleRemoveSubjectRow = (rowId) => {
-    onFieldChange('subjects', subjectRows.filter((row) => row.id !== rowId));
-  };
-
-  // ===== CAP SUBJECTS AT 1 =====
-  const MAX_SUBJECTS_PER_TEACHER = 1;
-  const subjectLimitReached = subjectRows.length >= MAX_SUBJECTS_PER_TEACHER;
 
   return (
     <div className={styles.form}>
@@ -251,57 +216,6 @@ function EditTeacherForm({
         })}
         {validationErrors.assignments && (
           <div className={styles.fieldError}>{validationErrors.assignments}</div>
-        )}
-      </div>
-
-      {/* ===== SUBJECTS — mirrors Teaching Assignments layout ===== */}
-      <div className={styles.sectionBlock}>
-        <div className={styles.sectionHeaderRow}>
-          <div className={styles.sectionTitle}>Subjects</div>
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={handleAddSubjectRow}
-            disabled={disabled || subjectLimitReached}
-          >
-            <FontAwesomeIcon icon={faPlus} /> Add Subject
-          </button>
-        </div>
-
-        {subjectRows.length === 0 && (
-          <div className={styles.emptyHint}>No subjects assigned yet.</div>
-        )}
-
-        {subjectRows.map((row) => {
-          const optionsForRow = getSubjectOptionsForRow(row.code);
-          return (
-            <div key={row.id} className={styles.assignmentRow}>
-              <select
-                value={row.code}
-                onChange={(e) => handleSubjectRowChange(row.id, e.target.value)}
-                className={`${styles.input} ${styles.select} ${styles.subjectSelect}`}
-                disabled={disabled}
-              >
-                <option value="" disabled>Select subject</option>
-                {optionsForRow.map((s) => (
-                  <option key={s.code} value={s.code}>{formatSubjectLabel(s)}</option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                className={styles.removeRowButton}
-                onClick={() => handleRemoveSubjectRow(row.id)}
-                disabled={disabled}
-                aria-label="Remove subject"
-              >
-                <FontAwesomeIcon icon={faTrashCan} />
-              </button>
-            </div>
-          );
-        })}
-        {validationErrors.subjects && (
-          <div className={styles.fieldError}>{validationErrors.subjects}</div>
         )}
       </div>
     </div>

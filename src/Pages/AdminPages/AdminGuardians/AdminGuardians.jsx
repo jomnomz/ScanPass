@@ -69,13 +69,11 @@ function AdminGuardians() {
         .select(`
           id,
           guardian_first_name,
-          guardian_middle_name,
           guardian_last_name,
           guardian_email,
           guardian_phone_number,
           first_name,
           last_name,
-          middle_name,
           lrn,
           grade:grades(grade_level),
           section:sections(section_name)
@@ -88,11 +86,10 @@ function AdminGuardians() {
       const transformedData = (data || []).map(student => ({
         id: student.id,
         first_name: student.guardian_first_name,
-        middle_name: student.guardian_middle_name,
         last_name: student.guardian_last_name,
         email: student.guardian_email,
         phone_number: student.guardian_phone_number,
-        guardian_of: `${student.first_name} ${student.middle_name || ''} ${student.last_name}`.trim(),
+        guardian_of: `${student.first_name} ${student.last_name}`.trim(),
         student_lrn: student.lrn,
         grade: student.grade?.grade_level || 'N/A',
         section: student.section?.section_name || 'N/A'
@@ -128,7 +125,7 @@ function AdminGuardians() {
   }, [fetchGrades, fetchSections, fetchAllGuardians, toastError]);
 
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(allGuardians, [
-    (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    (row) => [row.first_name, row.last_name].filter(Boolean).join(' '),
     'guardian_of',
     'student_lrn',
     'email',

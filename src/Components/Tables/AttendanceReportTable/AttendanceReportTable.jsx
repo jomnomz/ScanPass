@@ -432,7 +432,7 @@ const AttendanceReportTable = ({ student, currentClass }) => {
       <div className={styles.header}>
         <div className={styles.studentInfo}>
           <h2 className={styles.studentName}>
-            {student.last_name}, {student.first_name} {student.middle_name ? student.middle_name.charAt(0) + '.' : ''}
+            {student.last_name}, {student.first_name}
           </h2>
           <div className={styles.metaInfo}>
             <span className={styles.lrn}>LRN: {student.lrn}</span>

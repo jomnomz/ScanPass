@@ -1,3 +1,5 @@
+// MasterDataUpload.js - Complete fixed version with all validation gaps addressed
+
 import express from 'express';
 import readXlsxFile from 'read-excel-file/node';
 import csv from 'csv-parser';
@@ -11,8 +13,6 @@ const router = express.Router();
 const csvHeaders = {
   grade: ['Grade', 'grade', 'Grade Level', 'Grade_Level', 'Level'],
   section: ['Section', 'section', 'Section Name', 'Section_Name', 'Class'],
-  subject_code: ['Subject Code', 'subject_code', 'Subject_Code', 'Code'],
-  subject_name: ['Subject Name', 'subject_name', 'Subject_Name', 'Subject'],
   class_start: ['Class Start', 'class_start', 'Start Time', 'Start_Time', 'Start'],
   class_end: ['Class End', 'class_end', 'End Time', 'End_Time', 'End'],
   grace_period: ['Grace Period', 'grace_period', 'Grace Period (minutes)', 'Grace_Period', 'Grace Minutes']
@@ -27,31 +27,44 @@ const getCsvValue = (data, keys) => {
   return '';
 };
 
+// BUG G FIX: Use UTC getters for Excel Date objects to avoid timezone offset corruption
 const cleanData = (data) => {
   const cleaned = {};
   Object.keys(data).forEach(key => {
     if (data[key] !== undefined && data[key] !== null) {
       let value = data[key];
       
+      // BUG G FIX: Use UTC getters to preserve Excel time-of-day values
       if (value instanceof Date) {
-        const hours = value.getHours().toString().padStart(2, '0');
-        const minutes = value.getMinutes().toString().padStart(2, '0');
+        const hours = value.getUTCHours().toString().padStart(2, '0');
+        const minutes = value.getUTCMinutes().toString().padStart(2, '0');
         value = `${hours}:${minutes}`;
       } else {
         value = value.toString().trim();
       }
       
+      // BUG B FIX: Only strip non-digits if there's at least one digit present
       if (key === 'grade' || key === 'grade_level' || key.toLowerCase().includes('grade')) {
         const numMatch = value.match(/\d+/);
         if (numMatch) {
+          // Extract just the digits (e.g., "Grade 7" -> "7")
           value = numMatch[0];
+        } else {
+          // No digits found - leave the raw value intact so validation can catch it
+          // Do NOT strip to empty string
+          // value remains as-is (e.g., "Seven")
         }
-        value = value.replace(/\D/g, '');
       }
       
+      // BUG C FIX: Capture optional negative sign for grace period
       if ((key === 'grace_period' || key.toLowerCase().includes('grace')) && value) {
-        const numMatch = value.match(/\d+/);
-        value = numMatch ? numMatch[0] : '15';
+        const numMatch = value.match(/-?\d+/); // Allow optional leading minus sign
+        if (numMatch) {
+          value = numMatch[0];
+        } else {
+          // No numeric value found, keep as-is for validation
+          // value remains as-is (e.g., "invalid")
+        }
       }
       
       cleaned[key] = value === '' ? null : value;
@@ -62,6 +75,7 @@ const cleanData = (data) => {
   return cleaned;
 };
 
+// BUG E FIX: Added numeric grade check to grade_schedules branch
 const validateMasterData = (type, data) => {
   const errors = {};
   
@@ -73,14 +87,23 @@ const validateMasterData = (type, data) => {
       errors.grade = 'Grade must be a number (e.g., 7, 8, 9, 10)';
     }
     
-  } else if (type === 'subjects') {
-    if (!data.subject_code) errors.subject_code = 'Subject code is required';
-    if (!data.subject_name) errors.subject_name = 'Subject name is required';
+    // Length validation
+    if (data.grade && data.grade.length > 10) {
+      errors.grade = 'Grade must be 10 characters or less';
+    }
+    if (data.section && data.section.length > 50) {
+      errors.section = 'Section name must be 50 characters or less';
+    }
     
   } else if (type === 'grade_schedules') {
     if (!data.grade) errors.grade = 'Grade is required';
     if (!data.class_start) errors.class_start = 'Class start time is required';
     if (!data.class_end) errors.class_end = 'Class end time is required';
+    
+    // BUG E FIX: Add numeric grade check for schedules
+    if (data.grade && !data.grade.match(/^\d+$/)) {
+      errors.grade = 'Grade must be a number (e.g., 7, 8, 9, 10)';
+    }
     
     if (data.class_start && !data.class_start.match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)) {
       errors.class_start = 'Class start must be in HH:MM 24-hour format';
@@ -110,6 +133,7 @@ const validateMasterData = (type, data) => {
   return errors;
 };
 
+// BUG G FIX: Use UTC getters for Excel Date objects to avoid timezone offset corruption
 const processMasterDataExcel = async (buffer) => {
   try {
     const sheets = await readXlsxFile(buffer, { getSheets: true });
@@ -122,7 +146,6 @@ const processMasterDataExcel = async (buffer) => {
 
     const allData = {
       grades_sections: [],
-      subjects: [],
       grade_schedules: []
     };
 
@@ -149,6 +172,7 @@ const processMasterDataExcel = async (buffer) => {
         }
       });
 
+      // BUG G FIX: Use UTC getters inside this helper
       const getValue = (row, possibleHeaders) => {
         for (const header of possibleHeaders) {
           const headerLower = header.toLowerCase().trim();
@@ -157,8 +181,9 @@ const processMasterDataExcel = async (buffer) => {
             
             if (value !== undefined && value !== null) {
               if (value instanceof Date) {
-                const hours = value.getHours().toString().padStart(2, '0');
-                const minutes = value.getMinutes().toString().padStart(2, '0');
+                // Use UTC getters to preserve the actual time value without timezone offset
+                const hours = value.getUTCHours().toString().padStart(2, '0');
+                const minutes = value.getUTCMinutes().toString().padStart(2, '0');
                 return `${hours}:${minutes}`;
               }
               
@@ -190,14 +215,6 @@ const processMasterDataExcel = async (buffer) => {
       const hasSection = getValue(headers, [
         'Section Name', 'Section', 'Section_Name', 'section name', 'Class'
       ]) !== '';
-      
-      const hasSubjectCode = getValue(headers, [
-        'Subject Code', 'Code', 'Subject_Code', 'subject code'
-      ]) !== '';
-      
-      const hasSubjectName = getValue(headers, [
-        'Subject Name', 'Subject', 'Subjects', 'Subject_Name', 'subject name'
-      ]) !== '';
 
       console.log(`📋 Sheet "${sheet.name}" analysis:`);
       console.log(`   Has Grade: ${hasGrade}`);
@@ -205,10 +222,12 @@ const processMasterDataExcel = async (buffer) => {
       console.log(`   Has Class Start: ${hasClassStart}`);
       console.log(`   Has Class End: ${hasClassEnd}`);
       console.log(`   Has Grace Period: ${hasGracePeriod}`);
-      console.log(`   Has Subject Code: ${hasSubjectCode}`);
-      console.log(`   Has Subject Name: ${hasSubjectName}`);
 
-      if (hasGrade && hasClassStart && hasClassEnd) {
+      // BUG A FIX: Determine record type by present fields, not by grade presence
+      const isScheduleSheet = hasClassStart && hasClassEnd;
+      const isGradeSectionSheet = hasSection && !isScheduleSheet;
+      
+      if (isScheduleSheet) {
         console.log(`⏰ Processing Grade Schedules from sheet: "${sheet.name}"`);
         
         let count = 0;
@@ -218,23 +237,25 @@ const processMasterDataExcel = async (buffer) => {
           const classEnd = getValue(row, ['Class End', 'End Time', 'End_Time', 'End', 'class end']);
           const gracePeriod = getValue(row, ['Grace Period', 'Grace Period (minutes)', 'Grace_Period', 'Grace Minutes', 'grace period']);
           
-          if (grade && classStart && classEnd) {
+          // BUG A FIX: Push row even if grade is empty - let validation handle it
+          // Only require class_start and class_end to be present for schedule rows
+          if (classStart || classEnd) {
             allData.grade_schedules.push({
-              grade: grade,
-              class_start: classStart,
-              class_end: classEnd,
+              grade: grade || '', // Empty grade will be caught by validation
+              class_start: classStart || '',
+              class_end: classEnd || '',
               grace_period: gracePeriod || '15'
             });
             count++;
-            console.log(`   Row ${index + 1}: Grade="${grade}", Start="${classStart}", End="${classEnd}", Grace="${gracePeriod || '15'}"`);
-          } else if (grade && (classStart || classEnd)) {
-            console.log(`   ⚠️ Row ${index + 1}: Incomplete schedule data - Grade="${grade}", Start="${classStart}", End="${classEnd}"`);
+            console.log(`   Row ${index + 1}: Grade="${grade || '(empty)'}", Start="${classStart}", End="${classEnd}", Grace="${gracePeriod || '15'}"`);
+          } else {
+            console.log(`   ⚠️ Row ${index + 1}: No schedule data found - skipping`);
           }
         });
         
         console.log(`✅ Extracted ${count} grade schedule records from "${sheet.name}"`);
         
-      } else if (hasGrade && hasSection) {
+      } else if (isGradeSectionSheet) {
         console.log(`📊 Processing Grades & Sections from sheet: "${sheet.name}"`);
         
         let count = 0;
@@ -242,38 +263,20 @@ const processMasterDataExcel = async (buffer) => {
           const grade = getValue(row, ['Grade Level', 'Grade', 'Grade_Level', 'grade level', 'Level', 'Class']);
           const section = getValue(row, ['Section Name', 'Section', 'Section_Name', 'section name', 'Class']);
           
-          if (grade && section) {
+          // BUG A FIX: Push row even if grade or section is empty - let validation handle it
+          if (section || grade) {
             allData.grades_sections.push({
-              grade: grade,
-              section: section
+              grade: grade || '', // Empty grade will be caught by validation
+              section: section || '' // Empty section will be caught by validation
             });
             count++;
-            console.log(`   Row ${index + 1}: Grade="${grade}", Section="${section}"`);
-          } else if (grade || section) {
-            console.log(`   ⚠️ Row ${index + 1}: Incomplete data - Grade="${grade}", Section="${section}"`);
+            console.log(`   Row ${index + 1}: Grade="${grade || '(empty)'}", Section="${section || '(empty)'}"`);
+          } else {
+            console.log(`   ⚠️ Row ${index + 1}: No data found - skipping`);
           }
         });
         
         console.log(`✅ Extracted ${count} grade/section records from "${sheet.name}"`);
-        
-      } else if (hasSubjectCode && hasSubjectName) {
-        console.log(`📚 Processing Subjects from sheet: "${sheet.name}"`);
-        
-        let count = 0;
-        dataRows.forEach((row, index) => {
-          const subjectCode = getValue(row, ['Subject Code', 'Code', 'Subject_Code', 'subject code']);
-          const subjectName = getValue(row, ['Subject Name', 'Subject', 'Subjects', 'Subject_Name', 'subject name']);
-          
-          if (subjectCode && subjectName) {
-            allData.subjects.push({
-              subject_code: subjectCode,
-              subject_name: subjectName
-            });
-            count++;
-          }
-        });
-        
-        console.log(`✅ Extracted ${count} subject records from "${sheet.name}"`);
       } else {
         console.log(`⚠️ Sheet "${sheet.name}" has unrecognized format.`);
       }
@@ -281,7 +284,6 @@ const processMasterDataExcel = async (buffer) => {
 
     console.log(`\n📈 Extraction Summary:`);
     console.log(`   Grades/Sections: ${allData.grades_sections.length} records`);
-    console.log(`   Subjects: ${allData.subjects.length} records`);
     console.log(`   Grade Schedules: ${allData.grade_schedules.length} records`);
 
     if (allData.grades_sections.length > 0) {
@@ -299,12 +301,10 @@ const processMasterDataExcel = async (buffer) => {
     }
 
     const hasGradesSections = allData.grades_sections.length > 0;
-    const hasSubjects = allData.subjects.length > 0;
     const hasGradeSchedules = allData.grade_schedules.length > 0;
 
     const dataTypes = [];
     if (hasGradesSections) dataTypes.push('grades_sections');
-    if (hasSubjects) dataTypes.push('subjects');
     if (hasGradeSchedules) dataTypes.push('grade_schedules');
 
     if (dataTypes.length === 0) {
@@ -322,10 +322,10 @@ const processMasterDataExcel = async (buffer) => {
   }
 };
 
+// BUG A FIX: CSV processing now routes ALL rows to validation
 const processMasterDataCSV = async (buffer) => {
   return new Promise((resolve, reject) => {
     const gradesSections = [];
-    const subjects = [];
     const gradeSchedules = [];
     
     const bufferStream = new stream.PassThrough();
@@ -335,40 +335,48 @@ const processMasterDataCSV = async (buffer) => {
       .pipe(csv())
       .on('data', (data) => {
         const grade = getCsvValue(data, csvHeaders.grade);
-        const subjectCode = getCsvValue(data, csvHeaders.subject_code);
         const classStart = getCsvValue(data, csvHeaders.class_start);
+        const section = getCsvValue(data, csvHeaders.section);
+        const classEnd = getCsvValue(data, csvHeaders.class_end);
+        const gracePeriod = getCsvValue(data, csvHeaders.grace_period);
         
-        if (grade && classStart) {
+        // BUG A FIX: Route based on field presence, not grade presence
+        // Check if this row has schedule-related fields
+        const hasScheduleData = classStart || classEnd;
+        
+        if (hasScheduleData) {
+          // This is a schedule row - push even if grade is empty
           gradeSchedules.push({
-            grade: grade,
-            class_start: classStart,
-            class_end: getCsvValue(data, csvHeaders.class_end),
-            grace_period: getCsvValue(data, csvHeaders.grace_period) || '15'
+            grade: grade || '', // Empty grade will be caught by validation
+            class_start: classStart || '',
+            class_end: classEnd || '',
+            grace_period: gracePeriod || '15'
           });
-        } else if (grade && !classStart) {
+        } else if (section) {
+          // This is a grade/section row - push even if grade is empty
           gradesSections.push({
-            grade: grade,
-            section: getCsvValue(data, csvHeaders.section)
+            grade: grade || '', // Empty grade will be caught by validation
+            section: section || '' // Empty section will be caught by validation
           });
-        } else if (subjectCode) {
-          subjects.push({
-            subject_code: subjectCode,
-            subject_name: getCsvValue(data, csvHeaders.subject_name)
+        } else if (grade) {
+          // Only grade present, but no section or schedule data - treat as grade/section with missing section
+          gradesSections.push({
+            grade: grade || '',
+            section: '' // Missing section will be caught by validation
           });
         }
+        // If no fields at all, silently skip (completely empty row)
       })
       .on('end', () => {
-        console.log(`CSV Summary: Grades/Sections: ${gradesSections.length}, Subjects: ${subjects.length}, Grade Schedules: ${gradeSchedules.length}`);
+        console.log(`CSV Summary: Grades/Sections: ${gradesSections.length}, Grade Schedules: ${gradeSchedules.length}`);
         
         const data = {
           grades_sections: gradesSections,
-          subjects: subjects,
           grade_schedules: gradeSchedules
         };
         
         const dataTypes = [];
         if (gradesSections.length > 0) dataTypes.push('grades_sections');
-        if (subjects.length > 0) dataTypes.push('subjects');
         if (gradeSchedules.length > 0) dataTypes.push('grade_schedules');
         
         if (dataTypes.length === 0) {
@@ -389,28 +397,60 @@ const processMasterDataCSV = async (buffer) => {
   });
 };
 
-const importGradesSections = async (data) => {
+// BUG F FIX: Don't return early on validation errors - continue to find all errors
+const importGradesSections = async (data, sheetName = 'Grades & Sections') => {
   const results = {
     grades: { inserted: 0, skipped: 0, errors: [], details: [] },
-    sections: { inserted: 0, skipped: 0, errors: [], details: [] }
+    sections: { inserted: 0, skipped: 0, errors: [], details: [] },
+    invalidRecords: []
   };
   
   try {
     console.log(`🔄 Starting import of ${data.length} grade/section records`);
     
-    console.log('First 3 rows of raw data:', data.slice(0, 3));
+    // BUG F FIX: First pass - validate each row but DON'T return early
+    const validatedRecords = [];
+    const invalidRecords = [];
     
-    const cleanedData = data.map(item => {
+    data.forEach((item, index) => {
+      const rowNumber = index + 1;
       const cleaned = cleanData(item);
-      console.log(`Cleaned: ${item.grade} -> "${cleaned.grade}", Section: "${cleaned.section}"`);
-      return cleaned;
+      
+      const errors = validateMasterData('grades_sections', cleaned);
+      
+      if (Object.keys(errors).length > 0) {
+        invalidRecords.push({
+          row: rowNumber,
+          sheet: sheetName,
+          data: cleaned,
+          errors: errors
+        });
+      } else {
+        validatedRecords.push({
+          row: rowNumber,
+          data: cleaned
+        });
+      }
     });
     
+    // Store first-pass validation errors
+    results.invalidRecords = invalidRecords;
+    
+    // BUG F FIX: Don't return early - continue processing valid records
+    // Only proceed if there are valid records to process
+    if (validatedRecords.length === 0) {
+      console.log(`ℹ️ No valid records to process, returning ${invalidRecords.length} validation errors`);
+      return results;
+    }
+    
+    // Proceed with valid records only
+    const cleanedData = validatedRecords.map(r => r.data);
+    
+    // Step 1: Get or create grades
     const uniqueGrades = [...new Set(cleanedData.map(item => item.grade))];
     
-    console.log(`📚 Unique grades after cleaning:`, uniqueGrades);
+    console.log(`📚 Unique grades:`, uniqueGrades);
 
-    console.log('\n🔍 Step 1: Checking existing grades...');
     const { data: existingGrades, error: existingGradesError } = await supabase
       .from('grades')
       .select('id, grade_level')
@@ -419,6 +459,7 @@ const importGradesSections = async (data) => {
     if (existingGradesError) {
       console.error('❌ Error checking existing grades:', existingGradesError);
       results.grades.errors.push({ error: existingGradesError.message });
+      return results;
     }
     
     const existingGradeMap = {};
@@ -436,7 +477,6 @@ const importGradesSections = async (data) => {
     
     console.log(`📊 Found ${existingGrades?.length || 0} existing grades, ${newGrades.length} new grades`);
 
-    console.log('\n📚 Step 2: Processing new grades...');
     const gradeMap = { ...existingGradeMap };
     
     if (newGrades.length > 0) {
@@ -449,6 +489,7 @@ const importGradesSections = async (data) => {
       if (insertError) {
         console.error('❌ Error inserting new grades:', insertError);
         results.grades.errors.push({ error: insertError.message });
+        return results;
       } else {
         insertedGrades?.forEach(grade => {
           gradeMap[grade.grade_level] = grade.id;
@@ -461,62 +502,159 @@ const importGradesSections = async (data) => {
     results.grades.skipped = existingGrades?.length || 0;
     console.log(`✅ Grades: ${results.grades.inserted} inserted, ${results.grades.skipped} skipped`);
 
-    console.log('\n🔍 Step 3: Checking existing sections...');
-    const uniqueSections = [];
-    const gradeSectionMap = {};
+    // BUG F FIX: Step 2 - Check grade mapping and collect errors without returning early
+    const missingGradeErrors = [];
+    const validGradeRecords = [];
     
-    cleanedData.forEach(item => {
+    cleanedData.forEach((item, index) => {
       const gradeId = gradeMap[item.grade];
-      if (gradeId && item.section) {
-        const key = `${gradeId}_${item.section}`;
-        if (!gradeSectionMap[key]) {
-          gradeSectionMap[key] = true;
-          uniqueSections.push({
-            grade_id: gradeId,
-            section: item.section
-          });
-        }
+      if (!gradeId) {
+        missingGradeErrors.push({
+          row: validatedRecords[index].row,
+          sheet: sheetName,
+          data: { grade: item.grade, section: item.section },
+          errors: { grade: `Grade '${item.grade}' could not be matched or created` }
+        });
+      } else {
+        validGradeRecords.push({
+          ...item,
+          gradeId: gradeId,
+          row: validatedRecords[index].row
+        });
       }
     });
     
-    console.log(`📊 Processing ${uniqueSections.length} unique grade/section combinations`);
+    // Append missing grade errors to invalidRecords
+    if (missingGradeErrors.length > 0) {
+      console.log(`❌ Found ${missingGradeErrors.length} records with unmatchable grades`);
+      results.invalidRecords = results.invalidRecords.concat(missingGradeErrors);
+    }
     
-    let existingSectionsCount = 0;
-    const newSectionsToInsert = [];
+    // BUG F FIX: If all records have grade issues, return now (nothing left to process)
+    if (validGradeRecords.length === 0) {
+      console.log(`ℹ️ No records with valid grades to process`);
+      return results;
+    }
+
+    // BUG D FIX: Comprehensive duplicate detection - continue processing all records
+    console.log('\n🔍 Step 3: Checking for duplicates (case-insensitive)...');
     
-    for (const section of uniqueSections) {
-      const { data: existingSection, error: checkError } = await supabase
-        .from('sections')
-        .select('id')
-        .eq('grade_id', section.grade_id)
-        .eq('section_name', section.section)
-        .maybeSingle();
+    // First, check in-file duplicates
+    const seenSections = new Map(); // key: gradeId_normalizedSection -> { original, row }
+    const duplicateErrors = [];
+    const uniqueSectionRecords = [];
+    
+    validGradeRecords.forEach((item, index) => {
+      const normalizedSection = item.section.trim().toLowerCase();
+      const key = `${item.gradeId}_${normalizedSection}`;
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error(`❌ Error checking section "${section.section}":`, checkError);
+      if (seenSections.has(key)) {
+        const existing = seenSections.get(key);
+        // This is a duplicate - report it
+        duplicateErrors.push({
+          row: item.row,
+          sheet: sheetName,
+          data: { grade: item.grade, section: item.section },
+          errors: { 
+            section: `Section "${item.section}" duplicates "${existing.original}" (case-insensitive) for grade ${item.grade}` 
+          }
+        });
+      } else {
+        seenSections.set(key, {
+          original: item.section,
+          row: item.row,
+          gradeId: item.gradeId,
+          grade: item.grade
+        });
+        uniqueSectionRecords.push(item);
+      }
+    });
+    
+    // Append duplicate errors to invalidRecords
+    if (duplicateErrors.length > 0) {
+      console.log(`❌ Found ${duplicateErrors.length} duplicate sections in the file`);
+      results.invalidRecords = results.invalidRecords.concat(duplicateErrors);
+    }
+    
+    // BUG F FIX: If we have duplicate errors but no unique records, return
+    if (uniqueSectionRecords.length === 0) {
+      console.log(`ℹ️ No unique sections to process`);
+      return results;
+    }
+    
+    // Now check against database with case-insensitive comparison
+    const sectionsToInsert = [];
+    const dbDuplicateErrors = [];
+    
+    // Group unique sections by grade for efficient DB checking
+    const sectionsByGrade = {};
+    uniqueSectionRecords.forEach(item => {
+      if (!sectionsByGrade[item.gradeId]) {
+        sectionsByGrade[item.gradeId] = [];
+      }
+      sectionsByGrade[item.gradeId].push(item);
+    });
+    
+    // Check each grade's sections against DB
+    for (const [gradeId, sections] of Object.entries(sectionsByGrade)) {
+      const { data: existingSections, error: checkError } = await supabase
+        .from('sections')
+        .select('id, section_name')
+        .eq('grade_id', parseInt(gradeId));
+      
+      if (checkError) {
+        console.error(`❌ Error checking sections for grade ${gradeId}:`, checkError);
         results.sections.errors.push({ 
-          grade_id: section.grade_id, 
-          section: section.section, 
+          grade_id: gradeId, 
           error: checkError.message 
         });
-      } else if (existingSection) {
-        existingSectionsCount++;
-      } else {
-        newSectionsToInsert.push(section);
+        continue;
+      }
+      
+      // Check each section against existing DB sections
+      for (const section of sections) {
+        const normalizedNew = section.section.trim().toLowerCase();
+        const existingMatch = existingSections?.find(existing => 
+          existing.section_name.trim().toLowerCase() === normalizedNew
+        );
+        
+        if (existingMatch) {
+          console.log(`✅ Section "${section.section}" already exists (as "${existingMatch.section_name}")`);
+          results.sections.skipped++;
+          results.sections.details.push({
+            grade_id: section.gradeId,
+            section_name: section.section,
+            existing_id: existingMatch.id,
+            action: 'skipped'
+          });
+        } else {
+          sectionsToInsert.push({
+            grade_id: section.gradeId,
+            section_name: section.section,
+            row: section.row,
+            grade: section.grade
+          });
+        }
       }
     }
     
-    console.log(`📊 Found ${existingSectionsCount} existing sections, ${newSectionsToInsert.length} new sections`);
+    console.log(`📊 Found ${results.sections.skipped} existing sections, ${sectionsToInsert.length} new sections`);
 
-    console.log('\n📋 Step 4: Processing new sections...');
-    
-    if (newSectionsToInsert.length > 0) {
-      console.log(`📤 Inserting ${newSectionsToInsert.length} new sections...`);
+    // BUG F FIX: If we have DB duplicate errors, append them
+    if (dbDuplicateErrors.length > 0) {
+      results.invalidRecords = results.invalidRecords.concat(dbDuplicateErrors);
+    }
+
+    // Step 4: Insert new sections - ONLY if no errors at all
+    if (results.invalidRecords.length === 0 && sectionsToInsert.length > 0) {
+      console.log('\n📋 Step 4: Processing new sections...');
+      console.log(`📤 Inserting ${sectionsToInsert.length} new sections...`);
+      
       const { data: insertedSections, error: insertError } = await supabase
         .from('sections')
-        .insert(newSectionsToInsert.map(s => ({
+        .insert(sectionsToInsert.map(s => ({
           grade_id: s.grade_id,
-          section_name: s.section
+          section_name: s.section_name
         })))
         .select('id, grade_id, section_name');
         
@@ -533,14 +671,14 @@ const importGradesSections = async (data) => {
           });
         });
       }
+    } else if (results.invalidRecords.length > 0) {
+      console.log(`⏭️ Skipping section inserts due to ${results.invalidRecords.length} validation errors`);
     }
-    
-    results.sections.skipped = existingSectionsCount;
     
     console.log(`\n📊 FINAL IMPORT SUMMARY:`);
     console.log(`   Grades: ${results.grades.inserted} inserted, ${results.grades.skipped} skipped`);
     console.log(`   Sections: ${results.sections.inserted} inserted, ${results.sections.skipped} skipped`);
-    console.log(`   Total errors: ${results.grades.errors.length + results.sections.errors.length}`);
+    console.log(`   Total errors: ${results.invalidRecords.length}`);
     
     return results;
   } catch (error) {
@@ -549,163 +687,76 @@ const importGradesSections = async (data) => {
   }
 };
 
-const importSubjects = async (data) => {
+// BUG F FIX: Don't return early on validation errors - continue to find all errors
+const importGradeSchedules = async (data, sheetName = 'Grade Schedules') => {
   const results = {
     inserted: 0,
     updated: 0,
     skipped: 0,
     errors: [],
-    details: []
-  };
-  
-  try {
-    console.log(`🔄 Starting import of ${data.length} subject records`);
-    
-    const uniqueSubjects = [];
-    const subjectMap = {};
-    
-    data.forEach(item => {
-      const cleaned = cleanData(item);
-      const key = cleaned.subject_code?.toLowerCase();
-      if (key && !subjectMap[key]) {
-        subjectMap[key] = true;
-        uniqueSubjects.push(cleaned);
-      }
-    });
-    
-    console.log(`📊 Processing ${uniqueSubjects.length} unique subjects`);
-    
-    for (const item of uniqueSubjects) {
-      console.log(`📝 Processing subject: "${item.subject_code}" - "${item.subject_name}"`);
-      
-      const errors = validateMasterData('subjects', item);
-      
-      if (Object.keys(errors).length > 0) {
-        console.log(`❌ Validation errors:`, errors);
-        results.errors.push({ data: item, errors });
-        continue;
-      }
-      
-      console.log(`🔍 Checking if subject "${item.subject_code}" exists...`);
-      const { data: existingSubject, error: checkError } = await supabase
-        .from('subjects')
-        .select('subject_code, subject_name')
-        .eq('subject_code', item.subject_code)
-        .maybeSingle();
-      
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.log(`❌ Error checking subject:`, checkError);
-        results.errors.push({ data: item, error: checkError.message });
-        continue;
-      }
-      
-      if (existingSubject) {
-        if (existingSubject.subject_name === item.subject_name) {
-          console.log(`✅ Subject "${item.subject_code}" already exists with same name, skipping...`);
-          results.skipped++;
-          results.details.push({ 
-            code: item.subject_code, 
-            name: item.subject_name,
-            action: 'skipped',
-            reason: 'Already exists'
-          });
-        } else {
-          console.log(`📝 Subject "${item.subject_code}" exists but name differs, updating...`);
-          const { data: updatedSubject, error: updateError } = await supabase
-            .from('subjects')
-            .update({ 
-              subject_name: item.subject_name,
-              updated_at: new Date().toISOString()
-            })
-            .eq('subject_code', item.subject_code)
-            .select();
-            
-          if (updateError) {
-            console.log(`❌ Subject update error:`, updateError);
-            results.errors.push({ data: item, error: updateError.message });
-          } else {
-            console.log(`✅ Subject "${item.subject_code}" updated successfully`);
-            results.updated++;
-            results.details.push({ 
-              code: item.subject_code, 
-              name: item.subject_name,
-              subject_id: updatedSubject?.[0]?.id,
-              action: 'updated'
-            });
-          }
-        }
-      } else {
-        console.log(`📤 Inserting new subject: ${item.subject_code}`);
-        const { data: subjectData, error } = await supabase
-          .from('subjects')
-          .insert({
-            subject_code: item.subject_code,
-            subject_name: item.subject_name
-          })
-          .select();
-          
-        if (error) {
-          console.log(`❌ Subject insert error:`, error);
-          results.errors.push({ data: item, error: error.message });
-        } else if (subjectData && subjectData.length > 0) {
-          console.log(`✅ Subject "${item.subject_code}" inserted successfully (ID: ${subjectData[0]?.id})`);
-          results.inserted++;
-          results.details.push({ 
-            code: item.subject_code, 
-            name: item.subject_name,
-            subject_id: subjectData[0]?.id,
-            action: 'inserted'
-          });
-        }
-      }
-    }
-    
-    console.log(`📊 Subject Import Summary: ${results.inserted} inserted, ${results.updated} updated, ${results.skipped} skipped, ${results.errors.length} errors`);
-    return results;
-  } catch (error) {
-    console.error('❌ Error in importSubjects:', error);
-    throw error;
-  }
-};
-
-const importGradeSchedules = async (data) => {
-  const results = {
-    inserted: 0,
-    updated: 0,
-    skipped: 0,
-    errors: [],
-    details: []
+    details: [],
+    invalidRecords: []
   };
   
   try {
     console.log(`🔄 Starting import of ${data.length} grade schedule records`);
     
-    const uniqueSchedules = [];
-    const scheduleMap = {};
+    // BUG F FIX: First pass - validate each row but DON'T return early
+    const validatedRecords = [];
+    const invalidRecords = [];
     
-    data.forEach(item => {
+    data.forEach((item, index) => {
+      const rowNumber = index + 1;
       const cleaned = cleanData(item);
-      const key = cleaned.grade;
+      
+      const errors = validateMasterData('grade_schedules', cleaned);
+      
+      if (Object.keys(errors).length > 0) {
+        invalidRecords.push({
+          row: rowNumber,
+          sheet: sheetName,
+          data: cleaned,
+          errors: errors
+        });
+      } else {
+        validatedRecords.push({
+          row: rowNumber,
+          data: cleaned
+        });
+      }
+    });
+    
+    // Store first-pass validation errors
+    results.invalidRecords = invalidRecords;
+    
+    // BUG F FIX: Don't return early - continue processing valid records
+    // Only proceed if there are valid records to process
+    if (validatedRecords.length === 0) {
+      console.log(`ℹ️ No valid records to process, returning ${invalidRecords.length} validation errors`);
+      return results;
+    }
+    
+    // Deduplicate by grade (keep first occurrence)
+    const scheduleMap = {};
+    const uniqueSchedules = [];
+    
+    validatedRecords.forEach(record => {
+      const key = record.data.grade;
       if (key && !scheduleMap[key]) {
         scheduleMap[key] = true;
-        uniqueSchedules.push(cleaned);
+        uniqueSchedules.push({
+          ...record.data,
+          row: record.row
+        });
       }
     });
     
     console.log(`📊 Processing ${uniqueSchedules.length} unique grade schedules`);
     
+    // BUG F FIX: Process each schedule, collecting errors without early return
     for (const item of uniqueSchedules) {
       console.log(`⏰ Processing schedule for grade "${item.grade}": ${item.class_start} - ${item.class_end} (Grace: ${item.grace_period || '15'} min)`);
       
-      const errors = validateMasterData('grade_schedules', item);
-      
-      if (Object.keys(errors).length > 0) {
-        console.log(`❌ Validation errors:`, errors);
-        results.errors.push({ data: item, errors });
-        continue;
-      }
-      
-      console.log(`🔍 Looking up grade ID for grade level: "${item.grade}"`);
       const { data: gradeData, error: gradeError } = await supabase
         .from('grades')
         .select('id, grade_level')
@@ -715,9 +766,11 @@ const importGradeSchedules = async (data) => {
       if (gradeError || !gradeData) {
         const errorMsg = `Grade "${item.grade}" not found in database. Please import grades first.`;
         console.log(`❌ ${errorMsg}`);
-        results.errors.push({ 
-          data: item, 
-          error: errorMsg 
+        results.invalidRecords.push({
+          row: item.row,
+          sheet: sheetName,
+          data: { grade: item.grade, class_start: item.class_start, class_end: item.class_end },
+          errors: { grade: errorMsg }
         });
         continue;
       }
@@ -725,7 +778,6 @@ const importGradeSchedules = async (data) => {
       const gradeId = gradeData.id;
       console.log(`✅ Found grade ID ${gradeId} for grade "${item.grade}"`);
       
-      console.log(`🔍 Checking if schedule exists for grade ID: ${gradeId}`);
       const { data: existingSchedule, error: checkError } = await supabase
         .from('grade_schedules')
         .select('id, class_start, class_end, grace_period_minutes')
@@ -796,40 +848,45 @@ const importGradeSchedules = async (data) => {
           }
         }
       } else {
-        console.log(`📤 Inserting new schedule for grade ID: ${gradeId}`);
-        const { data: scheduleData, error: insertError } = await supabase
-          .from('grade_schedules')
-          .insert({
-            grade_id: gradeId,
-            class_start: item.class_start,
-            class_end: item.class_end,
-            grace_period_minutes: gracePeriod
-          })
-          .select();
-          
-        if (insertError) {
-          console.log(`❌ Schedule insert error:`, insertError);
-          results.errors.push({ 
-            data: item, 
-            error: insertError.message 
-          });
-        } else if (scheduleData && scheduleData.length > 0) {
-          console.log(`✅ Schedule inserted for grade "${item.grade}" (ID: ${scheduleData[0]?.id})`);
-          results.inserted++;
-          results.details.push({ 
-            grade: item.grade, 
-            grade_id: gradeId,
-            schedule_id: scheduleData[0]?.id,
-            class_start: item.class_start,
-            class_end: item.class_end,
-            grace_period: gracePeriod,
-            action: 'inserted'
-          });
+        // BUG F FIX: Only insert if no errors exist
+        if (results.invalidRecords.length === 0 && results.errors.length === 0) {
+          console.log(`📤 Inserting new schedule for grade ID: ${gradeId}`);
+          const { data: scheduleData, error: insertError } = await supabase
+            .from('grade_schedules')
+            .insert({
+              grade_id: gradeId,
+              class_start: item.class_start,
+              class_end: item.class_end,
+              grace_period_minutes: gracePeriod
+            })
+            .select();
+            
+          if (insertError) {
+            console.log(`❌ Schedule insert error:`, insertError);
+            results.errors.push({ 
+              data: item, 
+              error: insertError.message 
+            });
+          } else if (scheduleData && scheduleData.length > 0) {
+            console.log(`✅ Schedule inserted for grade "${item.grade}" (ID: ${scheduleData[0]?.id})`);
+            results.inserted++;
+            results.details.push({ 
+              grade: item.grade, 
+              grade_id: gradeId,
+              schedule_id: scheduleData[0]?.id,
+              class_start: item.class_start,
+              class_end: item.class_end,
+              grace_period: gracePeriod,
+              action: 'inserted'
+            });
+          }
+        } else {
+          console.log(`⏭️ Skipping insert for grade "${item.grade}" due to existing errors`);
         }
       }
     }
     
-    console.log(`📊 Grade Schedule Import Summary: ${results.inserted} inserted, ${results.updated} updated, ${results.skipped} skipped, ${results.errors.length} errors`);
+    console.log(`📊 Grade Schedule Import Summary: ${results.inserted} inserted, ${results.updated} updated, ${results.skipped} skipped, ${results.errors.length} errors, ${results.invalidRecords.length} invalid records`);
     return results;
   } catch (error) {
     console.error('❌ Error in importGradeSchedules:', error);
@@ -873,21 +930,20 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
     console.log('Starting database import...');
 
     let importResults = {};
+    let allInvalidRecords = [];
     let responseData = {
       success: true,
       type: processedData.type,
       summary: {},
       message: '',
       warnings: [],
-      errors: {}
+      invalidRecords: [],
+      invalidCount: 0
     };
 
     const dataTypes = [];
     if (processedData.grades_sections && processedData.grades_sections.length > 0) {
       dataTypes.push('grades_sections');
-    }
-    if (processedData.subjects && processedData.subjects.length > 0) {
-      dataTypes.push('subjects');
     }
     if (processedData.grade_schedules && processedData.grade_schedules.length > 0) {
       dataTypes.push('grade_schedules');
@@ -902,6 +958,10 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         const results = await importGradesSections(processedData.grades_sections);
         importResults.grades_sections = results;
         
+        if (results.invalidRecords && results.invalidRecords.length > 0) {
+          allInvalidRecords = allInvalidRecords.concat(results.invalidRecords);
+        }
+        
         responseData.summary.gradesInserted = results.grades.inserted;
         responseData.summary.gradesSkipped = results.grades.skipped;
         responseData.summary.sectionsInserted = results.sections.inserted;
@@ -909,27 +969,10 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         responseData.summary.totalGradesSectionsRecords = processedData.grades_sections.length;
         
         if (results.grades.errors.length > 0) {
-          responseData.errors.grades = results.grades.errors.slice(0, 5);
+          responseData.warnings.push(`Grades errors: ${results.grades.errors.length}`);
         }
         if (results.sections.errors.length > 0) {
-          responseData.errors.sections = results.sections.errors.slice(0, 5);
-        }
-        
-      } else if (dataType === 'subjects') {
-        console.log('\n' + '='.repeat(60));
-        console.log('📚 IMPORTING SUBJECTS');
-        console.log('='.repeat(60));
-        
-        const results = await importSubjects(processedData.subjects);
-        importResults.subjects = results;
-        
-        responseData.summary.subjectsInserted = results.inserted;
-        responseData.summary.subjectsUpdated = results.updated;
-        responseData.summary.subjectsSkipped = results.skipped;
-        responseData.summary.totalSubjectsRecords = processedData.subjects.length;
-        
-        if (results.errors.length > 0) {
-          responseData.errors.subjects = results.errors.slice(0, 5);
+          responseData.warnings.push(`Sections errors: ${results.sections.errors.length}`);
         }
         
       } else if (dataType === 'grade_schedules') {
@@ -940,13 +983,17 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         const results = await importGradeSchedules(processedData.grade_schedules);
         importResults.grade_schedules = results;
         
+        if (results.invalidRecords && results.invalidRecords.length > 0) {
+          allInvalidRecords = allInvalidRecords.concat(results.invalidRecords);
+        }
+        
         responseData.summary.gradeSchedulesInserted = results.inserted;
         responseData.summary.gradeSchedulesUpdated = results.updated;
         responseData.summary.gradeSchedulesSkipped = results.skipped;
         responseData.summary.totalGradeSchedulesRecords = processedData.grade_schedules.length;
         
         if (results.errors.length > 0) {
-          responseData.errors.grade_schedules = results.errors.slice(0, 5);
+          responseData.warnings.push(`Grade schedules errors: ${results.errors.length}`);
         }
         
         const gradeErrors = results.errors.filter(err => 
@@ -958,6 +1005,24 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       }
     }
 
+    if (allInvalidRecords.length > 0) {
+      responseData.success = false;
+      responseData.invalidRecords = allInvalidRecords;
+      responseData.invalidCount = allInvalidRecords.length;
+      responseData.error = `Import failed — ${allInvalidRecords.length} row(s) have errors.`;
+      
+      const errorMessages = allInvalidRecords.map(record => 
+        `Row ${record.row}: ${Object.values(record.errors).join(', ')}`
+      );
+      responseData.errorSummary = errorMessages.slice(0, 5);
+      
+      console.log(`\n❌ Found ${allInvalidRecords.length} invalid records total`);
+      console.log('Error summary:', errorMessages.slice(0, 3));
+      
+      return res.status(400).json(responseData);
+    }
+
+    // Success path
     const messages = [];
     if (responseData.summary.gradesInserted > 0) {
       messages.push(`${responseData.summary.gradesInserted} new grades`);
@@ -970,15 +1035,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
     }
     if (responseData.summary.sectionsSkipped > 0) {
       messages.push(`${responseData.summary.sectionsSkipped} sections skipped (already exist)`);
-    }
-    if (responseData.summary.subjectsInserted > 0) {
-      messages.push(`${responseData.summary.subjectsInserted} new subjects`);
-    }
-    if (responseData.summary.subjectsUpdated > 0) {
-      messages.push(`${responseData.summary.subjectsUpdated} subjects updated`);
-    }
-    if (responseData.summary.subjectsSkipped > 0) {
-      messages.push(`${responseData.summary.subjectsSkipped} subjects skipped (already exist)`);
     }
     if (responseData.summary.gradeSchedulesInserted > 0) {
       messages.push(`${responseData.summary.gradeSchedulesInserted} new grade schedules`);
@@ -996,18 +1052,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
       responseData.message = 'No new data to import. All records already exist in the system.';
     }
 
-    const totalErrors = 
-      (responseData.summary.totalGradesSectionsRecords || 0) -
-      ((responseData.summary.gradesInserted || 0) + (responseData.summary.gradesSkipped || 0)) +
-      (responseData.summary.totalSubjectsRecords || 0) - 
-      ((responseData.summary.subjectsInserted || 0) + (responseData.summary.subjectsUpdated || 0) + (responseData.summary.subjectsSkipped || 0)) +
-      (responseData.summary.totalGradeSchedulesRecords || 0) - 
-      ((responseData.summary.gradeSchedulesInserted || 0) + (responseData.summary.gradeSchedulesUpdated || 0) + (responseData.summary.gradeSchedulesSkipped || 0));
-    
-    if (totalErrors > 0) {
-      responseData.warnings.push(`${Math.round(totalErrors)} records had errors and were not processed`);
-    }
-
     console.log('\n' + '='.repeat(60));
     console.log('✅ UPLOAD COMPLETE');
     console.log('='.repeat(60));
@@ -1016,10 +1060,6 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
     
     if (responseData.warnings && responseData.warnings.length > 0) {
       console.log(`Warnings:`, responseData.warnings);
-    }
-    
-    if (responseData.errors && Object.keys(responseData.errors).length > 0) {
-      console.log(`Errors:`, JSON.stringify(responseData.errors, null, 2));
     }
     
     console.log('='.repeat(60) + '\n');

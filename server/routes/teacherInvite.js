@@ -1337,10 +1337,10 @@ router.get('/teacher-classes/:teacherId', async (req, res) => {
     console.log(`👤 Teacher: ${teacherData.first_name} ${teacherData.last_name} (${teacherData.email_address})`);
     
     const { data: classesData, error: classesError } = await supabase
-      .from('teacher_subject_sections')
+      .from('teacher_sections')
       .select(`
         id,
-        subject:subjects(subject_code, subject_name),
+        is_adviser,
         section:sections(
           id,
           section_name,
@@ -1364,15 +1364,11 @@ router.get('/teacher-classes/:teacherId', async (req, res) => {
     const formattedClasses = (classesData || []).map((item, index) => {
       const grade = item.section?.grade?.grade_level || 'Unknown';
       const sectionName = item.section?.section_name || 'Unknown';
-      const subjectName = item.subject?.subject_name || 'Unknown';
-      const subjectCode = item.subject?.subject_code || 'Unknown';
       
       return {
         id: item.id,
         className: `${grade}-${sectionName}`,
-        subject: subjectName,
-        subjectCode: subjectCode,
-        schoolYear: "SY 2024-2025", 
+        isAdviser: item.is_adviser,
         grade: grade,
         section: sectionName,
         initialColor: getColorForIndex(index)

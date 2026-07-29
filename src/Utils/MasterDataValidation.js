@@ -12,16 +12,3 @@ export const validateGradeSectionData = (data) => {
   
   return errors;
 };
-
-export const validateSubjectData = (data) => {
-  const errors = {};
-  
-  if (!data.subject_code?.trim()) errors.subject_code = 'Subject code is required';
-  if (!data.subject_name?.trim()) errors.subject_name = 'Subject name is required';
-  
-  if (data.subject_code && !/^[A-Z0-9]+$/.test(data.subject_code.trim())) {
-    errors.subject_code = 'Subject code must be uppercase letters and numbers only';
-  }
-  
-  return errors;
-};

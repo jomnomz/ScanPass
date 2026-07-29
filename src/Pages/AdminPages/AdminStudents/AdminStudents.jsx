@@ -129,12 +129,12 @@ function AdminStudents() {
 
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(allStudents, [
     'lrn',
-    (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    (row) => [row.first_name, row.last_name].filter(Boolean).join(' '),
     'grade',
     'section',
     'email',
     'phone_number',
-    (row) => [row.guardian_first_name, row.guardian_middle_name, row.guardian_last_name].filter(Boolean).join(' '),
+    (row) => [row.guardian_first_name, row.guardian_last_name].filter(Boolean).join(' '),
     'guardian_phone_number'
   ]);
 

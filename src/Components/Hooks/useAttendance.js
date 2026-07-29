@@ -99,7 +99,6 @@ export const useAttendance = () => {
           lrn: student.lrn,
           first_name: student.first_name,
           last_name: student.last_name,
-          middle_name: student.middle_name,
           grade: student.grade?.grade_level || 'N/A',
           section: student.section?.section_name || 'N/A',
           time_in: null,
@@ -120,7 +119,6 @@ export const useAttendance = () => {
         lrn: student.lrn,
         first_name: student.first_name,
         last_name: student.last_name,
-        middle_name: student.middle_name,
         grade: student.grade?.grade_level || 'N/A',
         section: student.section?.section_name || 'N/A',
         time_in: studentRecord.time_in,
@@ -158,7 +156,6 @@ export const useAttendance = () => {
           lrn,
           first_name,
           last_name,
-          middle_name,
           grade:grades(id, grade_level),
           section:sections(section_name)
         `)

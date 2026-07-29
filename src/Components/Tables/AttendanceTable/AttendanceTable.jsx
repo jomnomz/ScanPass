@@ -1,3 +1,4 @@
+// AttendanceTable.jsx
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
 import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
@@ -18,6 +19,8 @@ import EntityDropdown from '../../UI/Buttons/EntityDropdown/EntityDropdown.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
 import Button from '../../UI/Buttons/Button/Button.jsx';
 import Input from '../../UI/Inputs/Input/Input.jsx';
+import { exportEntity } from '../../../Utils/exportEntity.js';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -158,11 +161,10 @@ const AttendanceTable = ({
     attendances,
     [
       'lrn',
-      (row) => [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+      (row) => [row.first_name, row.last_name].filter(Boolean).join(' '),
       'grade',
       'section',
       'status',
-      'scan_type'
     ]
   );
 
@@ -201,6 +203,20 @@ const AttendanceTable = ({
   useEffect(() => {
     setStatusFilter(externalStatusFilter || 'all');
   }, [externalStatusFilter]);
+
+  // ===== EXPORT HANDLER =====
+  const handleExportAttendance = () => {
+    try {
+      exportEntity({
+        entity: 'attendance',
+        data: sortedAttendances,
+        filename: 'attendance-export',
+      });
+      success('Successfully downloaded attendance data table');
+    } catch (err) {
+      toastError(`Failed to export attendance data: ${err.message}`);
+    }
+  };
 
   const formatTimeDisplay = useCallback((timeString) => {
     if (!timeString) return 'N/A';
@@ -704,6 +720,7 @@ const AttendanceTable = ({
     </div>
   ), [editingId, renderActionButtons, startEdit]);
 
+  // ===== UPDATED: renderExpandedContent with profile circle =====
   const renderExpandedContent = useCallback((attendance) => {
     const statusText = formatAttendanceStatus(attendance.status);
     const recordedAt = attendance.created_at ? formatDateTimeLocal(attendance.created_at) : 'N/A';
@@ -724,59 +741,62 @@ const AttendanceTable = ({
           ✕
         </button>
 
-        <div className={styles.attendanceHeader}>
-          {formatStudentName(attendance)}
-        </div>
-        
-        <div className={styles.details}>
-          <div>
-            <div className={styles.attendanceInfo}>
-              <strong>Attendance Details</strong>
-            </div>
-            <div className={styles.attendanceInfo}>
-              Time In: {formatTimeDisplayShort(attendance.time_in) || 'N/A'}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Time Out: {formatTimeDisplayShort(attendance.time_out) || 'N/A'}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Date: {formatDate(attendance.date)}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Status: {statusText}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Scan Type: {attendance.scan_type || 'N/A'}
-            </div>
-          </div>
+        <div className={styles.expandedLayout}>
+          {renderProfileCircle(attendance, styles.profileLarge)}
 
-          <div>
-            <div className={styles.attendanceInfo}>
-              <strong>Student Details</strong>
+          <div className={styles.cardBody}>
+            <div className={styles.attendanceHeader}>
+              {formatStudentName(attendance)}
             </div>
-            <div className={styles.attendanceInfo}>
-              LRN: {attendance.lrn || 'N/A'}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Full Name: {formatStudentName(attendance)}
-            </div>
-            <div className={styles.attendanceInfo}>
-              Grade & Section: {attendance.grade} - {attendance.section}
-            </div>
-          </div>
+            
+            <div className={styles.details}>
+              <div>
+                <div className={styles.attendanceInfo}>
+                  <strong>Attendance Details</strong>
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Time In: {formatTimeDisplayShort(attendance.time_in) || 'N/A'}
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Time Out: {formatTimeDisplayShort(attendance.time_out) || 'N/A'}
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Date: {formatDate(attendance.date)}
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Status: {statusText}
+                </div>
+              </div>
 
-          <div>
-            <div className={styles.attendanceInfo}>
-              <strong>Record Information</strong>
-            </div>
-            <div className={styles.attendanceInfo}>
-              Recorded at: {recordedAt}
+              <div>
+                <div className={styles.attendanceInfo}>
+                  <strong>Student Details</strong>
+                </div>
+                <div className={styles.attendanceInfo}>
+                  LRN: {attendance.lrn || 'N/A'}
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Full Name: {formatStudentName(attendance)}
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Grade & Section: {attendance.grade} - {attendance.section}
+                </div>
+              </div>
+
+              <div>
+                <div className={styles.attendanceInfo}>
+                  <strong>Record Information</strong>
+                </div>
+                <div className={styles.attendanceInfo}>
+                  Recorded at: {recordedAt}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     );
-  }, [formatStudentName, formatTimeDisplayShort, formatDate]);
+  }, [formatStudentName, formatTimeDisplayShort, formatDate, toggleRow]);
 
   const getTableInfoMessage = useCallback(() => {
     const attendanceCount = sortedAttendances.length;
@@ -828,13 +848,13 @@ const AttendanceTable = ({
     minWidth: `${minWidth}px`
   });
 
-  // ===== UPDATED TABLE COLUMNS: Replaced first_name and last_name with student column =====
+  // ===== UPDATED TABLE COLUMNS: Removed date column =====
   const tableColumns = useMemo(() => [
     {
       key: 'student',
       label: 'STUDENT',
-      headerStyle: withColumnWidth('24%', 200),
-      cellStyle: withColumnWidth('24%', 200),
+      headerStyle: withColumnWidth('28%', 200),
+      cellStyle: withColumnWidth('28%', 200),
       renderCell: ({ row }) => (
         <div className={styles.studentCell}>
           {renderProfileCircle(row, styles.profileSmall)}
@@ -852,15 +872,15 @@ const AttendanceTable = ({
     {
       key: 'grade',
       label: 'GRADE',
-      headerStyle: withColumnWidth('8%', 80),
-      cellStyle: withColumnWidth('8%', 80),
+      headerStyle: withColumnWidth('10%', 80),
+      cellStyle: withColumnWidth('10%', 80),
       renderCell: ({ row }) => row.grade
     },
     {
       key: 'section',
       label: 'SECTION',
-      headerStyle: withColumnWidth('12%', 120),
-      cellStyle: withColumnWidth('12%', 120),
+      headerStyle: withColumnWidth('14%', 120),
+      cellStyle: withColumnWidth('14%', 120),
       renderHeader: () => (
         <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderRow}>
@@ -878,8 +898,8 @@ const AttendanceTable = ({
     {
       key: 'time_in',
       label: 'TIME IN',
-      headerStyle: withColumnWidth('14%', 120),
-      cellStyle: withColumnWidth('14%', 120),
+      headerStyle: withColumnWidth('16%', 120),
+      cellStyle: withColumnWidth('16%', 120),
       renderCell: ({ row }) => (
         editingId === row.id ? (
           <div className={styles.timeCell}>
@@ -897,8 +917,8 @@ const AttendanceTable = ({
     {
       key: 'time_out',
       label: 'TIME OUT',
-      headerStyle: withColumnWidth('14%', 120),
-      cellStyle: withColumnWidth('14%', 120),
+      headerStyle: withColumnWidth('16%', 120),
+      cellStyle: withColumnWidth('16%', 120),
       renderCell: ({ row }) => (
         editingId === row.id ? (
           <div className={styles.timeCell}>
@@ -917,17 +937,10 @@ const AttendanceTable = ({
       )
     },
     {
-      key: 'date',
-      label: 'DATE',
-      headerStyle: withColumnWidth('12%', 120),
-      cellStyle: withColumnWidth('12%', 120),
-      renderCell: ({ row }) => formatDate(row.date)
-    },
-    {
       key: 'status',
       label: 'STATUS',
-      headerStyle: withColumnWidth('10%', 100),
-      cellStyle: withColumnWidth('10%', 100),
+      headerStyle: withColumnWidth('12%', 100),
+      cellStyle: withColumnWidth('12%', 100),
       renderHeader: () => (
         <div className={styles.statusHeader}>
           <span>Status</span>
@@ -1003,17 +1016,29 @@ const AttendanceTable = ({
     <div className={styles.attendanceTableContainer}>
       {/* === STATS CARDS (same style as teacher table) === */}
       <section className={styles.summaryCard}>
-        {/* === SEARCH + DATE (same row) === */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
-          <div className={styles.searchContainer} style={{ flex: '0 1 320px', minWidth: '240px' }}>
-            <Input
-              placeholder="Search Students..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              search={true}
-            />
+        {/* === EXPORT BUTTON + SEARCH + DATE (same row) === */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
+          <Button
+            color="teaGreen"
+            height="sm"
+            width="auto"
+            icon={<DownloadIcon />}
+            label="Export"
+            onClick={handleExportAttendance}
+            disabled={parentLoading || attendanceLoading || sortedAttendances.length === 0}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div className={styles.searchContainer} style={{ flex: '0 1 320px', minWidth: '240px' }}>
+              <Input
+                placeholder="Search Students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                search={true}
+              />
+            </div>
+            {dateControls}
           </div>
-          {dateControls}
         </div>
 
         <div className={styles.statsGrid}>
