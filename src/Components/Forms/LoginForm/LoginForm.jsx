@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import { apiClient } from "../../../config/api"; 
 import styles from "./LoginForm.module.css";
-import stonino from "../../../assets/sto nino.png";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import ReportGmailerrorredIcon from '@mui/icons-material/ReportGmailerrorred';
-import minimalist_stonino from "../../../assets/minimalist_stonino.png";
+import ScanPassLogo from "../../../assets/ScanPassLogo.png";
 import LoginIcon from '@mui/icons-material/Login';
 
 function LoginForm() {
@@ -178,10 +177,15 @@ function LoginForm() {
   return (
     <form className={styles.form} onSubmit={handleLogin}>
       <div className={styles.top}>
-        <div className={styles.title}><p>Welcome Back!</p></div>
-        <div className={styles.subTitle}><p>Sign in to your account</p></div>
-          <div className={styles.logo}>
-          <img src={minimalist_stonino} alt="minimalist_stonino" />
+        <div className={styles.logoAndTitle}>
+            <div className={styles.logo}>
+            <img src={ScanPassLogo} alt="ScanPassLogo" />
+            <div className={styles.logoTitle}><p>ScanPass</p></div>
+          </div>
+        </div>
+        <div>
+            <div className={styles.title}><p>Welcome Back!</p></div>
+            <div className={styles.subTitle}><p>Sign in to your account.</p></div>
         </div>
       </div>
 

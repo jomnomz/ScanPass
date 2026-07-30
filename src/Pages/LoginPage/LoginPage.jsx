@@ -4,7 +4,6 @@ import { useAuth } from "../../Components/Authentication/AuthProvider/AuthProvid
 import styles from "./LoginPage.module.css";
 import LoginForm from "../../Components/Forms/LoginForm/LoginForm";
 import LoginSection from "../../Components/UI/Sections/LoginSection/LoginSection";
-import stoninoschool from "../../assets/sto nino school.png";
 
 const LoginPage = () => {
   const { user, profile, loading } = useAuth();

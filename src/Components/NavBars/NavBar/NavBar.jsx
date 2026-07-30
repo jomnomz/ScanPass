@@ -19,7 +19,7 @@ import StarIcon from '@mui/icons-material/Star';
 import ExpandMoreOutlinedIcon from '@mui/icons-material/ExpandMoreOutlined';
 import ExpandLessOutlinedIcon from '@mui/icons-material/ExpandLessOutlined';
 import { supabase } from '../../../lib/supabase.js';
-import minimalist_stonino from '../../../assets/minimalist_stonino.png';
+import ScanPassLogo from "../../../assets/ScanPassLogo.png";
 
 function NavBar({ userType = 'admin', onCollapseChange }) {
   const navigate = useNavigate();
@@ -249,10 +249,10 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
       <div className={styles.header}>
         <div className={styles.schoolContainer}>
           <div className={styles.schoolLogoContainer}>
-            <img className={styles.schoolLogo} src={minimalist_stonino} alt="" />
+            <img className={styles.schoolLogo}  src={ScanPassLogo} alt="ScanPassLogo" />
           </div>
           <div className={styles.schoolName}>
-            <span className={styles.schoolTitle}>Sto Niño</span>
+            <span className={styles.schoolTitle}>ScanPass</span> {/* Sto Niño */}
             <span className={styles.schoolSubtitle}>High School</span>
           </div>
         </div>
