@@ -630,7 +630,7 @@ app.listen(port, '0.0.0.0', async () => {
   POST /api/students/upload               - Upload student data
   
   MASTER DATA UPLOAD:
-  POST /api/master-data/upload            - Upload master data (grades, sections, subjects)
+  POST /api/master-data/upload            - Upload master data (grades, sections)
   GET  /api/master-data/template          - Download master data template
   GET  /api/master-data/health            - Health check
   

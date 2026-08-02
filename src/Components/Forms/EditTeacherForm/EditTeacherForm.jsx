@@ -1,9 +1,9 @@
 import React from 'react';
-import { grades } from '../../../Utils/TableHelpers';
 import styles from './EditTeacherForm.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faPlus } from '@fortawesome/free-solid-svg-icons';
 import PhoneNumberInput from '../../UI/Inputs/PhoneNumberInput/PhoneNumberInput';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 let rowIdCounter = 0;
 const nextRowId = (prefix) => `${prefix}-${Date.now()}-${rowIdCounter++}`;
@@ -15,6 +15,9 @@ function EditTeacherForm({
   gradeSectionsMap = {},
   disabled = false,
 }) {
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
+
   const assignments = formData.assignments || [];
 
   const handleInputChange = (e) => {
@@ -169,7 +172,7 @@ function EditTeacherForm({
                 disabled={disabled}
               >
                 <option value="" disabled>Grade</option>
-                {grades.map((grade) => (
+                {gradeLevels.map((grade) => (
                   <option key={grade} value={grade}>Grade {grade}</option>
                 ))}
               </select>

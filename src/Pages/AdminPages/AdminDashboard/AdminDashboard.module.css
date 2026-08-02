@@ -1,7 +1,7 @@
 .main{
     display: flex;
     flex-direction: column;
-    gap: 25px;
+    gap: 15px; /*25*/
     margin-top: 20px;
     
 }

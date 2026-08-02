@@ -1,4 +1,4 @@
-// src/components/Modals/DeleteEntityModal/DeleteEntityModal.jsx
+import { useMemo } from 'react';
 import Modal from '../Modal/Modal.jsx';
 import styles from './DeleteEntityModal.module.css';
 import Button from '../../UI/Buttons/Button/Button.jsx';
@@ -9,6 +9,7 @@ import TitleModalLabel from '../../UI/Labels/TitleModalLabel/TitleModalLabel.jsx
 import MessageModalLabel from '../../UI/Labels/MessageModalLabel/MessageModalLabel.jsx';
 import Tooltip from '../../UI/Tooltip/Tooltip.jsx';
 import InfoIcon from '@mui/icons-material/Info';
+import { computeGradesThatWouldBecomeEmpty } from '../../../Utils/gradeSectionCascade';
 
 function DeleteEntityModal({ 
   isOpen, 
@@ -22,7 +23,8 @@ function DeleteEntityModal({
   entityConfig = {},
   currentFilter = '',
   currentSection = '',
-  currentGrade = ''
+  currentGrade = '',
+  gradeSchedulesData = [] // NEW: for grade section schedule lookup
 }) {
   const { info, error: toastError } = useToast(); 
   const labels = getEntityTypeLabels(entityType);
@@ -67,6 +69,12 @@ function DeleteEntityModal({
       entity.status === 'pending' || entity.status === 'active' || entity.status === 'inactive'
     );
 
+  // Compute which grades would become empty (only for grade sections)
+  const emptiedGrades = useMemo(() => {
+    if (labels.singularKey !== 'grade section') return [];
+    return computeGradesThatWouldBecomeEmpty(selectedEntityObjects, entityData);
+  }, [labels.singularKey, selectedEntityObjects, entityData]);
+
   const getWarningMessage = () => {
     let warning = config.warningMessage;
     
@@ -74,6 +82,22 @@ function DeleteEntityModal({
       warning = `This will permanently delete ${labels.sentenceSingular} data and ${deleteCount > 1 ? labels.sentencePlural : labels.sentenceSingular} who have accounts.`;
     } else if (config.hasQRCode) {
       warning = `This action cannot be undone. All ${labels.sentenceSingular} data, including QR codes, will be permanently removed.`;
+    }
+    
+    // Enhanced warning for grade section deletions that would empty grades
+    if (emptiedGrades.length > 0) {
+      const names = emptiedGrades.map(g => {
+        // Check if this grade has a schedule (adjust field name if needed)
+        // SCHEDULE FIELD: change 'grade_id' to whatever your scheduleData uses to link to grade
+        const hasSchedule = gradeSchedulesData.some(s => s.grade_id === g.grade_id);
+        return `Grade ${g.grade_level}${hasSchedule ? ' (and its class schedule)' : ''}`;
+      });
+      
+      const gradeList = names.length === 1
+        ? names[0]
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+      
+      warning += ` This will also permanently delete ${gradeList} since no sections would remain.`;
     }
     
     return warning;

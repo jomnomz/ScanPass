@@ -1,7 +1,7 @@
 // AttendanceTable.jsx
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
-import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
+import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatDate, formatNA, formatAttendanceStatus } from '../../../Utils/Formatters'; 
 import { sortEntities } from '../../../Utils/SortEntities'; 
 import { compareSections } from '../../../Utils/CompareHelpers';
@@ -21,6 +21,7 @@ import Button from '../../UI/Buttons/Button/Button.jsx';
 import Input from '../../UI/Inputs/Input/Input.jsx';
 import { exportEntity } from '../../../Utils/exportEntity.js';
 import DownloadIcon from '@mui/icons-material/Download';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 const STATUS_OPTIONS = [
   { label: 'Present', value: 'present' },
@@ -155,6 +156,9 @@ const AttendanceTable = ({
   const [validationErrors, setValidationErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState(externalStatusFilter || 'all');
+
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
 
   // ===== SEARCH (shared hook — owns its own state, no prop sync needed) =====
   const { searchTerm, setSearchTerm, filteredRows: searchFilteredRows } = useSearchFilter(
@@ -1070,7 +1074,7 @@ const AttendanceTable = ({
         emptyMessage={getTableInfoMessage()}
         containerRef={tableRef}
         gradeTabs={{
-          options: grades,
+          options: gradeLevels,
           currentValue: currentClass,
           onChange: handleClassChange,
           showAll: true,

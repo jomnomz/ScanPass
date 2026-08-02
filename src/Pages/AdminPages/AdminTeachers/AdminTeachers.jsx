@@ -23,7 +23,17 @@ import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
 
 function AdminTeachers() {
   const { success, error: toastError } = useToast();
-  const { entities: teachers, refetch: refreshTeachers } = useTeachers();
+  const {
+    entities: teachers,
+    teacherAssignments,
+    loadingAssignments,
+    loading: teachersLoading,
+    error: teachersError,
+    setEntities: setTeachers,
+    refetch: refreshTeachers,
+    fetchTeacherAssignmentsFresh,
+    updateTeacherAssignments,
+  } = useTeachers();
   const { user } = useAuth();
   
   const [selectedTeachers, setSelectedTeachers] = useState([]);
@@ -32,7 +42,6 @@ function AdminTeachers() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -102,7 +111,6 @@ function AdminTeachers() {
   // Upload
   const handleUploadSuccess = useCallback(() => {
     refreshTeachers();
-    setRefreshTrigger(prev => prev + 1);
   }, [refreshTeachers]);
 
   // Export
@@ -155,7 +163,6 @@ function AdminTeachers() {
         const count = Array.isArray(teacherIdOrIds) ? teacherIdOrIds.length : 1;
         success(`${count} invitation(s) sent successfully`);
         refreshTeachers();
-        setRefreshTrigger(prev => prev + 1);
       } else {
         toastError(response.data.error || 'Failed to send invitation');
       }
@@ -199,7 +206,6 @@ function AdminTeachers() {
         const count = Array.isArray(teacherIdOrIds) ? teacherIdOrIds.length : 1;
         success(`${count} teacher(s) deleted successfully`);
         refreshTeachers();
-        setRefreshTrigger(prev => prev + 1);
       } else {
         toastError(response.data.error || 'Failed to delete teacher');
       }
@@ -264,9 +270,6 @@ function AdminTeachers() {
                 onClick={handleBulkDeleteClick}
                 disabled={isDeleting}
               />
-              <span className={styles.selectedCount}>
-                {selectedCount} selected
-              </span>
             </div>
           )}
         </div>
@@ -296,7 +299,6 @@ function AdminTeachers() {
       />
 
       <TeacherTable 
-        key={`teacher-table-${refreshTrigger}`}
         searchTerm={searchTerm}
         selectedTeachers={selectedTeachers}
         onSelectedTeachersUpdate={handleSelectedTeachersUpdate}
@@ -312,6 +314,15 @@ function AdminTeachers() {
         onFilteredTeachersUpdate={handleFilteredTeachersUpdate}
         gradesData={gradesData}
         sectionsData={sectionsData}
+        // Props from the single useTeachers instance
+        teachers={teachers}
+        teacherAssignments={teacherAssignments}
+        loadingAssignments={loadingAssignments}
+        loading={teachersLoading}
+        error={teachersError}
+        setEntities={setTeachers}
+        fetchTeacherAssignmentsFresh={fetchTeacherAssignmentsFresh}
+        updateTeacherAssignments={updateTeacherAssignments}
       />
 
       <InviteModal

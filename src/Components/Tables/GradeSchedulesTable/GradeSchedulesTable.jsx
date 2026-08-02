@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// GradeSchedulesTable.jsx
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import styles from './GradeSchedulesTable.module.css';
 import { EntityService } from '../../../Utils/EntityService';
 import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
@@ -10,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 import Button from '../../UI/Buttons/Button/Button.jsx';
+import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
 
 const formatTimeAMPM = (timeString) => {
   if (!timeString) return 'N/A';
@@ -141,6 +143,7 @@ const GradeSchedulesTable = ({
   onSelectAllPages,
   onClearAllPages,
   currentPage = 1,
+  refreshTrigger = 0,  // ← ADDED: triggers silent refetch from parent
 }) => {
   const [allSchedules, setAllSchedules] = useState([]); // full dataset for export/edit
   const [grades, setGrades] = useState([]);
@@ -150,15 +153,20 @@ const GradeSchedulesTable = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Debounce timeout ref
+  const debounceTimeoutRef = useRef(null);
+  
   const { expandedRow, toggleRow, isRowExpanded, tableRef } = useRowExpansion();
   const { success, error: toastError } = useToast();
   
   const scheduleService = new EntityService('grade_schedules');
   const gradeService = new EntityService('grades');
 
-  const fetchSchedules = async () => {
+  // Fetch schedules with silent option
+  const fetchSchedules = useCallback(async (options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       
       const { data: allGrades, error: gradesError } = await supabase
@@ -199,10 +207,21 @@ const GradeSchedulesTable = ({
       setAllSchedules([]);
       setGrades([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
-  
+  }, [onEntityDataUpdate]);
+
+  // Debounced refetch for realtime events
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchSchedules({ silent: true });
+      debounceTimeoutRef.current = null;
+    }, 300);
+  }, [fetchSchedules]);
+
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [saving, setSaving] = useState(false);
@@ -294,7 +313,7 @@ const GradeSchedulesTable = ({
       
       success('Schedule updated successfully');
       cancelEdit();
-      await fetchSchedules(); // Refresh to sync with database
+      await fetchSchedules({ silent: true }); // Refresh to sync with database - SILENT
       
       return { success: true };
       
@@ -314,9 +333,14 @@ const GradeSchedulesTable = ({
     }
   };
 
+  // ===== UPDATED: Mount effect with refreshTrigger support =====
   useEffect(() => {
-    fetchSchedules();
+    // On initial mount OR when refreshTrigger changes:
+    // - If refreshTrigger > 0, it's a parent-triggered refresh → silent
+    // - If refreshTrigger === 0, it's the true initial mount → show loading
+    fetchSchedules({ silent: refreshTrigger > 0 });
     
+    // Realtime subscriptions — DEBOUNCED and SILENT
     const scheduleSubscription = supabase
       .channel('grade-schedules-changes')
       .on(
@@ -326,9 +350,7 @@ const GradeSchedulesTable = ({
           schema: 'public',
           table: 'grade_schedules'
         },
-        () => {
-          fetchSchedules();
-        }
+        debouncedFetch
       )
       .subscribe();
     
@@ -341,17 +363,18 @@ const GradeSchedulesTable = ({
           schema: 'public',
           table: 'grades'
         },
-        () => {
-          fetchSchedules();
-        }
+        debouncedFetch
       )
       .subscribe();
 
     return () => {
       scheduleSubscription.unsubscribe();
       gradeSubscription.unsubscribe();
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [fetchSchedules, debouncedFetch, refreshTrigger]); // ← ADDED refreshTrigger to deps
 
   // Use propSchedules for display (already paginated+filtered by parent)
   const displaySchedules = propSchedules;
@@ -446,15 +469,6 @@ const GradeSchedulesTable = ({
   const allVisibleSelected = displaySchedules.length > 0 && 
     displaySchedules.every(schedule => selectedSchedules.includes(schedule.id));
 
-  // ===== Hide infoText when all pages are selected =====
-  const computedInfoText = (() => {
-    const allPagesSelected = selectedSchedules.length === totalFilteredCount && totalFilteredCount > 0;
-
-    if (allPagesSelected) return '';
-
-    if (selectedSchedules.length > 0) return `${selectedSchedules.length} schedule/s selected`;
-    return '';
-  })();
 
   // ===== selectAllBanner with snapshot-based logic =====
   const selectAllBanner = (() => {
@@ -531,7 +545,7 @@ const GradeSchedulesTable = ({
       if (editingId === id) cancelEdit();
       await scheduleService.delete(id);
       success('Schedule deleted successfully');
-      await fetchSchedules();
+      await fetchSchedules({ silent: true });
       const newSelected = selectedSchedules.filter(selectedId => selectedId !== id);
       if (onSelectedSchedulesUpdate) {
         onSelectedSchedulesUpdate(newSelected);
@@ -560,52 +574,59 @@ const GradeSchedulesTable = ({
     cancelEdit();
   };
 
-const renderExpandedRow = (schedule) => {
-  const addedAt = formatDateTimeLocal(schedule.created_at);
-  const updatedAt = schedule.updated_at ? formatDateTimeLocal(schedule.updated_at) : 'Never updated';
-  const classDuration = calculateClassDuration(schedule.class_start, schedule.class_end);
-  
-  return (
-    <div 
-      className={`${styles.scheduleCard} ${styles.expandableCard}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* ✅ Close button - collapses the expanded row */}
-      <button
-        className={styles.closeExpandBtn}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleRow(null);
-        }}
-        aria-label="Close"
-      >
-        ✕
-      </button>
+  // ===== FIXED: Row click handler with shouldHandleRowClick check =====
+  const handleRowClick = (scheduleId, event) => {
+    if (shouldHandleRowClick(editingId, event.target)) {
+      toggleRow(scheduleId);
+    }
+  };
 
-      <div className={styles.scheduleHeader}>
-        Grade {schedule.grade_level} Schedule
-      </div>
-      <div className={styles.details}>
-        <div>
-          <div className={styles.scheduleInfo}>
-            <strong>Schedule Details</strong>
-          </div>
-          <div className={styles.scheduleInfo}>Class Duration: {formatDuration(classDuration)}</div>
-          <div className={styles.scheduleInfo}>Late Policy: Students are considered late {formatDuration(schedule.grace_period_minutes || 15)} after class starts</div>
-          <div className={styles.scheduleInfo}>Time: {formatTimeAMPM(schedule.class_start)} - {formatTimeAMPM(schedule.class_end)}</div>
+  const renderExpandedRow = (schedule) => {
+    const addedAt = formatDateTimeLocal(schedule.created_at);
+    const updatedAt = schedule.updated_at ? formatDateTimeLocal(schedule.updated_at) : 'Never updated';
+    const classDuration = calculateClassDuration(schedule.class_start, schedule.class_end);
+    
+    return (
+      <div 
+        className={`${styles.scheduleCard} ${styles.expandableCard}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ✅ Close button - collapses the expanded row */}
+        <button
+          className={styles.closeExpandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRow(null);
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
+        <div className={styles.scheduleHeader}>
+          Grade {schedule.grade_level} Schedule
         </div>
-        
-        <div>
-          <div className={styles.scheduleInfo}>
-            <strong>Record Information</strong>
+        <div className={styles.details}>
+          <div>
+            <div className={styles.scheduleInfo}>
+              <strong>Schedule Details</strong>
+            </div>
+            <div className={styles.scheduleInfo}>Class Duration: {formatDuration(classDuration)}</div>
+            <div className={styles.scheduleInfo}>Late Policy: Students are considered late {formatDuration(schedule.grace_period_minutes || 15)} after class starts</div>
+            <div className={styles.scheduleInfo}>Time: {formatTimeAMPM(schedule.class_start)} - {formatTimeAMPM(schedule.class_end)}</div>
           </div>
-          <div className={styles.scheduleInfo}>Added: {addedAt}</div>
-          <div className={styles.scheduleInfo}>Last Updated: {updatedAt}</div>
+          
+          <div>
+            <div className={styles.scheduleInfo}>
+              <strong>Record Information</strong>
+            </div>
+            <div className={styles.scheduleInfo}>Added: {addedAt}</div>
+            <div className={styles.scheduleInfo}>Last Updated: {updatedAt}</div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   useEffect(() => {
     if (onEntityDataUpdate) {
@@ -805,7 +826,7 @@ const renderExpandedRow = (schedule) => {
         emptyMessage={searchTerm ? `No schedules found matching "${searchTerm}"` : 'No schedules available'}
         containerRef={tableRef}
         tableLabel="Grade schedule records"
-        onRowClick={({ row }) => toggleRow(row.id)}
+        onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
         isRowSelected={({ row }) => selectedSchedules.includes(row.id)}
         rowClassName={({ row }) => {
           const isEditing = editingId === row.id;
@@ -817,8 +838,6 @@ const renderExpandedRow = (schedule) => {
         hideMainRowWhenExpanded
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         stickyHeader
-        infoText={computedInfoText}
-        selectedInfoText=""
         headerContent={selectAllBanner}
         isAllPagesSelected={isAllPagesSelected}
         visibleSelectedCount={selectedSchedules.length}

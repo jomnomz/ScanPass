@@ -2,7 +2,7 @@
   width: 580px; /* Tastefully longer width matches LineChart */
   padding: 16px;
   height: 280px; /* Slightly taller to accommodate buttons */
-  background-color: transparent !important;
+  background-color: white; /*transparent !important;*/
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   display: flex;

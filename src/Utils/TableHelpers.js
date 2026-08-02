@@ -1,7 +1,3 @@
-// Shared utilities for all data tables
-
-export const grades = ['7', '8', '9', '10'];
-
 // Student table configuration
 export const studentTableColumns = [
   { key: 'lrn', label: 'LRN' },

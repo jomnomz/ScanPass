@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { grades, shouldHandleRowClick } from '../../../Utils/TableHelpers';
+import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { formatStudentName, formatNA } from '../../../Utils/Formatters';
 import { compareSections } from '../../../Utils/CompareHelpers';
 import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
@@ -19,6 +19,7 @@ import { useStudentActions } from '../../Hooks/useEntityActions';
 import { StudentService } from '../../../Utils/EntityService'; 
 import Table from '../Table/Table.jsx';
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -134,6 +135,9 @@ const StudentTable = ({
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
 
   const studentService = useMemo(() => new StudentService(), []);
+
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
 
   useEffect(() => {
     if (propStudents && propStudents.length > 0) {
@@ -942,7 +946,7 @@ const StudentTable = ({
         emptyMessage={getTableInfoMessage()}
         containerRef={tableRef}
         gradeTabs={{
-          options: grades,
+          options: gradeLevels,
           currentValue: currentClass,
           onChange: handleClassChange,
           showAll: true,

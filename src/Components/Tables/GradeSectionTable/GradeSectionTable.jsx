@@ -1,3 +1,4 @@
+// GradeSectionTable.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styles from './GradeSectionTable.module.css';
 import { EntityService } from '../../../Utils/EntityService';
@@ -10,7 +11,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faTrashCan, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { compareSections } from '../../../Utils/CompareHelpers';
 import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
-import Button from '../../UI/Buttons/Button/Button.jsx'; // ADDED THIS IMPORT
+import Button from '../../UI/Buttons/Button/Button.jsx';
+import { deleteSectionsWithGradeCascade } from '../../../Utils/gradeSectionCascade';
+import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -92,14 +95,18 @@ const GradeSectionTable = ({
   const [validationErrors, setValidationErrors] = useState({});
   const [updatingStudents, setUpdatingStudents] = useState(false);
   
+  // Debounce timeout ref
+  const debounceTimeoutRef = React.useRef(null);
+  
   const { expandedRow, toggleRow, tableRef } = useRowExpansion();
   const { success, error: toastError } = useToast();
   const sectionService = new EntityService('sections');
 
-  // Fetch all grade sections (parent handles filtering/pagination)
-  const fetchGradeSections = useCallback(async () => {
+  // Fetch all grade sections with silent option
+  const fetchGradeSections = useCallback(async (options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const { data: allGrades, error: gradesError } = await supabase
         .from('grades').select('id, grade_level').order('grade_level');
@@ -129,18 +136,45 @@ const GradeSectionTable = ({
       setAllGradeSections([]);
       setGrades([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [onEntityDataUpdate]);
 
+  // Debounced refetch for realtime events
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchGradeSections({ silent: true });
+      debounceTimeoutRef.current = null;
+    }, 300);
+  }, [fetchGradeSections]);
+
   useEffect(() => {
+    // Initial mount — NOT silent
     fetchGradeSections();
+    
+    // Realtime subscription — DEBOUNCED and SILENT
     const subscription = supabase
       .channel('grade-sections-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => fetchGradeSections())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, debouncedFetch)
       .subscribe();
-    return () => subscription.unsubscribe();
-  }, [fetchGradeSections, refreshTrigger]);
+      
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [fetchGradeSections, debouncedFetch]);
+
+  // refreshTrigger changes — SILENT (data already on screen)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchGradeSections({ silent: true });
+    }
+  }, [refreshTrigger, fetchGradeSections]);
 
   useEffect(() => {
     // propGradeSections is already paginated from parent
@@ -288,7 +322,7 @@ const GradeSectionTable = ({
         }
       }
       
-      await fetchGradeSections();
+      await fetchGradeSections({ silent: true });
       success(`Grade section updated successfully${gradeChanged || sectionNameChanged ? ' (students updated)' : ''}`);
       cancelEdit();
       return { success: true };
@@ -332,17 +366,6 @@ const GradeSectionTable = ({
 
   const allVisibleSelected = propGradeSections.length > 0 && 
     propGradeSections.every(gs => selectedGradeSections.includes(gs.id));
-
-  // ===== UPDATED: Hide infoText when all pages are selected =====
-  const computedInfoText = (() => {
-    const allPagesSelected = selectedGradeSections.length === totalFilteredCount && totalFilteredCount > 0;
-    
-    // Don't show any info text if all pages are selected (banner handles it)
-    if (allPagesSelected) return '';
-    
-    if (selectedGradeSections.length > 0) return `${selectedGradeSections.length} grade section/s selected`;
-    return '';
-  })();
 
   // ===== selectAllBanner with snapshot-based logic =====
   const selectAllBanner = (() => {
@@ -412,13 +435,21 @@ const GradeSectionTable = ({
     }
   };
 
+  // ===== UPDATED: handleConfirmDelete with cascade deletion =====
   const handleConfirmDelete = async (id) => {
     setIsDeleting(true);
     try {
       if (editingId === id) cancelEdit();
-      await sectionService.delete(id);
-      success('Grade section deleted successfully');
-      await fetchGradeSections();
+
+      const { deletedGradeIds } = await deleteSectionsWithGradeCascade([id]);
+
+      await fetchGradeSections({ silent: true });
+      success(
+        deletedGradeIds.length > 0
+          ? 'Grade section deleted — grade level removed (no sections remaining)'
+          : 'Grade section deleted successfully'
+      );
+
       const newSelected = selectedGradeSections.filter(selectedId => selectedId !== id);
       if (onSelectedGradeSectionsUpdate) onSelectedGradeSectionsUpdate(newSelected);
     } catch (err) {
@@ -433,6 +464,13 @@ const GradeSectionTable = ({
   const handleEditClick = (gradeSection, e) => {
     e.stopPropagation();
     startEdit(gradeSection);
+  };
+
+  // ===== FIXED: Row click handler with shouldHandleRowClick check =====
+  const handleRowClick = (gradeSectionId, event) => {
+    if (shouldHandleRowClick(editingId, event.target)) {
+      toggleRow(gradeSectionId);
+    }
   };
 
   const renderExpandedRow = (gradeSection) => {
@@ -619,7 +657,7 @@ const GradeSectionTable = ({
         }
         containerRef={tableRef}
         tableLabel="Grade and section records"
-        onRowClick={({ row }) => toggleRow(row.id)}
+        onRowClick={({ rowId, event }) => handleRowClick(rowId, event)}
         isRowSelected={({ row }) => selectedGradeSections.includes(row.id)}
         rowClassName={({ row }) => {
           const isEditing = editingId === row.id;
@@ -631,8 +669,6 @@ const GradeSectionTable = ({
         hideMainRowWhenExpanded
         getExpandedRowClassName={({ isExpanded }) => `${styles.expandRow} ${isExpanded ? styles.expandRowActive : ''}`}
         stickyHeader
-        infoText={computedInfoText}
-        selectedInfoText=""
         headerContent={selectAllBanner}
         isAllPagesSelected={isAllPagesSelected}
         visibleSelectedCount={selectedGradeSections.length}

@@ -5,6 +5,7 @@ import PieChart from "../../../Components/Charts/PieChart/PieChart.jsx";
 import DashboardCard from "../../../Components/UI/Cards/DashboardCard/DashboardCard.jsx";
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
 import DateTodayLabel from "../../../Components/UI/Labels/DateTodayLabel/DateTodayLabel.jsx";
+import AttendanceRow from '../../../Components/Grids/AttendanceRow/AttendanceRow.jsx';
 import { useSupabaseData } from '../../../Components/Hooks/fetchData.js'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -35,6 +36,10 @@ function AdminDashboard() {
   const [smsCount, setSmsCount] = useState(0);
   const [smsLoading, setSmsLoading] = useState(true);
   const [smsError, setSmsError] = useState(null);
+
+  // State for attendance dates (drives AttendanceRow's "past date" dots)
+  const [availableDates, setAvailableDates] = useState([]);
+  const [datesLoading, setDatesLoading] = useState(true);
 
   // Get start and end of today in Philippine time (UTC+8)
   const getTodayPhilippinesTimeRange = useCallback(() => {
@@ -94,6 +99,71 @@ function AdminDashboard() {
     }
   }, [getTodayPhilippinesTimeRange]);
 
+  // ===== Attendance dates (same approach as AdminAttendance.jsx) =====
+  const fetchAvailableDatesFallback = useCallback(async () => {
+    try {
+      let allDates = [];
+      let from = 0;
+      const BATCH = 1000;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('date')
+          .order('date', { ascending: false })
+          .range(from, from + BATCH - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allDates = allDates.concat(data.map(r => r.date).filter(Boolean));
+        if (data.length < BATCH) break;
+        from += BATCH;
+      }
+
+      const uniqueDates = [...new Set(allDates.map(d => {
+        const m = String(d).match(/^\d{4}-\d{2}-\d{2}/);
+        return m ? m[0] : null;
+      }).filter(Boolean))];
+
+      console.log(`✅ Fallback: ${uniqueDates.length} unique attendance dates from ${allDates.length} rows`);
+      setAvailableDates(uniqueDates);
+    } catch (err) {
+      console.error('❌ Fallback attendance-dates fetch also failed:', err);
+      setAvailableDates([]);
+    }
+  }, []);
+
+  const fetchAvailableDates = useCallback(async () => {
+    setDatesLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_distinct_attendance_dates');
+      if (error) throw error;
+
+      const normalize = (val) => {
+        if (!val) return null;
+        if (typeof val === 'string') {
+          const m = val.match(/^\d{4}-\d{2}-\d{2}/);
+          return m ? m[0] : null;
+        }
+        if (val instanceof Date) return val.toISOString().split('T')[0];
+        return null;
+      };
+
+      const uniqueDates = (data || [])
+        .map(row => normalize(row?.date))
+        .filter(Boolean);
+
+      console.log(`✅ Got ${uniqueDates.length} distinct attendance dates`);
+      setAvailableDates(uniqueDates);
+    } catch (err) {
+      console.error('❌ RPC failed, falling back to batch fetch for attendance dates...', err);
+      await fetchAvailableDatesFallback();
+    } finally {
+      setDatesLoading(false);
+    }
+  }, [fetchAvailableDatesFallback]);
+
   // Count unique guardians (assuming each student has one guardian)
   const guardianCount = students?.reduce((unique, student) => {
     const guardianKey = `${student.guardian_first_name}-${student.guardian_last_name}-${student.guardian_phone_number}`;
@@ -139,6 +209,26 @@ function AdminDashboard() {
       supabase.removeChannel(channel);
     };
   }, [fetchSmsCount]);
+
+  // Fetch attendance dates on mount + keep them live via realtime subscription
+  useEffect(() => {
+    fetchAvailableDates();
+
+    const channel = supabase
+      .channel('admin-dashboard-attendance-dates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance' },
+        () => {
+          fetchAvailableDates();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAvailableDates]);
 
   const isLoading = studentsLoading || teachersLoading || smsLoading;
 
@@ -212,6 +302,14 @@ function AdminDashboard() {
             </div>
           </DashboardCard>
         </div>
+
+      <div>
+          <AttendanceRow
+            hasDataDates={availableDates}
+            onSelect={(info) => console.log(info)} // { date, isToday, key }
+          />
+      </div>
+
         <div className={styles.charts}>
           <LineChart></LineChart>
           <BarGraph></BarGraph>

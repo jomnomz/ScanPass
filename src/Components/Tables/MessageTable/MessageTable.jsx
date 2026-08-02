@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
 import Table from '../Table/Table.jsx';
 import Pagination from '../../../Components/UI/Buttons/Pagination/Pagination.jsx';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 const MessageTable = ({
   searchTerm = '',
@@ -28,6 +29,9 @@ const MessageTable = ({
 
   // Ref for click outside detection
   const tableRef = useRef(null);
+
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
 
   // Get today's date in Philippine time (UTC+8)
   const getTodayPhilippines = () => {
@@ -546,7 +550,7 @@ const MessageTable = ({
         error={error ? `Error: ${error}` : ''}
         emptyMessage={getTableInfoMessage()}
         gradeTabs={{
-          options: ['7', '8', '9', '10'],
+          options: gradeLevels,
           currentValue: currentClass,
           onChange: handleClassChange,
           showAll: true,

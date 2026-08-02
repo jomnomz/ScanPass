@@ -219,7 +219,11 @@ function FileUploadModal({
                     }
                 }
                 
+                // ===== FIX: Call onUploadSuccess unconditionally on success =====
+                // Previously gated behind newEntities.length > 0, which broke master-data
+                // since it doesn't return a newData field in the response.
                 if (onUploadSuccess) {
+                    // Build newEntities for consumers that care about the data
                     let newEntities = [];
                     if (entityType === 'teacher' && response.data.newTeachers) {
                         newEntities = response.data.newTeachers;
@@ -229,9 +233,10 @@ function FileUploadModal({
                         newEntities = response.data.newData;
                     }
                     
-                    if (newEntities.length > 0) {
-                        onUploadSuccess(newEntities);
-                    }
+                    // Always call onUploadSuccess — consumers that don't care about the
+                    // argument (like AdminMasterData) ignore it, and consumers that do
+                    // care handle empty arrays gracefully.
+                    onUploadSuccess(newEntities);
                 }
                 
                 onClose();  

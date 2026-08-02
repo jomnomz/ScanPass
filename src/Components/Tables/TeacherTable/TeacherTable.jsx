@@ -1,8 +1,7 @@
-// src/components/TeacherTable/TeacherTable.jsx
+// src/components/Tables/TeacherTable/TeacherTable.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useTeachers } from '../../Hooks/useEntities'; 
-import { useEntityEdit } from '../../Hooks/useEntityEdit'; 
-import { useRowExpansion } from '../../Hooks/useRowExpansion'; 
+import { useEntityEdit } from '../../Hooks/useEntityEdit';
+import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
 import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
@@ -10,9 +9,9 @@ import { shouldHandleRowClick } from '../../../Utils/TableHelpers';
 import { supabase } from '../../../lib/supabase';
 import styles from './TeacherTable.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPenToSquare, 
-  faTrashCan, 
+import {
+  faPenToSquare,
+  faTrashCan,
   faPlus,
   faPaperPlane,
   faUserSlash,
@@ -29,6 +28,7 @@ import ActionsMenu from '../../UI/Menus/ActionsMenu/ActionsMenu';
 import EditEntityFormModal from '../../Modals/EditEntityFormModal/EditEntityFormModal.jsx';
 import EditTeacherForm from '../../Forms/EditTeacherForm/EditTeacherForm.jsx';
 import { apiClient } from '../../../config/api.js';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 console.log('🔄 TeacherTable.jsx LOADED - Updated with edit modal');
 
@@ -69,8 +69,8 @@ const renderProfileCircle = (teacher, sizeClassName) => {
   );
 };
 
-const TeacherTable = ({ 
-  searchTerm = '', 
+const TeacherTable = ({
+  searchTerm = '',
   onSelectedTeachersUpdate,
   onTeacherDataUpdate,
   onSingleDeleteClick,
@@ -86,19 +86,19 @@ const TeacherTable = ({
   selectedTeachers = [],
   gradesData = [],
   sectionsData = [],
+  // Props from AdminTeachers (single source of truth)
+  teachers = [],
+  teacherAssignments = {},
+  loadingAssignments = false,
+  loading = false,
+  error = null,
+  setEntities,
+  fetchTeacherAssignmentsFresh,
+  updateTeacherAssignments: updateTeacherAssignmentsViaHook,
 }) => {
 
-  // ===== USE TEACHERS HOOK (single source of truth) =====
-  const {
-    entities: teachers,
-    teacherAssignments,
-    loadingAssignments,
-    loading,
-    error,
-    setEntities,
-    fetchTeacherAssignmentsFresh,
-    updateTeacherAssignments: updateTeacherAssignmentsViaHook,
-  } = useTeachers();
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
 
   // ===== MODAL STATE MACHINE =====
   const [editModalState, setEditModalState] = useState('closed');
@@ -109,8 +109,8 @@ const TeacherTable = ({
   const [sectionIdMap, setSectionIdMap] = useState({});
 
   const { editingId: editingTeacher, editFormData, saving, validationErrors, startEdit, cancelEdit, updateEditField, saveEdit, validateForm } = useEntityEdit(
-  teachers, setEntities, 'teacher', refreshTeachers
-);
+    teachers, setEntities, 'teacher', refreshTeachers
+  );
 
   const { expandedRow, tableRef, toggleRow, isRowExpanded } = useRowExpansion();
   const { success, error: toastError } = useToast();
@@ -128,12 +128,12 @@ const TeacherTable = ({
       console.log('📋 Building grade-sections map for teachers...');
       const map = {};
       const idMap = {};
-      
+
       const gradeIdToLevel = {};
       gradesData.forEach(grade => {
         gradeIdToLevel[grade.id] = grade.grade_level;
       });
-      
+
       sectionsData.forEach(section => {
         const gradeLevel = gradeIdToLevel[section.grade_id];
         if (gradeLevel) {
@@ -141,22 +141,40 @@ const TeacherTable = ({
             map[gradeLevel] = [];
           }
           map[gradeLevel].push(section.section_name);
-          
+
           const key = `${gradeLevel}|${section.section_name}`;
           idMap[key] = section.id;
         }
       });
-      
+
       Object.keys(map).forEach(grade => {
         map[grade] = map[grade].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       });
-      
+
       console.log('📋 Teacher grade-sections map:', map);
       console.log('🗺️ Section ID map:', idMap);
       setGradeSectionsMap(map);
       setSectionIdMap(idMap);
     }
   }, [gradesData, sectionsData]);
+
+  // ===== FIXED: Section dropdown now uses gradeSectionsMap (unpaginated reference data) =====
+  const allUniqueSections = useMemo(() => {
+    const allSections = Object.values(gradeSectionsMap).flat();
+    const uniqueSections = [...new Set(allSections)];
+    return uniqueSections.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [gradeSectionsMap]);
+
+  const currentGradeSections = useMemo(() => {
+    if (selectedGrade === 'all') {
+      return allUniqueSections;
+    }
+    return gradeSectionsMap[selectedGrade] || [];
+  }, [selectedGrade, gradeSectionsMap, allUniqueSections]);
+
+  const sectionsToShowInDropdown = useMemo(() => {
+    return currentGradeSections;
+  }, [currentGradeSections]);
 
   // ===== SNAPSHOT-BASED BANNER PERSISTENCE =====
   const [fullySelectedSnapshots, setFullySelectedSnapshots] = useState(new Map());
@@ -184,7 +202,7 @@ const TeacherTable = ({
   const searchFilteredTeachers = useMemo(() => {
     if (!searchTerm.trim()) return teachers;
     const searchLower = searchTerm.toLowerCase().trim();
-    return teachers.filter(teacher => 
+    return teachers.filter(teacher =>
       teacher.employee_id?.toLowerCase().includes(searchLower) ||
       teacher.first_name?.toLowerCase().includes(searchLower) ||
       teacher.last_name?.toLowerCase().includes(searchLower) ||
@@ -194,28 +212,21 @@ const TeacherTable = ({
     );
   }, [teachers, searchTerm]);
 
-  const teacherGradeOptions = useMemo(() => {
-    const allGrades = Object.values(teacherAssignments)
-      .flatMap(a => (a.sections || []).map(s => s?.section?.grade?.grade_level))
-      .filter(g => g !== null && g !== undefined && g !== '');
-    return [...new Set(allGrades.map(String))].sort((a, b) => Number(a) - Number(b));
-  }, [teacherAssignments]);
-
-  const teacherSectionOptions = useMemo(() => {
-    const allSections = Object.values(teacherAssignments)
-      .flatMap(a => (a.sections || []).map(s => s?.section?.section_name))
-      .filter(Boolean);
-    return [...new Set(allSections)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [teacherAssignments]);
-
+  // ===== FIXED: Add "No Status" to dropdown options =====
   const teacherStatusOptions = useMemo(() => {
     const statusesFromData = teachers.map(t => String(t.status || '').trim()).filter(Boolean);
     const schemaStatuses = ['pending', 'active', 'inactive'];
-    return [...new Set([...schemaStatuses, ...statusesFromData])]
+    const options = [...new Set([...schemaStatuses, ...statusesFromData])]
       .sort((a, b) => a.localeCompare(b))
       .map(status => ({ label: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(), value: status.toLowerCase() }));
+
+    // "No Status" uses a sentinel value since '' already means "All Statuses"
+    options.push({ label: 'No Status', value: 'no_status' });
+
+    return options;
   }, [teachers]);
 
+  // ===== FIXED: Handle "No Status" sentinel value in filter logic =====
   const filteredTeachers = useMemo(() => {
     return searchFilteredTeachers.filter((teacher) => {
       const assignments = teacherAssignments[teacher.id] || {};
@@ -224,7 +235,17 @@ const TeacherTable = ({
 
       if (selectedGrade !== 'all' && !gradeLevels.includes(String(selectedGrade))) return false;
       if (selectedSectionFilter && !sectionNames.includes(selectedSectionFilter)) return false;
-      if (selectedStatusFilter && String(teacher.status || '').toLowerCase() !== selectedStatusFilter.toLowerCase()) return false;
+
+      // Handle status filter with "No Status" support
+      if (selectedStatusFilter) {
+        const teacherStatus = String(teacher.status || '').trim().toLowerCase();
+        if (selectedStatusFilter === 'no_status') {
+          if (teacherStatus !== '') return false;
+        } else if (teacherStatus !== selectedStatusFilter) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [searchFilteredTeachers, teacherAssignments, selectedGrade, selectedSectionFilter, selectedStatusFilter]);
@@ -313,15 +334,15 @@ const TeacherTable = ({
           onClick={onClearAllPages}
           onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
           onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
-          style={{ 
-            background: '#0F6B58', 
-            border: '1px solid #0F6B58', 
-            borderRadius: '999px', 
-            cursor: 'pointer', 
-            color: 'white', 
-            fontSize: '0.85rem', 
-            fontWeight: 600, 
-            padding: '6px 12px', 
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
             textDecoration: 'none',
             transition: 'background 0.2s ease'
           }}
@@ -337,15 +358,15 @@ const TeacherTable = ({
           onClick={onSelectAllPages}
           onMouseEnter={e => e.currentTarget.style.background = '#0a5042'}
           onMouseLeave={e => e.currentTarget.style.background = '#0F6B58'}
-          style={{ 
-            background: '#0F6B58', 
-            border: '1px solid #0F6B58', 
-            borderRadius: '999px', 
-            cursor: 'pointer', 
-            color: 'white', 
-            fontSize: '0.85rem', 
-            fontWeight: 600, 
-            padding: '6px 12px', 
+          style={{
+            background: '#0F6B58',
+            border: '1px solid #0F6B58',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            padding: '6px 12px',
             textDecoration: 'none',
             transition: 'background 0.2s ease'
           }}
@@ -414,30 +435,30 @@ const TeacherTable = ({
 
   // ===== HANDLE SAVE FROM MODAL =====
   const handleEditFormSave = () => {
-  const teacher = editingEntity;
-  if (!teacher) return;
+    const teacher = editingEntity;
+    if (!teacher) return;
 
-  setSaveError('');
+    setSaveError('');
 
-  const errors = validateForm();
-  if (Object.keys(errors).length > 0) {
-    return;
-  }
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
 
-  performTeacherUpdate(teacher.id);
-};
+    performTeacherUpdate(teacher.id);
+  };
 
   // ===== FIXED: performTeacherUpdate now saves assignments only =====
   const performTeacherUpdate = async (teacherId) => {
     const capturedAssignments = [...(editFormData.assignments || [])];
-    
+
     console.log('📝 Captured assignments for save:', capturedAssignments);
-    
+
     try {
       // 1. Update basic teacher info
       const result = await saveEdit(
-        teacherId, 
-        null, 
+        teacherId,
+        null,
         async (id, data) => {
           const updateData = {
             employee_id: data.employee_id,
@@ -448,66 +469,66 @@ const TeacherTable = ({
             updated_by: user?.id,
             updated_at: new Date().toISOString()
           };
-          
+
           console.log('💾 Updating teacher basic info:', updateData);
-          
+
           const { TeacherService } = await import('../../../Utils/EntityService');
           const teacherService = new TeacherService();
           const result = await teacherService.update(id, updateData);
           return result;
         }
       );
-      
+
       if (!result.success) {
         setSaveError(result.error || 'Failed to update teacher');
         setEditModalState('editing');
         return;
       }
-      
+
       // 2. Now handle assignments using captured data
       console.log('📋 Processing assignments:', capturedAssignments);
-      
+
       const sectionIds = capturedAssignments
         .map(row => {
           const key = `${row.grade}|${row.section}`;
           return sectionIdMap[key];
         })
         .filter(Boolean);
-      
+
       console.log('🏫 Resolved section IDs:', sectionIds);
-      
+
       const adviserRow = capturedAssignments.find(row => row.isAdviser);
       const adviserSectionId = adviserRow
         ? sectionIdMap[`${adviserRow.grade}|${adviserRow.section}`]
         : null;
-      
+
       console.log('👨‍🏫 Adviser section ID:', adviserSectionId);
-      
+
       // 3. Update teacher assignments using the hook's method
       const assignResult = await updateTeacherAssignmentsViaHook(teacherId, {
         sectionIds,
         adviserSectionId
       });
-      
+
       if (!assignResult.success) {
         toastError(assignResult.error || 'Teacher info saved, but assignments failed to update');
         setSaveError(assignResult.error || 'Failed to update assignments');
         setEditModalState('editing');
         return;
       }
-      
+
       // 4. Success!
       success('Teacher updated successfully with assignments');
-      
+
       // 5. Refresh data
       if (refreshTeachers) {
         await refreshTeachers();
       }
-      
+
       // 6. Close modal
       setEditModalState('closed');
       setEditingEntity(null);
-      
+
     } catch (error) {
       console.error('Update error:', error);
       setSaveError(error.message || 'Failed to update teacher');
@@ -519,23 +540,23 @@ const TeacherTable = ({
 
   const handleTeacherSelect = (teacherId, e) => {
     e.stopPropagation();
-    
+
     if (isAllPagesSelected && selectedTeachers.includes(teacherId)) {
       if (onClearAllPages) onClearAllPages();
       return;
     }
-    
+
     const newSelected = selectedTeachers.includes(teacherId)
       ? selectedTeachers.filter(id => id !== teacherId)
       : [...selectedTeachers, teacherId];
-    
+
     if (onSelectedTeachersUpdate) onSelectedTeachersUpdate(newSelected);
   };
 
   const handleSelectAll = () => {
     const allVisibleTeacherIds = paginatedTeachers.map(t => t.id);
     const allSelected = allVisibleTeacherIds.every(id => selectedTeachers.includes(id));
-    
+
     if (allSelected) {
       const newSelected = selectedTeachers.filter(id => !allVisibleTeacherIds.includes(id));
       if (onSelectedTeachersUpdate) onSelectedTeachersUpdate(newSelected);
@@ -558,8 +579,8 @@ const TeacherTable = ({
     }).filter(Boolean) || [];
 
     const adviserSection = assignments.sections?.find(s => s.is_adviser);
-    const adviserDisplay = adviserSection?.section ? 
-      `Grade ${adviserSection.section.grade?.grade_level || '?'}-${adviserSection.section.section_name || '?'}` : 
+    const adviserDisplay = adviserSection?.section ?
+      `Grade ${adviserSection.section.grade?.grade_level || '?'}-${adviserSection.section.section_name || '?'}` :
       'None';
 
     return { teachingSectionsArray, teachingSections: teachingSectionsArray.join(', ') || 'None', adviserDisplay };
@@ -730,12 +751,12 @@ const TeacherTable = ({
     const currentUserName = getCurrentUserName();
     const currentUserId = user?.id;
 
-    const updatedByName = teacher.updated_by 
-      ? (teacher.updated_by_user 
-          ? `${teacher.updated_by_user.first_name || ''} ${teacher.updated_by_user.last_name || ''}`.trim() || 
-            teacher.updated_by_user.username || teacher.updated_by_user.email || 'User'
-          : (currentUserId && teacher.updated_by === currentUserId ? currentUserName : 'User')
-        )
+    const updatedByName = teacher.updated_by
+      ? (teacher.updated_by_user
+        ? `${teacher.updated_by_user.first_name || ''} ${teacher.updated_by_user.last_name || ''}`.trim() ||
+        teacher.updated_by_user.username || teacher.updated_by_user.email || 'User'
+        : (currentUserId && teacher.updated_by === currentUserId ? currentUserName : 'User')
+      )
       : 'Not yet updated';
 
     const assignments = getTeacherAssignments(teacher.id);
@@ -747,8 +768,8 @@ const TeacherTable = ({
     };
 
     return (
-      <div 
-        className={`${styles.teacherCard} ${styles.expandableCard}`} 
+      <div
+        className={`${styles.teacherCard} ${styles.expandableCard}`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -822,9 +843,9 @@ const TeacherTable = ({
 
   const columns = [
     {
-      key: 'select', 
+      key: 'select',
       label: '',
-      headerStyle: withColumnWidth('5%', 40), 
+      headerStyle: withColumnWidth('5%', 40),
       cellStyle: withColumnWidth('5%', 40),
       renderHeader: () => (
         <div className={styles.checkboxWrapper}>
@@ -888,32 +909,24 @@ const TeacherTable = ({
       )
     },
     {
-      key: 'grade', 
-      label: 'GRADE', 
+      key: 'grade',
+      label: 'GRADE',
       headerStyle: { ...withColumnWidth('10%', 80), textAlign: 'left' },
       cellStyle: { ...withColumnWidth('10%', 80), textAlign: 'left' },
-      renderHeader: () => (
-        <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
-          <span>GRADE</span>
-          <EntityDropdown options={teacherGradeOptions} selectedValue={selectedGrade}
-            onSelect={(value) => { setSelectedGrade(value); onPageChange(1); }}
-            allLabel="All Grades" buttonTitle="Filter by grade" />
-        </div>
-      ),
       renderCell: ({ row }) => {
         const teacherData = getTeacherFilterData(row);
         return teacherData.gradeLevels.length > 0 ? teacherData.gradeLevels.join(' | ') : 'N/A';
       }
     },
     {
-      key: 'section', 
-      label: 'SECTION', 
+      key: 'section',
+      label: 'SECTION',
       headerStyle: { ...withColumnWidth('15%', 130), textAlign: 'left' },
       cellStyle: { ...withColumnWidth('15%', 130), textAlign: 'left' },
       renderHeader: () => (
         <div className={styles.headerWithFilter} style={{ justifyContent: 'flex-start' }}>
           <span>SECTION</span>
-          <EntityDropdown options={teacherSectionOptions} selectedValue={selectedSectionFilter}
+          <EntityDropdown options={sectionsToShowInDropdown} selectedValue={selectedSectionFilter}
             onSelect={(value) => { setSelectedSectionFilter(value); onPageChange(1); }}
             allLabel="All Sections" buttonTitle="Filter by section" />
         </div>
@@ -934,8 +947,8 @@ const TeacherTable = ({
       }
     },
     {
-      key: 'status', 
-      label: 'STATUS', 
+      key: 'status',
+      label: 'STATUS',
       headerStyle: { ...withColumnWidth('12%', 120), textAlign: 'left' },
       cellStyle: { ...withColumnWidth('12%', 120), textAlign: 'left' },
       renderHeader: () => (
@@ -1010,7 +1023,7 @@ const TeacherTable = ({
         visibleSelectedCount={selectedTeachers.length}
         totalRowsOnPage={paginatedTeachers.length}
         gradeTabs={{
-          options: teacherGradeOptions,
+          options: gradeLevels,
           currentValue: selectedGrade,
           onChange: (grade) => { setSelectedGrade(grade); onPageChange(1); },
           showAll: true,

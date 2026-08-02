@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { grades } from '../../../Utils/TableHelpers';
 import { getProfileColor, getProfileInitial } from '../../../Utils/ProfileHelpers';
 import styles from './EditStudentForm.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCamera } from '@fortawesome/free-solid-svg-icons';
 import PhoneNumberInput from '../../UI/Inputs/PhoneNumberInput/PhoneNumberInput';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
+
 function EditStudentForm({
   student,
   formData,
@@ -13,6 +14,9 @@ function EditStudentForm({
   gradeSectionsMap = {},
   disabled = false,
 }) {
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
+
   const fileInputRef = useRef(null);
   // Local-only preview — no upload logic yet, just UI/UX placeholder until buckets exist.
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -151,7 +155,7 @@ function EditStudentForm({
             disabled={disabled}
           >
             <option value="" disabled>Select grade</option>
-            {grades.map((grade) => (
+            {gradeLevels.map((grade) => (
               <option key={grade} value={grade}>
                 Grade {grade}
               </option>

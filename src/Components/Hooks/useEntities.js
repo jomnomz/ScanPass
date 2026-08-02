@@ -1,3 +1,4 @@
+// src/components/Hooks/useEntities.js
 import { useState, useEffect } from 'react';
 import { StudentService, GuardianService, TeacherService } from '../../Utils/EntityService';  
 import { supabase } from '../../lib/supabase';
@@ -195,40 +196,50 @@ export const useTeachers = () => {
 
   const teacherService = new TeacherService();
 
-  const fetchTeachers = async () => {
+  // ===== FIXED: fetchTeachers with silent option =====
+  const fetchTeachers = async (options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      // Only show loading on initial mount, not on background refreshes
+      if (!silent) setLoading(true);
       setError(null);
       
-      console.log(`🔄 Fetching teachers...`);
+      console.log(`🔄 Fetching teachers...${silent ? ' (silent refresh)' : ''}`);
       const data = await teacherService.fetchAll();
       console.log(`✅ Fetched ${data.length} teachers`);
       setTeachers(data);
       
-      // Fetch assignments for all teachers (bulk background sync — used for table display only)
-      setLoadingAssignments(true);
+      // Fetch assignments for all teachers
+      if (!silent) setLoadingAssignments(true);
       console.log('🔄 Fetching teacher assignments...');
+      
+      // ===== OPTIONAL: Use Promise.all for parallel assignment fetching =====
+      // This makes both initial load and background refresh much faster
+      const assignmentResults = await Promise.all(
+        data.map(teacher => teacherService.getTeacherAssignments(teacher.id))
+      );
+      
       const assignments = {};
-      for (const teacher of data) {
-        const result = await teacherService.getTeacherAssignments(teacher.id);
-        // Normalize the shape: assignments -> teachingAssignments
-        assignments[teacher.id] = normalizeTeacherAssignments(result);
-      }
+      data.forEach((teacher, i) => {
+        assignments[teacher.id] = normalizeTeacherAssignments(assignmentResults[i]);
+      });
+      
       setTeacherAssignments(assignments);
-      setLoadingAssignments(false);
+      if (!silent) setLoadingAssignments(false);
       
     } catch (err) {
       console.error('❌ Error fetching teachers:', err);
       setError('Failed to load teachers');
       setTeachers([]);
     } finally {
-      setLoading(false);
+      // Only show loading on initial mount, not on background refreshes
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     console.log('🚀 useTeachers hook initialized');
-    fetchTeachers();
+    fetchTeachers(); // initial mount — show loading
   }, []);
 
   useEffect(() => {
@@ -284,8 +295,9 @@ export const useTeachers = () => {
     setStoredFilter('teacher', filterName);
   };
 
-  const refetch = async () => {
-    await fetchTeachers();
+  // ===== FIXED: refetch now uses silent mode =====
+  const refetch = async (options = {}) => {
+    await fetchTeachers({ silent: true, ...options });
   };
 
   const getTeacherAssignments = (teacherId) => {
@@ -293,27 +305,21 @@ export const useTeachers = () => {
   };
 
   // ===== fetch ONE teacher's assignments fresh from the DB, on demand =====
-  // Use this right before opening the edit modal so the form is never built
-  // from stale/in-flight background-sync data.
   const fetchTeacherAssignmentsFresh = async (teacherId) => {
     const result = await teacherService.getTeacherAssignments(teacherId);
-    // Normalize the shape: assignments -> teachingAssignments
     const normalized = normalizeTeacherAssignments(result);
     setTeacherAssignments(prev => ({
       ...prev,
       [teacherId]: normalized
     }));
-    return normalized; // return the normalized shape, not raw result
+    return normalized;
   };
 
   const updateTeacherAssignments = async (teacherId, assignments) => {
     try {
-      // assignments now only contains sectionIds and adviserSectionId
       const result = await teacherService.updateTeacherAssignments(teacherId, assignments);
       if (result.success) {
-        // Refresh assignments for this teacher
         const updatedAssignments = await teacherService.getTeacherAssignments(teacherId);
-        // Normalize the shape: assignments -> teachingAssignments
         setTeacherAssignments(prev => ({
           ...prev,
           [teacherId]: normalizeTeacherAssignments(updatedAssignments)

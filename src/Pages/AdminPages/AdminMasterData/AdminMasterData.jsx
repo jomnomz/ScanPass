@@ -1,3 +1,4 @@
+// AdminMasterData.jsx
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import styles from './AdminMasterData.module.css';
 import SectionLabel from "../../../Components/UI/Labels/SectionLabel/SectionLabel.jsx";
@@ -15,6 +16,7 @@ import { exportEntity } from '../../../Utils/exportEntity.js';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
 import useSearchFilter from '../../../Components/Hooks/useSearchFilter.js';
+import { deleteSectionsWithGradeCascade } from '../../../Utils/gradeSectionCascade.js';
 
 const ROWS_PER_PAGE = 20;
 
@@ -335,31 +337,40 @@ function AdminMasterData() {
     return selectedIds.map(id => data.find(item => String(item.id) === String(id))).filter(Boolean);
   };
 
+  // ===== UPDATED: handleConfirmDelete with cascade deletion for sections =====
   const handleConfirmDelete = async (idOrIds) => {
     setIsDeleting(true);
     try {
-      const { EntityService } = await import('../../../Utils/EntityService.js');
-      
-      if (deleteModalMode === 'single') {
-        const service = new EntityService(
-          deleteEntityType === 'gradeSections' ? 'sections' 
-          : 'grade_schedules'
+      if (deleteEntityType === 'gradeSections') {
+        // Sections need the grade-cascade check; schedules don't (no children to check).
+        const ids = deleteModalMode === 'single' ? [idOrIds] : idOrIds;
+        const { deletedGradeIds } = await deleteSectionsWithGradeCascade(ids);
+
+        const count = ids.length;
+        success(
+          deletedGradeIds.length > 0
+            ? `${count} grade section${count !== 1 ? 's' : ''} deleted — ${deletedGradeIds.length} grade level${deletedGradeIds.length !== 1 ? 's' : ''} removed (no sections remaining)`
+            : `${count} grade section${count !== 1 ? 's' : ''} deleted successfully`
         );
-        await service.delete(idOrIds);
-        success(`${getModalEntityType()} deleted successfully`);
+
+        if (deleteModalMode === 'bulk') setSelectedGradeSections([]);
       } else {
-        const service = new EntityService(
-          deleteEntityType === 'gradeSections' ? 'sections' 
-          : 'grade_schedules'
-        );
-        for (const id of idOrIds) {
-          await service.delete(id);
+        // Non-section entities (schedules) keep the existing simple delete path.
+        const { EntityService } = await import('../../../Utils/EntityService.js');
+        const service = new EntityService('grade_schedules');
+
+        if (deleteModalMode === 'single') {
+          await service.delete(idOrIds);
+          success(`${getModalEntityType()} deleted successfully`);
+        } else {
+          for (const id of idOrIds) {
+            await service.delete(id);
+          }
+          success(`${idOrIds.length} ${getModalEntityType()}s deleted successfully`);
+          setSelectedSchedules([]);
         }
-        success(`${idOrIds.length} ${getModalEntityType()}s deleted successfully`);
-        if (deleteEntityType === 'gradeSections') setSelectedGradeSections([]);
-        else if (deleteEntityType === 'schedules') setSelectedSchedules([]);
       }
-      
+
       setRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Delete error:', err);
@@ -591,7 +602,8 @@ function AdminMasterData() {
 
           <div style={{ display: activeTab === 'schedules' ? 'block' : 'none' }}>
             <GradeSchedulesTable 
-              key={`schedule-${refreshKey}`}
+              // REMOVED: key={`schedule-${refreshKey}`} remount hack
+              // ADDED: refreshTrigger prop to trigger silent refetch on upload
               searchTerm={scheduleSearch}
               schedules={paginatedSchedules}
               totalFilteredCount={sortedSchedules.length}
@@ -609,6 +621,7 @@ function AdminMasterData() {
                 setSelectedSchedules([]);
               }}
               currentPage={schedulePage}
+              refreshTrigger={refreshKey}  // ← ADDED: connects to refreshKey
             />
           </div>
         </div>
@@ -634,6 +647,7 @@ function AdminMasterData() {
         selectedEntities={deleteModalMode === 'bulk' ? getSelectedEntitiesForModal() : []}
         entityType={getModalEntityType()}
         entityData={getModalEntityData()}
+        gradeSchedulesData={scheduleData}
         onConfirm={deleteModalMode === 'single' ? handleConfirmDelete : undefined}
         onConfirmBulk={deleteModalMode === 'bulk' ? handleConfirmDelete : undefined}
         currentFilter={getCurrentSearch()}

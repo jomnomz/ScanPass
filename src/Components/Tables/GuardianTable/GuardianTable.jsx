@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useEntityEdit } from '../../Hooks/useEntityEdit';
 import { useRowExpansion } from '../../Hooks/useRowExpansion';
-import { grades } from '../../../Utils/TableHelpers';
 import { formatNA } from '../../../Utils/Formatters';
 import { compareSections } from '../../../Utils/CompareHelpers';
 import SectionDropdown from '../../UI/Buttons/SectionDropdown/SectionDropdown';
@@ -14,6 +13,7 @@ import { supabase } from '../../../lib/supabase';
 import Table from '../Table/Table.jsx';
 import { useAuth } from '../../Authentication/AuthProvider/AuthProvider';
 import { useToast } from '../../Toast/ToastContext/ToastContext';
+import { useGradeLevels } from '../../Hooks/useGradeLevels';
 
 const formatDateTimeLocal = (dateString) => {
   if (!dateString) return 'N/A';
@@ -83,6 +83,9 @@ const GuardianTable = ({
 
   const { user, profile } = useAuth();
   const { success } = useToast();
+  
+  // ===== FETCH GRADE LEVELS FROM DATABASE =====
+  const { gradeLevels } = useGradeLevels();
   
   // ===== BUILD GRADE-SECTIONS MAP (same as StudentTable) =====
   const [gradeSectionsMap, setGradeSectionsMap] = useState({});
@@ -577,7 +580,7 @@ const GuardianTable = ({
         emptyMessage={getTableInfoMessage()}
         containerRef={tableRef}
         gradeTabs={{
-          options: grades,
+          options: gradeLevels,
           currentValue: currentClass,
           onChange: handleClassChange,
           showAll: true,
