@@ -6,11 +6,13 @@ import TeacherStudentViewTable from '../../../Components/Tables/TeacherStudentVi
 function TeacherStudents() {
   const [searchParams] = useSearchParams();
   const selectedClass = searchParams.get('class') || '';
+  const gradeId = searchParams.get('gradeId');
+  const sectionId = searchParams.get('sectionId');
 
   return (
     <main className={styles.main}>
       <SectionLabel label="Student Record" />
-      <TeacherStudentViewTable selectedClass={selectedClass} />
+      <TeacherStudentViewTable selectedClass={selectedClass} gradeId={gradeId} sectionId={sectionId} />
     </main>
   );
 }

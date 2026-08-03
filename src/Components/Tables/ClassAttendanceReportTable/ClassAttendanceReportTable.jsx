@@ -10,11 +10,12 @@ const withColumnWidth = (width, minWidth) => ({ width, minWidth: `${minWidth}px`
 const ROWS_PER_PAGE = 20;
 
 const ClassAttendanceReportTable = ({
-  currentClass, selectedMonth, attendanceRows, setAttendanceRows,
+  currentClass, gradeId, sectionId, selectedMonth, attendanceRows, setAttendanceRows,
   loading, setLoading, currentPage, setCurrentPage, totalPages,
   setTotalPages, monthNames
 }) => {
   const [error, setError] = useState(null);
+  const hasExplicitClassIds = gradeId != null && sectionId != null;
 
   const parseClassName = (className) => {
     const match = className?.match(/^(\d+)[-\s](.+)$/);
@@ -30,20 +31,30 @@ const ClassAttendanceReportTable = ({
       setLoading(true);
       setError(null);
       try {
-        const { grade, section } = parseClassName(currentClass);
-        if (!grade || !section) throw new Error('Invalid class name');
+        const studentsQuery = supabase
+          .from('students')
+          .select('id, lrn, first_name, last_name');
 
-        const { data: sectionData, error: sectionError } = await supabase
-          .from('sections').select('id, section_name').eq('section_name', section).single();
-        if (sectionError) throw sectionError;
+        const { data: students, error: studentsError } = hasExplicitClassIds
+          ? await studentsQuery.eq('grade_id', gradeId).eq('section_id', sectionId)
+          : await (async () => {
+              const { grade, section } = parseClassName(currentClass);
+              if (!grade || !section) throw new Error('Invalid class name');
 
-        const { data: gradeData, error: gradeError } = await supabase
-          .from('grades').select('id, grade_level').eq('grade_level', grade).single();
-        if (gradeError) throw gradeError;
+              const { data: sectionData, error: sectionError } = await supabase
+                .from('sections').select('id, section_name').eq('section_name', section).single();
+              if (sectionError) throw sectionError;
 
-        const { data: students, error: studentsError } = await supabase
-          .from('students').select('id, lrn, first_name, last_name')
-          .eq('grade_id', gradeData.id).eq('section_id', sectionData.id);
+              const { data: gradeData, error: gradeError } = await supabase
+                .from('grades').select('id, grade_level').eq('grade_level', grade).single();
+              if (gradeError) throw gradeError;
+
+              return supabase
+                .from('students')
+                .select('id, lrn, first_name, last_name')
+                .eq('grade_id', gradeData.id)
+                .eq('section_id', sectionData.id);
+            })();
         if (studentsError) throw studentsError;
 
         const studentIds = students.map(s => s.id);
@@ -86,7 +97,7 @@ const ClassAttendanceReportTable = ({
       }
     };
     fetchAttendanceData();
-  }, [currentClass, selectedMonth]);
+  }, [currentClass, gradeId, sectionId, selectedMonth]);
 
   // Reset pagination based on filtered results (attendanceRows is already filtered)
   useEffect(() => {

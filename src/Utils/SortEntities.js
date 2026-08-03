@@ -34,8 +34,8 @@ export const sortEntities = (entities, sortConfig = {}) => {
 // Student sorting logic
 const sortStudentsLogic = (a, b) => {
   // First, sort by grade (convert to number for proper numeric sorting)
-  const gradeA = parseInt(a.grade) || 0;
-  const gradeB = parseInt(b.grade) || 0;
+  const gradeA = parseInt(a.grade?.grade_level ?? a.grade, 10) || 0;
+  const gradeB = parseInt(b.grade?.grade_level ?? b.grade, 10) || 0;
   
   if (gradeA !== gradeB) {
     return gradeA - gradeB;
@@ -60,8 +60,8 @@ const sortStudentsLogic = (a, b) => {
 // Guardian sorting logic
 const sortGuardiansLogic = (a, b) => {
   // First, sort by student grade
-  const gradeA = parseInt(a.grade) || 0;
-  const gradeB = parseInt(b.grade) || 0;
+  const gradeA = parseInt(a.grade?.grade_level ?? a.grade, 10) || 0;
+  const gradeB = parseInt(b.grade?.grade_level ?? b.grade, 10) || 0;
   
   if (gradeA !== gradeB) {
     return gradeA - gradeB;

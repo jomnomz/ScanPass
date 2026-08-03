@@ -164,11 +164,11 @@ function AdminGuardians() {
     let filtered = searchFilteredRows;
 
     if (currentGrade !== 'all') {
-      filtered = filtered.filter(g => g.grade === currentGrade);
+      filtered = filtered.filter(g => (g.grade?.grade_level ?? g.grade) === currentGrade);
     }
 
     if (selectedSection) {
-      filtered = filtered.filter(g => g.section === selectedSection);
+      filtered = filtered.filter(g => (g.section?.section_name ?? g.section) === selectedSection);
     }
 
     return filtered;

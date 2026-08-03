@@ -248,6 +248,16 @@ const assignTeacherSections = async (teacherId, sectionIds, adviserSectionId = n
   return { assigned: sectionIds.length, errors: [] };
 };
 
+const resolveSectionId = (gradeSectionMap, gradeSectionStr) => {
+  if (!gradeSectionStr) return null;
+  for (const [sectionId, gsStr] of Object.entries(gradeSectionMap)) {
+    if (gsStr === gradeSectionStr) {
+      return parseInt(sectionId);
+    }
+  }
+  return null;
+};
+
 router.post('/upload', excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -559,6 +569,102 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
 
     console.log(`✅ Found ${allSectionIds?.length || 0} grade-sections in database`);
 
+    // ---------------------------------------------------------------------
+    // Adviser-conflict check: a grade-section can only have ONE adviser.
+    // (a) file row vs file row, (b) file row vs existing DB adviser rows.
+    // Only applies to newTeachers — existingTeachers are skipped/untouched
+    // by this route, so their adviser status can't change here.
+    // ---------------------------------------------------------------------
+    const adviserClaims = [];
+
+    newTeachers.forEach((teacher) => {
+      if (!teacher.adviser_grade_section) return;
+      const sectionId = resolveSectionId(gradeSectionMap, teacher.adviser_grade_section);
+      if (!sectionId) return; // unresolved grade-section already surfaces via assignmentErrors
+      adviserClaims.push({
+        row: teacher._row,
+        employee_id: teacher.employee_id,
+        name: `${teacher.first_name} ${teacher.last_name}`,
+        sectionId,
+        displayStr: teacher.adviser_grade_section
+      });
+    });
+
+    const adviserConflictRecords = [];
+
+    if (adviserClaims.length > 0) {
+      // (a) File-to-file: first claim per section holds it, later claims conflict
+      const sectionHolder = new Map();
+      adviserClaims.forEach((claim) => {
+        const holder = sectionHolder.get(claim.sectionId);
+        if (!holder) {
+          sectionHolder.set(claim.sectionId, claim);
+        } else {
+          adviserConflictRecords.push({
+            row: claim.row,
+            data: { employee_id: claim.employee_id, name: claim.name },
+            errors: {
+              adviser_grade_section: `${claim.displayStr} is already claimed as adviser section by ${holder.name} (Employee ID ${holder.employee_id}) in this file`
+            }
+          });
+        }
+      });
+
+      // (b) File vs DB: an existing adviser on that section conflicts with
+      // every file claim for it, since these teachers are all new inserts.
+      const candidateSectionIds = [...new Set(adviserClaims.map((c) => c.sectionId))];
+
+      const { data: existingAdviserRows, error: adviserFetchError } = await supabase
+        .from('teacher_sections')
+        .select('section_id, teacher_id, teachers(employee_id, first_name, last_name)')
+        .in('section_id', candidateSectionIds)
+        .eq('is_adviser', true);
+
+      if (adviserFetchError) {
+        console.error('Error checking existing advisers:', adviserFetchError);
+        throw new Error(`Database error: ${adviserFetchError.message}`);
+      }
+
+      const dbAdviserBySectionId = new Map();
+      (existingAdviserRows || []).forEach((row) => {
+        dbAdviserBySectionId.set(row.section_id, row.teachers);
+      });
+
+      adviserClaims.forEach((claim) => {
+        const existingAdviser = dbAdviserBySectionId.get(claim.sectionId);
+        if (existingAdviser) {
+          adviserConflictRecords.push({
+            row: claim.row,
+            data: { employee_id: claim.employee_id, name: claim.name },
+            errors: {
+              adviser_grade_section: `${claim.displayStr} already has an adviser (${existingAdviser.first_name} ${existingAdviser.last_name}, Employee ID ${existingAdviser.employee_id}) in the database`
+            }
+          });
+        }
+      });
+    }
+
+    if (adviserConflictRecords.length > 0) {
+      const errorMessages = adviserConflictRecords.map((record) =>
+        `Row ${record.row}: ${Object.values(record.errors).join(', ')}`
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'One or more adviser grade-sections are already assigned to another teacher.',
+        invalidCount: adviserConflictRecords.length,
+        invalidRecords: adviserConflictRecords.slice(0, 10),
+        errorSummary: errorMessages.slice(0, 5),
+        summary: {
+          totalRecords: rawTeacherData.length,
+          validRecords: allTeachers.length - adviserConflictRecords.length,
+          invalidRecords: adviserConflictRecords.length,
+          duplicateEmployeeIds: [],
+          duplicateEmails: []
+        }
+      });
+    }
+
     if (newTeachers.length > 0) {
       console.log(`\n💾 Adding ${newTeachers.length} new teachers to database...`);
       
@@ -711,6 +817,8 @@ router.post('/upload', excelUpload.single('file'), async (req, res) => {
         errorMessage = 'One or more emails already exist in the database.';
       } else if (error.message.includes('teachers_employee_id_key')) {
         errorMessage = 'Duplicate Employee ID found in database.';
+      } else if (error.message.includes('teacher_sections_one_adviser_per_section')) {
+        errorMessage = 'One or more grade-sections in this file already have an adviser assigned in the database.';
       } else {
         errorMessage = 'A duplicate value was found in the database.';
       }

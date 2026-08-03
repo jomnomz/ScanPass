@@ -35,10 +35,10 @@ function DownloadQRModal({
         if (!student) return undefined;
         
         const grade = gradesData.find(g => g.id === student.grade_id);
-        const gradeName = grade ? grade.grade_level : student.grade || 'N/A';
+        const gradeName = grade?.grade_level ?? student.grade ?? 'N/A';
         
         const section = sectionsData.find(s => s.id === student.section_id);
-        const sectionName = section ? section.section_name : student.section || 'N/A';
+        const sectionName = section?.section_name ?? student.section ?? 'N/A';
         
         return {
           ...student,
@@ -79,8 +79,8 @@ function DownloadQRModal({
   // Function to generate QR code image with student info BELOW the QR code
   const generateQRCodeImage = async (student) => {
     // Use the properly formatted grade and section names
-    const gradeDisplay = student.grade || 'N/A';
-    const sectionDisplay = student.section || 'N/A';
+    const gradeDisplay = student.grade?.grade_level ?? student.grade ?? 'N/A';
+    const sectionDisplay = student.section?.section_name ?? student.section ?? 'N/A';
     
     // Create the data object for QR code
     const qrData = JSON.stringify({

@@ -1,6 +1,5 @@
-// src/components/Tables/TeacherTable/TeacherTable.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useEntityEdit } from '../../Hooks/useEntityEdit';
+import { useEntityEdit, parseServiceError } from '../../Hooks/useEntityEdit';
 import { useRowExpansion } from '../../Hooks/useRowExpansion';
 import { sortTeachers } from '../../../Utils/CompareHelpers';
 import { formatTeacherName, formatDateTime, formatNA } from '../../../Utils/Formatters';
@@ -391,6 +390,7 @@ const TeacherTable = ({
     const assignments = (assignmentsData.sections || [])
       .map((s) => ({
         id: `existing-${s.section_id ?? s.section?.id ?? Math.random()}`,
+        sectionId: s.section_id ?? s.section?.id ?? null,
         grade: String(s.section?.grade?.grade_level ?? ''),
         section: s.section?.section_name || '',
         isAdviser: Boolean(s.is_adviser),
@@ -448,11 +448,63 @@ const TeacherTable = ({
     performTeacherUpdate(teacher.id);
   };
 
-  // ===== FIXED: performTeacherUpdate now saves assignments only =====
-  const performTeacherUpdate = async (teacherId) => {
-    const capturedAssignments = [...(editFormData.assignments || [])];
+  // ===== HELPER: Check for adviser conflicts =====
+  const findAdviserConflict = (teacherId, adviserSectionId) => {
+    if (!adviserSectionId) return null;
 
-    console.log('📝 Captured assignments for save:', capturedAssignments);
+    for (const [otherId, assignmentsData] of Object.entries(teacherAssignments)) {
+      if (String(otherId) === String(teacherId)) continue;
+
+      const sections = assignmentsData?.sections || [];
+      const hasConflict = sections.some(
+        (s) => s.is_adviser && (s.section_id === adviserSectionId || s.section?.id === adviserSectionId)
+      );
+
+      if (hasConflict) {
+        const teacherRecord = teachers.find((t) => String(t.id) === String(otherId));
+        return {
+          teacherName: teacherRecord
+            ? `${teacherRecord.first_name} ${teacherRecord.last_name}`
+            : 'another teacher',
+        };
+      }
+    }
+    return null;
+  };
+
+  // ===== FIXED: performTeacherUpdate with snapshot restoration =====
+  const performTeacherUpdate = async (teacherId) => {
+    // Snapshot the full form BEFORE calling saveEdit, since saveEdit clears
+    // editFormData internally on success. This snapshot is what we restore
+    // from if anything after step 1 fails, so the modal never goes blank.
+    const formSnapshot = {
+      ...editFormData,
+      id: teacherId,
+      assignments: [...(editFormData.assignments || [])],
+    };
+
+    console.log('📝 Captured assignments for save:', formSnapshot.assignments);
+
+    // Resolve section IDs + the adviser section up front so we can check
+    // for a conflict BEFORE touching the database at all.
+    const sectionIds = formSnapshot.assignments
+      .map((row) => row.sectionId ?? sectionIdMap[`${row.grade}|${row.section}`])
+      .filter(Boolean);
+
+    const adviserRow = formSnapshot.assignments.find((row) => row.isAdviser);
+    const adviserSectionId = adviserRow
+      ? (adviserRow.sectionId ?? sectionIdMap[`${adviserRow.grade}|${adviserRow.section}`])
+      : null;
+
+    const adviserConflict = findAdviserConflict(teacherId, adviserSectionId);
+    if (adviserConflict) {
+      setSaveError(
+        `This grade-section already has an adviser assigned to ${adviserConflict.teacherName}.`
+      );
+      // saveEdit is never called, so editFormData/modal are untouched —
+      // the user's inputs stay exactly as they typed them.
+      return;
+    }
 
     try {
       // 1. Update basic teacher info
@@ -485,54 +537,45 @@ const TeacherTable = ({
         return;
       }
 
-      // 2. Now handle assignments using captured data
-      console.log('📋 Processing assignments:', capturedAssignments);
-
-      const sectionIds = capturedAssignments
-        .map(row => {
-          const key = `${row.grade}|${row.section}`;
-          return sectionIdMap[key];
-        })
-        .filter(Boolean);
-
       console.log('🏫 Resolved section IDs:', sectionIds);
-
-      const adviserRow = capturedAssignments.find(row => row.isAdviser);
-      const adviserSectionId = adviserRow
-        ? sectionIdMap[`${adviserRow.grade}|${adviserRow.section}`]
-        : null;
-
       console.log('👨‍🏫 Adviser section ID:', adviserSectionId);
 
-      // 3. Update teacher assignments using the hook's method
+      // 2. Update teacher assignments using the hook's method
       const assignResult = await updateTeacherAssignmentsViaHook(teacherId, {
         sectionIds,
         adviserSectionId
       });
 
       if (!assignResult.success) {
-        toastError(assignResult.error || 'Teacher info saved, but assignments failed to update');
-        setSaveError(assignResult.error || 'Failed to update assignments');
+        const friendlyMessage = parseServiceError(assignResult.error);
+        toastError(friendlyMessage);
+        setSaveError(friendlyMessage);
         setEditModalState('editing');
+        // Basic info WAS saved, but assignments failed (e.g. a race-condition
+        // adviser conflict caught only at the DB level). saveEdit already
+        // cleared editFormData via its internal cancelEdit() — restore it
+        // from the snapshot so the modal doesn't appear to have lost the
+        // user's edits.
+        startEdit(formSnapshot);
         return;
       }
 
-      // 4. Success!
+      // 3. Success!
       success('Teacher updated successfully with assignments');
 
-      // 5. Refresh data
       if (refreshTeachers) {
         await refreshTeachers();
       }
 
-      // 6. Close modal
       setEditModalState('closed');
       setEditingEntity(null);
 
     } catch (error) {
       console.error('Update error:', error);
-      setSaveError(error.message || 'Failed to update teacher');
+      const friendlyMessage = parseServiceError(error.message);
+      setSaveError(friendlyMessage);
       setEditModalState('editing');
+      startEdit(formSnapshot);
     }
   };
 

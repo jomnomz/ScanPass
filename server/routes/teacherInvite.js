@@ -560,6 +560,144 @@ router.post('/invite', async (req, res) => {
   }
 });
 
+// BULK INVITE ROUTE - Added right after the existing /invite route
+router.post('/invite/bulk', async (req, res) => {
+  console.log('🚀 BULK INVITE');
+
+  try {
+    const { teacherIds, invitedBy } = req.body;
+
+    if (!teacherIds || !Array.isArray(teacherIds) || teacherIds.length === 0 || !invitedBy) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields or no teachers selected'
+      });
+    }
+
+    console.log(`🚀 Inviting ${teacherIds.length} teachers`);
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    for (const teacherId of teacherIds) {
+      try {
+        console.log(`\n🔍 Processing teacher ${teacherId}...`);
+
+        const { data: teacher, error: teacherError } = await supabase
+          .from('teachers')
+          .select('*')
+          .eq('id', teacherId)
+          .single();
+
+        if (teacherError || !teacher) {
+          results.failed.push({ teacherId, error: 'Teacher not found' });
+          continue;
+        }
+
+        if (!teacher.email_address) {
+          results.failed.push({ teacherId, teacherName: `${teacher.first_name} ${teacher.last_name}`, error: 'No email address' });
+          continue;
+        }
+
+        if (teacher.status === 'active' || teacher.status === 'pending') {
+          results.failed.push({ teacherId, teacherName: `${teacher.first_name} ${teacher.last_name}`, error: `Teacher already ${teacher.status}` });
+          continue;
+        }
+
+        const tempPassword = `teacher${Math.floor(100 + Math.random() * 900)}`;
+        let authUserId = null;
+
+        const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = allUsers.users.find(u => u.email === teacher.email_address);
+
+        if (existingUser) {
+          authUserId = existingUser.id;
+          await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+            password: tempPassword,
+            user_metadata: {
+              ...existingUser.user_metadata,
+              temp_password: tempPassword,
+              first_name: teacher.first_name,
+              last_name: teacher.last_name
+            }
+          });
+        } else {
+          const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: teacher.email_address,
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: {
+              first_name: teacher.first_name,
+              last_name: teacher.last_name,
+              temp_password: tempPassword,
+              role: 'teacher'
+            }
+          });
+
+          if (authError) {
+            results.failed.push({ teacherId, teacherName: `${teacher.first_name} ${teacher.last_name}`, error: authError.message });
+            continue;
+          }
+
+          authUserId = authUser.user.id;
+        }
+
+        await createUserInPublicTable(
+          authUserId, teacher.email_address, teacher.first_name, teacher.last_name, invitedBy
+        );
+
+        const emailResult = await sendResendEmail(teacher.email_address, teacher.first_name, tempPassword);
+
+        const updateData = {
+          status: 'pending',
+          invited_at: new Date().toISOString(),
+          invited_by: invitedBy,
+          temp_password: tempPassword,
+          auth_user_id: authUserId,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error: updateError } = await supabase
+          .from('teachers')
+          .update({ ...updateData, email_provider: 'resend', email_sent: emailResult.success })
+          .eq('id', teacherId);
+
+        if (updateError && updateError.message.includes('email_provider')) {
+          await supabase.from('teachers').update(updateData).eq('id', teacherId);
+        }
+
+        results.success.push({
+          teacherId: teacher.id,
+          teacherName: `${teacher.first_name} ${teacher.last_name}`,
+          email: teacher.email_address,
+          emailSent: emailResult.success
+        });
+
+        console.log(`✅ Invited: ${teacher.first_name} ${teacher.last_name}`);
+
+      } catch (error) {
+        console.error(`❌ Error inviting teacher ${teacherId}:`, error);
+        results.failed.push({ teacherId, error: error.message });
+      }
+    }
+
+    console.log(`\n📊 Bulk invite complete. Success: ${results.success.length}, Failed: ${results.failed.length}`);
+
+    res.json({
+      success: results.failed.length === 0,
+      total: teacherIds.length,
+      results: results,
+      message: `Invited ${results.success.length} teacher(s) successfully${results.failed.length > 0 ? `, ${results.failed.length} failed` : ''}`
+    });
+
+  } catch (error) {
+    console.error('❌ Error in bulk invite:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/change-password', async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
@@ -1344,7 +1482,7 @@ router.get('/teacher-classes/:teacherId', async (req, res) => {
         section:sections(
           id,
           section_name,
-          grade:grades(grade_level)
+          grade:grades(id, grade_level)
         ),
         created_at
       `)
@@ -1371,6 +1509,8 @@ router.get('/teacher-classes/:teacherId', async (req, res) => {
         isAdviser: item.is_adviser,
         grade: grade,
         section: sectionName,
+        gradeId: item.section?.grade?.id ?? null,
+        sectionId: item.section?.id ?? null,
         initialColor: getColorForIndex(index)
       };
     });

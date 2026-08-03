@@ -45,7 +45,7 @@ function QRCodeModal({ isOpen, onClose, student }) {
       <div className={styles.modalContainer}>
         <div className={styles.studentInfo}>
           <h3>{student.first_name} {student.last_name}</h3>
-          <p>LRN: {student.lrn} | Grade {student.grade}-{student.section}</p>
+          <p>LRN: {student.lrn} | Grade {student.grade?.grade_level ?? student.grade}-{student.section?.section_name ?? student.section}</p>
         </div>
         
         <div className={styles.qrCodeContainer}>

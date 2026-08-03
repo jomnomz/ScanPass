@@ -217,8 +217,8 @@ const MessageTable = ({
           student_first_name: student?.first_name || '',
           student_last_name: student?.last_name || '',
           student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
-          grade: student?.grade?.grade_level || 'N/A',
-          section: student?.section?.section_name || 'N/A',
+          grade: student?.grade?.grade_level ?? student?.grade ?? 'N/A',
+          section: student?.section?.section_name ?? student?.section ?? 'N/A',
           scan_type: log.scan_type || 'N/A',
           provider: log.provider || 'iprogsms',
           status: log.status || 'sent',
@@ -419,7 +419,7 @@ const MessageTable = ({
             <div className={styles.messageInfo}>First Name: {message.student_first_name || 'N/A'}</div>
             <div className={styles.messageInfo}>Last Name: {message.student_last_name || 'N/A'}</div>
             <div className={styles.messageInfo}>LRN: {message.student_lrn}</div>
-            <div className={styles.messageInfo}>Grade & Section: {message.grade} - {message.section}</div>
+            <div className={styles.messageInfo}>Grade & Section: {message.grade?.grade_level ?? message.grade} - {message.section?.section_name ?? message.section}</div>
           </div>
 
           <div>
@@ -490,7 +490,7 @@ const MessageTable = ({
       label: 'GRADE',
       headerStyle: withColumnWidth('9%', 80),
       cellStyle: withColumnWidth('9%', 80),
-      renderCell: ({ row }) => row.grade
+      renderCell: ({ row }) => row.grade?.grade_level ?? row.grade
     },
     {
       key: 'section',
@@ -509,7 +509,7 @@ const MessageTable = ({
           </div>
         </div>
       ),
-      renderCell: ({ row }) => row.section
+      renderCell: ({ row }) => row.section?.section_name ?? row.section
     },
     {
       key: 'message',

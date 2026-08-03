@@ -97,9 +97,11 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
           if (!item.section) return;
           const grade = item.section.grade?.grade_level || '';
           const section = item.section.section_name || '';
+          const gradeId = item.section.grade?.id || '';
+          const sectionId = item.section.id || '';
           const key = `${grade}-${section}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { key, grade, section, isAdvisory: false });
+            classMap.set(key, { key, grade, section, gradeId, sectionId, isAdvisory: false });
           }
           classMap.get(key).isAdvisory = true;
         });
@@ -108,9 +110,11 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
           if (!item.section) return;
           const grade = item.section.grade?.grade_level || '';
           const section = item.section.section_name || '';
+          const gradeId = item.section.grade?.id || '';
+          const sectionId = item.section.id || '';
           const key = `${grade}-${section}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { key, grade, section, isAdvisory: false });
+            classMap.set(key, { key, grade, section, gradeId, sectionId, isAdvisory: false });
           }
         });
 
@@ -142,7 +146,7 @@ function NavBar({ userType = 'admin', onCollapseChange }) {
 
   const isStudentsActive = () => location.pathname.startsWith(`/${userType}/students`);
 
-  const getClassUrl = (cls) => `/${userType}/students?class=${encodeURIComponent(cls.key)}`;
+  const getClassUrl = (cls) => `/${userType}/students?class=${encodeURIComponent(cls.key)}&gradeId=${cls.gradeId}&sectionId=${cls.sectionId}`;
 
   const isClassActive = (cls) => {
     const params = new URLSearchParams(location.search);

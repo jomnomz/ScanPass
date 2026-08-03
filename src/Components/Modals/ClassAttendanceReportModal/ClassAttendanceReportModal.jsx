@@ -10,7 +10,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
-const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
+const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass, gradeId, sectionId }) => {
   const now = new Date();
   const currentMonthIdx = now.getMonth();
   const currentYear = now.getFullYear();
@@ -192,6 +192,8 @@ const ClassAttendanceReportModal = ({ isOpen, onClose, currentClass }) => {
 
         <ClassAttendanceReportTable
           currentClass={currentClass}
+          gradeId={gradeId}
+          sectionId={sectionId}
           selectedMonth={selectedMonth}
           attendanceRows={filteredRows}
           setAttendanceRows={setAttendanceRows}

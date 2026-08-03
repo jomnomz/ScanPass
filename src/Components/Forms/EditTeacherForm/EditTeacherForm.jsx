@@ -28,7 +28,7 @@ function EditTeacherForm({
   // ===== TEACHING ASSIGNMENTS (grade + section pairs) =====
 
   const handleAddAssignment = () => {
-    const newRow = { id: nextRowId('assign'), grade: '', section: '', isAdviser: false };
+    const newRow = { id: nextRowId('assign'), grade: '', section: '', sectionId: null, isAdviser: false };
     onFieldChange('assignments', [...assignments, newRow]);
   };
 
@@ -42,7 +42,7 @@ function EditTeacherForm({
       'assignments',
       assignments.map((row) =>
         row.id === rowId
-          ? { ...row, grade: newGrade, section: sectionsForGrade[0] || '' }
+          ? { ...row, grade: newGrade, section: sectionsForGrade[0] || '', sectionId: null }
           : row
       )
     );
@@ -51,14 +51,19 @@ function EditTeacherForm({
   const handleAssignmentSectionChange = (rowId, newSection) => {
     onFieldChange(
       'assignments',
-      assignments.map((row) => (row.id === rowId ? { ...row, section: newSection } : row))
+      assignments.map((row) => (row.id === rowId ? { ...row, section: newSection, sectionId: null } : row))
     );
   };
 
+  // Toggle logic: clicking the currently-selected row turns it off;
+  // clicking a different row moves the selection there.
   const handleSetAdviser = (rowId) => {
     onFieldChange(
       'assignments',
-      assignments.map((row) => ({ ...row, isAdviser: row.id === rowId }))
+      assignments.map((row) => ({
+        ...row,
+        isAdviser: row.id === rowId ? !row.isAdviser : false,
+      }))
     );
   };
 
@@ -199,7 +204,8 @@ function EditTeacherForm({
                   type="radio"
                   name="adviser-section"
                   checked={row.isAdviser}
-                  onChange={() => handleSetAdviser(row.id)}
+                  onClick={() => handleSetAdviser(row.id)}
+                  onChange={() => {}}
                   disabled={disabled}
                 />
                 Adviser

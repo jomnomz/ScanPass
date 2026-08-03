@@ -6,6 +6,8 @@ import AttendanceTableModal from '../../../Modals/AttendanceTableModal/Attendanc
 
 const AttendanceCard = ({ 
   className, 
+  gradeId = null,
+  sectionId = null,
   initialColor = '#FFB73B'
 }) => {
   // Generate a unique key for localStorage based on class name
@@ -125,6 +127,8 @@ const AttendanceCard = ({
         isOpen={showAttendanceModal}
         onClose={handleCloseModal}
         className={className}
+        gradeId={gradeId}
+        sectionId={sectionId}
       />
     </>
   );

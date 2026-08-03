@@ -3,6 +3,45 @@ import { validateAndNormalizeStudent } from '../../Utils/StudentDataValidation';
 import { validateAndNormalizeTeacher } from  '../../Utils/TeacherDataValidation';
 import { validateGradeSectionData } from '../../Utils/MasterDataValidation';
 
+export const parseServiceError = (rawMessage) => {
+  if (!rawMessage) return 'An unknown error occurred';
+  
+  const msg = rawMessage.toString();
+  
+  // Database constraint violations
+  if (msg.includes('teacher_sections_one_adviser_per_section')) {
+    return 'This grade-section already has an adviser assigned to another teacher.';
+  }
+  if (msg.includes('duplicate key')) {
+    if (msg.includes('teachers_email_address_key')) {
+      return 'This email address is already in use by another teacher.';
+    }
+    if (msg.includes('teachers_employee_id_key')) {
+      return 'This Employee ID is already in use by another teacher.';
+    }
+    return 'A duplicate value was found in the database.';
+  }
+  
+  // Permission/access errors
+  if (msg.includes('permission denied') || msg.includes('violates row-level security')) {
+    return 'You do not have permission to perform this action.';
+  }
+  
+  // Foreign key violations
+  if (msg.includes('foreign key constraint')) {
+    if (msg.includes('teacher_sections_section_id_fkey')) {
+      return 'One or more sections no longer exist in the database.';
+    }
+    if (msg.includes('teacher_sections_teacher_id_fkey')) {
+      return 'The teacher record could not be found.';
+    }
+    return 'A related record could not be found.';
+  }
+  
+  // Return the original message if no specific match
+  return msg;
+};
+
 export const useEntityEdit = (entities, setEntities, entityType = 'student', refreshAll = null) => {
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});

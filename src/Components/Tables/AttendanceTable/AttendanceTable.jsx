@@ -568,11 +568,11 @@ const AttendanceTable = ({
     }
     
     if (currentClass !== 'all') {
-      filtered = filtered.filter(attendance => attendance.grade === currentClass);
+      filtered = filtered.filter(attendance => (attendance.grade?.grade_level ?? attendance.grade) === currentClass);
     }
     
     if (selectedSection) {
-      filtered = filtered.filter(attendance => attendance.section === selectedSection);
+      filtered = filtered.filter(attendance => (attendance.section?.section_name ?? attendance.section) === selectedSection);
     }
     
     return sortEntities(filtered, { type: 'student' });

@@ -33,8 +33,8 @@ export const compareNames = (nameA, nameB) => {
 };
 
 export const compareGrades = (gradeA, gradeB) => {
-  const numA = parseInt(gradeA) || 0;
-  const numB = parseInt(gradeB) || 0;
+  const numA = parseInt(gradeA?.grade_level ?? gradeA, 10) || 0;
+  const numB = parseInt(gradeB?.grade_level ?? gradeB, 10) || 0;
   return numA - numB;
 };
 

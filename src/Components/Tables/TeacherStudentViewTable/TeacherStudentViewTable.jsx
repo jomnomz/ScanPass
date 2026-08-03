@@ -39,7 +39,7 @@ const renderProfileCircle = (student, sizeClassName) => {
   );
 };
 
-const TeacherStudentViewTable = ({ selectedClass = '' }) => {
+const TeacherStudentViewTable = ({ selectedClass = '', gradeId = null, sectionId = null }) => {
   const [students, setStudents] = useState([]);
   const [currentClassDetails, setCurrentClassDetails] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +68,8 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     return { grade: null, section: null };
   };
 
+  const hasExplicitClassIds = gradeId != null && sectionId != null;
+
   const fetchClassDetails = async (className) => {
     if (!className || !user) return;
     try {
@@ -79,20 +81,45 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
       if (teacherError) return;
 
-      const { grade, section } = parseClassName(className);
-      if (!grade || !section) return;
+      const parsedClass = parseClassName(className);
 
-      const { data: sectionData } = await supabase
-        .from('sections')
-        .select('id')
-        .eq('section_name', section)
-        .single();
+      let sectionData;
+      let gradeData;
 
-      const { data: gradeData } = await supabase
-        .from('grades')
-        .select('id')
-        .eq('grade_level', grade)
-        .single();
+      if (hasExplicitClassIds) {
+        const { data: sectionById } = await supabase
+          .from('sections')
+          .select('id, section_name')
+          .eq('id', sectionId)
+          .single();
+
+        const { data: gradeById } = await supabase
+          .from('grades')
+          .select('id, grade_level')
+          .eq('id', gradeId)
+          .single();
+
+        sectionData = sectionById;
+        gradeData = gradeById;
+      } else {
+        const { grade, section } = parsedClass;
+        if (!grade || !section) return;
+
+        const { data: sectionByName } = await supabase
+          .from('sections')
+          .select('id, section_name')
+          .eq('section_name', section)
+          .single();
+
+        const { data: gradeByName } = await supabase
+          .from('grades')
+          .select('id, grade_level')
+          .eq('grade_level', grade)
+          .single();
+
+        sectionData = sectionByName;
+        gradeData = gradeByName;
+      }
 
       if (!sectionData || !gradeData) return;
 
@@ -106,8 +133,8 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
 
       setCurrentClassDetails({
         className,
-        grade,
-        section,
+        grade: parsedClass.grade,
+        section: parsedClass.section,
         isAdvisory: !!advisoryData,
       });
     } catch (err) {
@@ -126,26 +153,6 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     setError(null);
 
     try {
-      const { grade, section } = parseClassName(selectedClass);
-
-      if (!grade || !section) throw new Error(`Invalid class: ${selectedClass}`);
-
-      const { data: sectionData, error: sectionError } = await supabase
-        .from('sections')
-        .select('id, section_name')
-        .eq('section_name', section)
-        .single();
-
-      if (sectionError) throw new Error(`Section "${section}" not found`);
-
-      const { data: gradeData, error: gradeError } = await supabase
-        .from('grades')
-        .select('id, grade_level')
-        .eq('grade_level', grade)
-        .single();
-
-      if (gradeError) throw new Error(`Grade "${grade}" not found`);
-
       // Try to get photo_url if it exists, but don't fail if it doesn't
       let selectFields = `
         id,
@@ -194,12 +201,48 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         console.log('photo_url column not found in students table, using fallback');
       }
 
-      const { data: classStudents, error: studentsError } = await supabase
-        .from('students')
-        .select(selectFields)
-        .eq('grade_id', gradeData.id)
-        .eq('section_id', sectionData.id)
-        .order('last_name');
+      let classStudents;
+      let studentsError;
+
+      if (hasExplicitClassIds) {
+        const studentsQuery = supabase
+          .from('students')
+          .select(selectFields)
+          .eq('grade_id', gradeId)
+          .eq('section_id', sectionId)
+          .order('last_name');
+
+        ({ data: classStudents, error: studentsError } = await studentsQuery);
+      } else {
+        const { grade, section } = parseClassName(selectedClass);
+
+        if (!grade || !section) throw new Error(`Invalid class: ${selectedClass}`);
+
+        const { data: sectionData, error: sectionError } = await supabase
+          .from('sections')
+          .select('id, section_name')
+          .eq('section_name', section)
+          .single();
+
+        if (sectionError) throw new Error(`Section "${section}" not found`);
+
+        const { data: gradeData, error: gradeError } = await supabase
+          .from('grades')
+          .select('id, grade_level')
+          .eq('grade_level', grade)
+          .single();
+
+        if (gradeError) throw new Error(`Grade "${grade}" not found`);
+
+        const studentsQuery = supabase
+          .from('students')
+          .select(selectFields)
+          .eq('grade_id', gradeData.id)
+          .eq('section_id', sectionData.id)
+          .order('last_name');
+
+        ({ data: classStudents, error: studentsError } = await studentsQuery);
+      }
 
       if (studentsError) throw studentsError;
 
@@ -224,7 +267,7 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
     fetchClassStudents();
     toggleRow(null);
     setSearchTerm('');
-  }, [selectedClass, user]);
+  }, [selectedClass, gradeId, sectionId, user]);
 
   const sortedStudents = useMemo(() => sortEntities(students, { type: 'student' }), [students]);
 
@@ -472,6 +515,8 @@ const TeacherStudentViewTable = ({ selectedClass = '' }) => {
         isOpen={showClassAttendanceReport}
         onClose={() => setShowClassAttendanceReport(false)}
         currentClass={selectedClass}
+        gradeId={gradeId}
+        sectionId={sectionId}
       />
     </div>
   );

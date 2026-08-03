@@ -337,6 +337,7 @@ function AdminTeachers() {
         selectedTeachers={selectedTeachers}
         teacherData={teachers}
         onConfirm={handleConfirmInvite}
+        onConfirmBulk={handleConfirmInvite}
         loading={isSendingInvite}
       />
 
@@ -353,6 +354,7 @@ function AdminTeachers() {
         entityData={teachers}
         entityType="teacher"
         onConfirm={handleConfirmDelete}
+        onConfirmBulk={handleConfirmDelete} 
         currentFilter={searchTerm}
       />
     </main>

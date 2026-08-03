@@ -6,7 +6,9 @@ import styles from './AttendanceTableModal.module.css';
 const AttendanceTableModal = ({ 
   isOpen, 
   onClose, 
-  className
+  className,
+  gradeId,
+  sectionId
 }) => {
   return (
     <Modal 
@@ -18,6 +20,8 @@ const AttendanceTableModal = ({
         <div className={styles.tableRegion}>
           <TeacherAttendanceTable
             className={className}
+            gradeId={gradeId}
+            sectionId={sectionId}
           />
         </div>
       </div>

@@ -413,7 +413,7 @@ const GuardianTable = ({
               Student LRN: {guardian.student_lrn || 'N/A'}
             </div>
             <div className={styles.guardianInfo}>
-              Grade and Section: {guardian.grade} - {guardian.section}
+              Grade and Section: {guardian.grade?.grade_level ?? guardian.grade} - {guardian.section?.section_name ?? guardian.section}
             </div>
           </div>
 
@@ -531,7 +531,7 @@ const GuardianTable = ({
       label: 'GRADE',
       headerStyle: withColumnWidth('10%', 80),
       cellStyle: withColumnWidth('10%', 80),
-      renderCell: ({ row }) => row.grade
+      renderCell: ({ row }) => row.grade?.grade_level ?? row.grade
     },
     {
       key: 'section',
@@ -550,7 +550,7 @@ const GuardianTable = ({
           </div>
         </div>
       ),
-      renderCell: ({ row }) => row.section
+      renderCell: ({ row }) => row.section?.section_name ?? row.section
     },
     {
       key: 'edit',
