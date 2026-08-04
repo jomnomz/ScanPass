@@ -95,7 +95,8 @@ const TimePicker = ({ value, onChange, name }) => {
 };
 
 function TeacherAttendanceTable({
-  className
+  className,
+  sectionId: sectionIdProp = null
 }) {
   const [attendances, setAttendances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,14 +212,15 @@ function TeacherAttendanceTable({
     setDatesLoading(true);
 
     try {
-      const { grade, section } = parseClassName(className);
-
-      if (!grade || !section) {
-        setAvailableDates([]);
-        return;
+      let sectionId = sectionIdProp;
+      if (!sectionId) {
+        const { grade, section } = parseClassName(className);
+        if (!grade || !section) {
+          setAvailableDates([]);
+          return;
+        }
+        sectionId = await findSectionId(grade, section);
       }
-
-      const sectionId = await findSectionId(grade, section);
 
       if (!sectionId) {
         setAvailableDates([]);
@@ -258,7 +260,7 @@ function TeacherAttendanceTable({
     } finally {
       setDatesLoading(false);
     }
-  }, [className, findSectionId, parseClassName]);
+  }, [className, findSectionId, parseClassName, sectionIdProp]);
 
   // ===== CALCULATE STATUS =====
   const calculateStatus = useCallback(async (timeIn, studentGrade) => {
@@ -344,16 +346,20 @@ function TeacherAttendanceTable({
     setError('');
 
     try {
-      const { grade, section } = parseClassName(className);
+      const parsed = parseClassName(className);
+      const grade = parsed.grade;
+      const section = parsed.section;
 
-      if (!grade || !section) {
-        throw new Error(`Invalid class name format: ${className}`);
+      let sectionId = sectionIdProp;
+      if (!sectionId) {
+        if (!grade || !section) {
+          throw new Error(`Invalid class name format: ${className}`);
+        }
+        sectionId = await findSectionId(grade, section);
       }
 
-      const sectionId = await findSectionId(grade, section);
-
       if (!sectionId) {
-        throw new Error(`Section "${section}" in Grade ${grade} not found`);
+        throw new Error(`Section not found for class: ${className}`);
       }
 
       let selectFields = `
@@ -465,7 +471,7 @@ function TeacherAttendanceTable({
     } finally {
       setLoading(false);
     }
-  }, [activeDate, className, findSectionId, getPhilippinesDisplayDate, parseClassName]);
+  }, [activeDate, className, findSectionId, getPhilippinesDisplayDate, parseClassName, sectionIdProp]);
 
   // ===== FORMAT HELPERS =====
   const formatTimeDisplay = useCallback((timeString) => {

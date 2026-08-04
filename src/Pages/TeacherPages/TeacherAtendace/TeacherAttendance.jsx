@@ -327,6 +327,8 @@ function TeacherAttendance() {
             <AttendanceCard
               key={classItem.id}
               className={classItem.className}
+              gradeId={classItem.gradeId}
+              sectionId={classItem.sectionId}
               initialColor={classItem.initialColor}
               onCardClick={handleCardClick}
             />
