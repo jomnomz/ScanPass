@@ -301,7 +301,7 @@
 }
 
 
-/* ===== CHECKBOX STYLES (matches StudentTable/GradeSectionTable/SubjectTable) ===== */
+/* ===== CHECKBOX STYLES (matches StudentTable/GradeSectionTable) ===== */
 .checkboxWrapper {
   display: flex;
   justify-content: center;
