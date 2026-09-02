@@ -117,13 +117,13 @@ Supports bulk importing of:
 
 - Vite
 
-- React Router
-
-- CSS Modules
-
 ### Backend
 
 - Supabase (PostgreSQL, Auth, Storage)
+  
+- Express.js
+  
+- Node.jsx
 
 ### Mobile
 
@@ -133,9 +133,11 @@ Supports bulk importing of:
 
 ### Services
 
-- Resend (Email)
+- Resend (Email Sender API)
+  
+- Grok (AI API)
 
-- iProg SMS API
+- iProg (SMS API)
 
 ---
 
@@ -164,8 +166,6 @@ Supports bulk importing of:
 
 - Import data
 
-- Generate QR Codes
-
 - View attendance reports
 
 ### Teachers
@@ -174,15 +174,6 @@ Supports bulk importing of:
 
 - Manage assigned students
 
-- Generate reports
-
-### Scanner App
-
-- Scan QR Codes
-
-- Record attendance
-
-- Trigger SMS notifications
 
 ---
 
