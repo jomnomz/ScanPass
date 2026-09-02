@@ -8,7 +8,7 @@ ScanPass streamlines student attendance by replacing manual logging with QR code
 
 ## Overview
 
-Traditional attendance systems are often time-consuming, prone to human error, and provide delayed communication with parents. They can also depend on hardware that is bulky or costly to maintain. ScanPass addresses these issues by providing::
+Traditional attendance systems are often time-consuming, prone to human error, and provide delayed communication with parents. They can also depend on hardware that is bulky or costly to maintain. ScanPass addresses these issues by providing:
 
 - QR Code-based attendance
 
